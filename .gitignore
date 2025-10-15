@@ -1,0 +1,14 @@
+# 기본 Node/Electron ignore
+node_modules/
+dist/
+dist-electron/
+.vite/
+*.log
+
+# OS 관련
+.DS_Store
+Thumbs.db
+
+# Electron
+electron/*.js
+electron/*.js.map

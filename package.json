@@ -1,0 +1,38 @@
+{
+  "name": "graphnode_front",
+  "version": "1.0.0",
+  "description": "TACO 4기 GraphNode의 프론트앤드 코드입니다.",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^24.7.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "electron": "^38.2.2",
+    "eslint": "^9.37.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.7",
+    "vite-plugin-electron": "^0.29.0"
+  },
+  "dependencies": {
+    "i18next": "^25.6.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-i18next": "^16.0.1"
+  }
+}
