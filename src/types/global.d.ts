@@ -11,5 +11,14 @@ declare global {
     systemAPI: {
       getLocale: () => Promise<string>;
     };
+    openaiAPI: {
+      checkAPIKeyValid: (
+        apiKey: string
+      ) => Promise<{ ok: boolean; error?: string }>;
+    };
+    keytarAPI: {
+      getAPIKey: (modelName: string) => Promise<string | null>;
+      setAPIKey: (modelName: string, apiKey: string) => Promise<void>;
+    };
   }
 }

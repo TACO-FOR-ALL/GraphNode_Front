@@ -73,8 +73,8 @@ GraphNode_Front/
 │   │   └── index.ts
 │   ├── managers/
 │   │   └── manageTargetManager.ts  # 매니저 (로컬 디비 관리 등, camelCase)
-│   ├── pages/
-│   │   └── PageNames.tsx           # 페이지 (PascalCase)
+│   ├── routess/
+│   │   └── PageNames.tsx           # 페이지 (Routename)
 │   ├── types/
 │   │   └── global.d.ts             # 전역 타입 및 타입 선언 (PascalCase)
 │   ├── utils/
