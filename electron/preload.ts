@@ -11,3 +11,9 @@ contextBridge.exposeInMainWorld("windowAPI", {
 contextBridge.exposeInMainWorld("systemAPI", {
   getLocale: () => ipcRenderer.invoke("system:getLocale"),
 });
+
+// OpenAI API 키 유효성 체크
+contextBridge.exposeInMainWorld("openaiAPI", {
+  checkAPIKeyValid: (apiKey: string) =>
+    ipcRenderer.invoke("openai:checkAPIKeyValid", apiKey),
+});

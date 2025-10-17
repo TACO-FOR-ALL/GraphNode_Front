@@ -11,5 +11,10 @@ declare global {
     systemAPI: {
       getLocale: () => Promise<string>;
     };
+    openaiAPI: {
+      checkAPIKeyValid: (
+        apiKey: string
+      ) => Promise<{ ok: boolean; error?: string }>;
+    };
   }
 }

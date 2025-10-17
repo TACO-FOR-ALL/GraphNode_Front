@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import checkAPIKeyValid from "../src/utils/openAIRequest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,3 +52,8 @@ ipcMain.on("window:close", () => BrowserWindow.getFocusedWindow()?.close());
 
 // 시스템 언어 가져오기
 ipcMain.handle("system:getLocale", () => app.getLocale());
+
+// 메인 프로세스에서 OpenAI 호출 (OpenAI SDK에서 브라우저/렌더러에서 직접 호출 금지)
+ipcMain.handle("openai:checkAPIKeyValid", async (_event, apiKey: string) => {
+  return await checkAPIKeyValid(apiKey);
+});
