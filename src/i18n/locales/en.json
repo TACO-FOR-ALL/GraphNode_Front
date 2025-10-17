@@ -1,3 +1,21 @@
 {
-  "welcome": "Welcome to GraphNode"
+  "sideTabBar": {
+    "home": "Home",
+    "visualize": "Visualize",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "Home"
+  },
+  "visualize": {
+    "title": "Visualize"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "ko": "한국어",
+      "en": "English",
+      "zh": "简体中文"
+    }
+  }
 }

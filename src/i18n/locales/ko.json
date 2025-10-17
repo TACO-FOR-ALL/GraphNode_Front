@@ -1,3 +1,21 @@
 {
-  "welcome": "GraphNode에 오신 것을 환영합니다"
+  "sideTabBar": {
+    "home": "메인 페이지",
+    "visualize": "시각화 페이지",
+    "settings": "설정"
+  },
+  "home": {
+    "title": "메인 페이지"
+  },
+  "visualize": {
+    "title": "시각화 페이지"
+  },
+  "settings": {
+    "title": "설정",
+    "language": {
+      "ko": "한국어",
+      "en": "English",
+      "zh": "简体中文"
+    }
+  }
 }
