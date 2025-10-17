@@ -1,3 +1,21 @@
 {
-  "welcome": "欢迎来到GraphNode"
+  "sideTabBar": {
+    "home": "首页",
+    "visualize": "可视化",
+    "settings": "设置"
+  },
+  "home": {
+    "title": "首页"
+  },
+  "visualize": {
+    "title": "可视化"
+  },
+  "settings": {
+    "title": "设置",
+    "language": {
+      "ko": "한국어",
+      "en": "English",
+      "zh": "简体中文"
+    }
+  }
 }

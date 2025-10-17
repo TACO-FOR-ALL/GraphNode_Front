@@ -1,18 +1,26 @@
-import { useTranslation } from "react-i18next";
+import { MemoryRouter as Router, Routes, Route } from "react-router-dom";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
-import i18n from "./i18n";
+import SideTabBar from "./components/SideTabBar";
+import Home from "./routes/Home";
+import Visualize from "./routes/Visualize";
+import Settings from "./routes/Settings";
 
 export default function App() {
-  const { t } = useTranslation();
-
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <WebAppFrameBar />
-      <div style={{ flex: 1, padding: 24 }}>
-        <h1>{t("welcome")}</h1>
-        <p>Electron + React + TypeScript + Vite</p>
-        <button onClick={() => i18n.changeLanguage("ko")}>한국어</button>
-      </div>
+      <Router>
+        <div style={{ display: "flex", flex: 1 }}>
+          <SideTabBar />
+          <div style={{ flex: 1, overflow: "auto" }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/visualize" element={<Visualize />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </div>
+        </div>
+      </Router>
     </div>
   );
 }
