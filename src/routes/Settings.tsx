@@ -12,6 +12,7 @@ export default function Settings() {
   const onCheck = async () => {
     setKeyStatus("checking");
     const res = await window.openaiAPI.checkAPIKeyValid(apiKey);
+    if (res.ok) await window.keytarAPI.setAPIKey("openai", apiKey);
     setKeyStatus(res.ok ? "valid" : "invalid");
   };
 
@@ -48,6 +49,14 @@ export default function Settings() {
       {keyStatus === "checking" && (
         <p className="text-yellow-500">Checking...</p>
       )}
+      <button
+        onClick={async () => {
+          const key = await window.keytarAPI.getAPIKey("openai");
+          console.log(key);
+        }}
+      >
+        Get API Key
+      </button>
     </div>
   );
 }

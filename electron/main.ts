@@ -1,9 +1,43 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import keytar from "keytar";
 import checkAPIKeyValid from "../src/utils/openAIRequest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// 윈도우 최소화, 최대화, 종료
+ipcMain.on("window:minimize", () =>
+  BrowserWindow.getFocusedWindow()?.minimize()
+);
+ipcMain.on("window:maximize", () => {
+  const w = BrowserWindow.getFocusedWindow();
+  if (!w) return;
+  w.isMaximized() ? w.unmaximize() : w.maximize();
+});
+ipcMain.on("window:close", () => BrowserWindow.getFocusedWindow()?.close());
+
+// 시스템 언어 가져오기
+ipcMain.handle("system:getLocale", () => app.getLocale());
+
+// 메인 프로세스에서 OpenAI 호출 (OpenAI SDK에서 브라우저/렌더러에서 직접 호출 금지)
+ipcMain.handle("openai:checkAPIKeyValid", async (_event, apiKey: string) => {
+  return await checkAPIKeyValid(apiKey);
+});
+
+// Keytar API 키 관리
+const SERVICE_NAME = "graphnode";
+
+ipcMain.handle("keytar:getAPIKey", async (_event, modelName: string) => {
+  return await keytar.getPassword(SERVICE_NAME, modelName);
+});
+
+ipcMain.handle(
+  "keytar:setAPIKey",
+  async (_event, modelName: string, apiKey: string) => {
+    return await keytar.setPassword(SERVICE_NAME, modelName, apiKey);
+  }
+);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -37,23 +71,4 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
-});
-
-// 윈도우 최소화, 최대화, 종료
-ipcMain.on("window:minimize", () =>
-  BrowserWindow.getFocusedWindow()?.minimize()
-);
-ipcMain.on("window:maximize", () => {
-  const w = BrowserWindow.getFocusedWindow();
-  if (!w) return;
-  w.isMaximized() ? w.unmaximize() : w.maximize();
-});
-ipcMain.on("window:close", () => BrowserWindow.getFocusedWindow()?.close());
-
-// 시스템 언어 가져오기
-ipcMain.handle("system:getLocale", () => app.getLocale());
-
-// 메인 프로세스에서 OpenAI 호출 (OpenAI SDK에서 브라우저/렌더러에서 직접 호출 금지)
-ipcMain.handle("openai:checkAPIKeyValid", async (_event, apiKey: string) => {
-  return await checkAPIKeyValid(apiKey);
 });

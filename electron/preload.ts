@@ -17,3 +17,11 @@ contextBridge.exposeInMainWorld("openaiAPI", {
   checkAPIKeyValid: (apiKey: string) =>
     ipcRenderer.invoke("openai:checkAPIKeyValid", apiKey),
 });
+
+// Keytar API 키 관리
+contextBridge.exposeInMainWorld("keytarAPI", {
+  getAPIKey: (modelName: string) =>
+    ipcRenderer.invoke("keytar:getAPIKey", modelName),
+  setAPIKey: (modelName: string, apiKey: string) =>
+    ipcRenderer.invoke("keytar:setAPIKey", modelName, apiKey),
+});
