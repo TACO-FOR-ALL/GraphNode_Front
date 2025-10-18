@@ -16,6 +16,22 @@
       "ko": "한국어",
       "en": "English",
       "zh": "简体中文"
+    },
+    "dropJsonZone": {
+      "title": "Drag & Drop JSON File Upload",
+      "description": "Drop your <b className=\"font-semibold\">conversation.json</b> file here",
+      "maxSize": "Only one file can be dropped (maximum 512MB recommended)",
+      "uploading": "Uploading (reading)… {progress}%",
+      "parsing": "Parsing (parsing)…",
+      "done": "Done",
+      "error": "Error",
+      "fileName": "File Name",
+      "errorMessage": {
+        "notJson": "Only JSON files can be uploaded (.json)",
+        "readFailed": "File read failed",
+        "parseFailed": "JSON parsing failed",
+        "processingFailed": "Processing failed"
+      }
     }
   }
 }
