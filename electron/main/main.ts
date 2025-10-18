@@ -18,6 +18,28 @@ function createWindow() {
     },
   });
 
+  // 드래그한 파일이 현재 창에서 이동하여 열리는 것 방지
+  win.webContents.on("will-navigate", (e) => e.preventDefault());
+  // 드래그한 파일이 새 창/탭 열리는 것 방지
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    // 특정 URL만 허용
+    if (url.startsWith("popup://")) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          width: 400,
+          height: 300,
+          title: "작은 팝업",
+          resizable: false,
+          alwaysOnTop: true,
+        },
+      };
+    }
+
+    // 나머지는 다 차단
+    return { action: "deny" };
+  });
+
   if (!app.isPackaged) {
     const url = process.env.VITE_DEV_SERVER_URL!;
     win.loadURL(url);

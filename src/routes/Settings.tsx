@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { useState } from "react";
+import DropJsonZone from "../components/DropJsonZone";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -65,6 +66,8 @@ export default function Settings() {
       >
         Delete API Key
       </button>
+      <div className="h-10"></div>
+      <DropJsonZone />
     </div>
   );
 }

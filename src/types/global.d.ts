@@ -2,6 +2,9 @@
 export {};
 
 declare global {
+  interface File {
+    path?: string;
+  }
   interface Window {
     windowAPI: {
       minimize: () => void;
@@ -20,6 +23,18 @@ declare global {
       getAPIKey: (modelName: string) => Promise<string | null>;
       setAPIKey: (modelName: string, apiKey: string) => Promise<void>;
       deleteAPIKey: (modelName: string) => Promise<void>;
+    };
+    fileAPI: {
+      readFileStream: (absPath: string, id: string) => void;
+      onReadProgress: (
+        cb: (p: { id: string; percent: number }) => void
+      ) => () => void;
+      onReadComplete: (
+        cb: (p: { id: string; text: string }) => void
+      ) => () => void;
+      onReadError: (
+        cb: (p: { id: string; message: string }) => void
+      ) => () => void;
     };
   }
 }
