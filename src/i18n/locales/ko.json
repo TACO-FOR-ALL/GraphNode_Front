@@ -16,6 +16,22 @@
       "ko": "한국어",
       "en": "English",
       "zh": "简体中文"
+    },
+    "dropJsonZone": {
+      "title": "드래그 & 드롭으로 JSON 파일 업로드하기",
+      "description": "여기로 <b className=\"font-semibold\">conversation.json</b> 파일을 끌어다 놓으세요",
+      "maxSize": "파일 하나만 드랍 (최대 512MB 권장)",
+      "uploading": "업로드(읽는 중)… {progress}%",
+      "parsing": "분석(파싱) 중…",
+      "done": "완료",
+      "error": "오류 발생",
+      "fileName": "파일명",
+      "errorMessage": {
+        "notJson": "JSON 파일만 업로드 가능해요 (.json)",
+        "readFailed": "파일 읽기 실패",
+        "parseFailed": "JSON 파싱 실패",
+        "processingFailed": "처리 중 오류"
+      }
     }
   }
 }

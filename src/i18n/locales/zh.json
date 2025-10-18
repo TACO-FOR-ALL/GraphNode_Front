@@ -16,6 +16,22 @@
       "ko": "한국어",
       "en": "English",
       "zh": "简体中文"
+    },
+    "dropJsonZone": {
+      "title": "拖拽 & 上传 JSON 文件",
+      "description": "将 <b className=\"font-semibold\">conversation.json</b> 文件拖拽到这里",
+      "maxSize": "只能上传一个文件 (最大 512MB 推荐)",
+      "uploading": "上传中 (读取)… {progress}%",
+      "parsing": "解析中 (解析)…",
+      "done": "完成",
+      "error": "错误",
+      "fileName": "文件名",
+      "errorMessage": {
+        "notJson": "只能上传 JSON 文件 (.json)",
+        "readFailed": "文件读取失败",
+        "parseFailed": "JSON 解析失败",
+        "processingFailed": "处理中失败"
+      }
     }
   }
 }
