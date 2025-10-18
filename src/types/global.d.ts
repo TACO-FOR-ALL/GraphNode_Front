@@ -19,6 +19,7 @@ declare global {
     keytarAPI: {
       getAPIKey: (modelName: string) => Promise<string | null>;
       setAPIKey: (modelName: string, apiKey: string) => Promise<void>;
+      deleteAPIKey: (modelName: string) => Promise<void>;
     };
   }
 }

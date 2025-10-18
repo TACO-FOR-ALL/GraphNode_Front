@@ -53,10 +53,13 @@ npm run preview
 
 ```bash
 GraphNode_Front/
-├── electron/
-│   ├── main.ts            # Electron 메인 프로세스 (창 생성)
-│   └── preload.ts         # Renderer와 IPC 브릿지
-│
+├── electron/           # https://lasbe.tistory.com/203 (참고)
+│   ├── main/           # Electron 메인 프로세스 (창 생성)
+│   │   ├── main.ts
+│   │   └── ipc/         # ipc 통신 설정 파일 (하위 디렉토리 설명 생략)
+│   └── preload         # Renderer와 IPC 브릿지
+│   │   ├── preload.ts
+│   │   └── preload/         # ipc 브릿지 설정 파일 (히위 디렉토리 설명 생략)
 ├── src/
 │   ├── components/
 │   │   └── ComponentName.tsx      # 재사용 컴포넌트 (PascalCase)
@@ -73,8 +76,8 @@ GraphNode_Front/
 │   │   └── index.ts
 │   ├── managers/
 │   │   └── manageTargetManager.ts  # 매니저 (로컬 디비 관리 등, camelCase)
-│   ├── routess/
-│   │   └── PageNames.tsx           # 페이지 (Routename)
+│   ├── routes/
+│   │   └── Routename.tsx           # 페이지 (Routename)
 │   ├── types/
 │   │   └── global.d.ts             # 전역 타입 및 타입 선언 (PascalCase)
 │   ├── utils/

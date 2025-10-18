@@ -57,6 +57,14 @@ export default function Settings() {
       >
         Get API Key
       </button>
+      <button
+        onClick={async () => {
+          await window.keytarAPI.deleteAPIKey("openai");
+          console.log("deleted");
+        }}
+      >
+        Delete API Key
+      </button>
     </div>
   );
 }
