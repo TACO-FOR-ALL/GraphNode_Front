@@ -6,7 +6,24 @@ export default {
     "./electron/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: [
+          '"D2Coding"',
+          '"Noto Sans KR"',
+          "system-ui",
+          "-apple-system",
+          "sans-serif",
+        ],
+        mono: [
+          '"D2Coding"',
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
+        ],
+      },
+    },
   },
   plugins: [
     // 커스텀 유틸리티 추가

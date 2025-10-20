@@ -7,7 +7,13 @@ import Settings from "./routes/Settings";
 
 export default function App() {
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <WebAppFrameBar />
       <Router>
         <div style={{ display: "flex", flex: 1 }}>
