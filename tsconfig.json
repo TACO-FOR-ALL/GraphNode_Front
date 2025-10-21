@@ -6,11 +6,20 @@
     "lib": ["ES2021", "DOM"],
     "jsx": "react-jsx",
     "strict": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"],
+    "types": ["jest", "node"],
     "outDir": "./dist",
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["src", "electron", "vite.config.ts"]
+  "include": [
+    "src",
+    "electron",
+    "vite.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "jest.setup.ts"
+  ]
 }
