@@ -5,7 +5,12 @@
     "settings": "Settings"
   },
   "home": {
-    "title": "Home"
+    "title": "Home",
+    "chatList": {
+      "title": "Chat List",
+      "noChat": "No saved conversations yet",
+      "startChat": "Start New Chat"
+    }
   },
   "visualize": {
     "title": "Visualize"

@@ -5,7 +5,12 @@
     "settings": "设置"
   },
   "home": {
-    "title": "首页"
+    "title": "首页",
+    "chatList": {
+      "title": "对话列表",
+      "noChat": "还没有保存的对话",
+      "startChat": "开始新对话"
+    }
   },
   "visualize": {
     "title": "可视化"

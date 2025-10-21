@@ -5,7 +5,12 @@
     "settings": "설정"
   },
   "home": {
-    "title": "메인 페이지"
+    "title": "메인 페이지",
+    "chatList": {
+      "title": "대화 목록",
+      "noChat": "아직 저장된 대화가 없어요",
+      "startChat": "새 대화 시작"
+    }
   },
   "visualize": {
     "title": "시각화 페이지"
