@@ -41,6 +41,9 @@ npm run dev
 # 타입체크 + 빌드
 npm run build
 
+# 테스트 코드 실행
+npm test
+
 # 빌드 결과 프리뷰
 npm run preview
 ```
@@ -62,7 +65,8 @@ GraphNode_Front/
 │   │   └── preload/         # ipc 브릿지 설정 파일 (히위 디렉토리 설명 생략)
 ├── src/
 │   ├── components/
-│   │   └── ComponentName.tsx      # 재사용 컴포넌트 (PascalCase)
+│   │   ├── ComponentName.tsx      # 재사용 컴포넌트 (PascalCase)
+│   │   └── __test__/              # 각 디렉토리마다 존재하는 유닛 테스트 코드 디렉토리
 │   ├── constants/
 │   │   └── CONSTANTS_NAME.ts        # 상수 관리 (UPPER_CASE)
 │   ├── hooks/
