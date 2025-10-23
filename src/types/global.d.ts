@@ -1,5 +1,8 @@
-// src/types/global.d.ts
+import type { ChatCompletion } from "openai/resources/chat/completions";
+
 export {};
+
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 declare global {
   interface File {
@@ -15,9 +18,18 @@ declare global {
       getLocale: () => Promise<string>;
     };
     openaiAPI: {
-      checkAPIKeyValid: (
-        apiKey: string
-      ) => Promise<{ ok: boolean; error?: string }>;
+      checkAPIKeyValid: (apiKey: string) => Promise<Result<true>>;
+      request: (
+        apiKey: string,
+        stream: boolean,
+        model: string,
+        messages: ChatMessageRequest[]
+      ) => Promise<Result<ChatCompletion>>;
+      requestGenerateThreadTitle: (
+        apiKey: string,
+        firstUserMessage: string,
+        opts?: { timeoutMs?: number }
+      ) => Promise<Result<string>>;
     };
     keytarAPI: {
       getAPIKey: (modelName: string) => Promise<string | null>;
