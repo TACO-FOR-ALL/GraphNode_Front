@@ -8,15 +8,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: [
-          '"D2Coding"',
-          '"Noto Sans KR"',
-          "system-ui",
-          "-apple-system",
-          "sans-serif",
-        ],
+        sans: ['"NotoSansKR"', "system-ui", "-apple-system", "sans-serif"],
         mono: [
-          '"D2Coding"',
+          '"NotoSansKR"',
           "ui-monospace",
           "SFMono-Regular",
           "Menlo",

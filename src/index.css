@@ -3,17 +3,73 @@
 /* @font-face는 어디 있어도 OK. 보통 이 파일 상단/중단에 둬도 됨 */
 /* 우회: 400 파일을 100–500 범위에도 매핑 */
 @font-face {
-  font-family: "D2Coding";
-  src: url("/fonts/D2Coding-Ver1.3.2-20180524.ttf") format("truetype");
-  font-weight: 100 500; /* 100~500 범위를 이 파일로 */
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Thin.ttf") format("opentype");
+  font-weight: 100;
   font-style: normal;
   font-display: swap;
 }
-/* Bold 파일을 600–900 범위로 매핑 */
+
 @font-face {
-  font-family: "D2Coding";
-  src: url("/fonts/D2CodingBold-Ver1.3.2-20180524.ttf") format("truetype");
-  font-weight: 600 900;
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-ExtraLight.ttf") format("opentype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Light.ttf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Regular.ttf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Medium.ttf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-SemiBold.ttf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Bold.ttf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-ExtraBold.ttf") format("opentype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("/fonts/NotoSansKR-Black.ttf") format("opentype");
+  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
@@ -24,8 +80,7 @@ body,
   height: 100%;
   margin: 0;
   font-family:
-    "D2Coding",
-    "Noto Sans KR",
+    "NotoSansKR",
     system-ui,
     -apple-system,
     "Apple SD Gothic Neo",
