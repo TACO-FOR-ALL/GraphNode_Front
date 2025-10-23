@@ -27,7 +27,7 @@ const toMsg = (m: any): ChatMessage | null => {
   return { id: uuid(), role, content, ts: isFinite(ts) ? ts : Date.now() };
 };
 
-export function parseConversations(json: any): ChatThread[] {
+export async function parseConversations(json: any): Promise<ChatThread[]> {
   const threads: ChatThread[] = [];
   const isMsg = (x: ChatMessage | null): x is ChatMessage => x != null;
 
@@ -37,12 +37,7 @@ export function parseConversations(json: any): ChatThread[] {
         .map(toMsg)
         .filter(isMsg);
       if (!msgs.length) continue;
-      threads.push(
-        threadRepo.create(
-          String(th?.title || threadRepo.inferTitle(msgs)),
-          msgs
-        )
-      );
+      threads.push(await threadRepo.create(String(th?.title), msgs));
     }
     return threads;
   }
@@ -50,7 +45,7 @@ export function parseConversations(json: any): ChatThread[] {
   if (Array.isArray(json?.messages)) {
     const msgs = json.messages.map(toMsg).filter(isMsg);
     if (msgs.length)
-      threads.push(threadRepo.create(threadRepo.inferTitle(msgs), msgs));
+      threads.push(await threadRepo.create(String(json?.title), msgs));
     return threads;
   }
 
@@ -95,7 +90,7 @@ export function parseConversations(json: any): ChatThread[] {
           .sort((a, b) => a.ts - b.ts);
 
         if (msgs.length) {
-          const title = String(conv?.title || threadRepo.inferTitle(msgs));
+          const title = String(conv?.title);
 
           const maxMsgTs = Math.max(...msgs.map((m) => m.ts));
           const updatedAt =
@@ -104,7 +99,7 @@ export function parseConversations(json: any): ChatThread[] {
             toMs(conv?.create_time) ||
             Date.now();
 
-          const th = threadRepo.create(title, msgs);
+          const th = await threadRepo.create(title, msgs);
           (th as any).updatedAt = updatedAt;
           threads.push(th);
         }
@@ -114,9 +109,7 @@ export function parseConversations(json: any): ChatThread[] {
 
     const maybeMsgs = json.map(toMsg).filter(isMsg);
     if (maybeMsgs.length)
-      threads.push(
-        threadRepo.create(threadRepo.inferTitle(maybeMsgs), maybeMsgs)
-      );
+      threads.push(await threadRepo.create(String(json[0]?.title), maybeMsgs));
     return threads;
   }
 

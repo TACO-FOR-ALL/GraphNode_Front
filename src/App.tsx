@@ -16,9 +16,23 @@ export default function App() {
     >
       <WebAppFrameBar />
       <Router>
-        <div style={{ display: "flex", flex: 1 }}>
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            height: "calc(100vh - 48px)", // WebAppFrameBar 높이(48px) 빼기
+            overflow: "hidden", // 전체 스크롤 방지
+          }}
+        >
           <SideTabBar />
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div
+            style={{
+              flex: 1,
+              overflow: "hidden", // 스크롤 방지
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/visualize" element={<Visualize />} />
