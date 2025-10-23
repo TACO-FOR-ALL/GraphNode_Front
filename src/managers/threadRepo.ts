@@ -1,125 +1,77 @@
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
+import { db } from "../db/chat.db";
+import sortThread from "../utils/sortThread";
+import { useThreadsStore } from "@/store/useThreadStore";
 
-/** 버전 키 (스키마 바뀌면 v2로 변경) */
-const THREADS_KEY = "chatThreads:v1";
-
-/** 메모리 캐시 */
-let cache: ChatThread[] | null = null;
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
-function load(): ChatThread[] {
-  if (cache) return cache;
-  const raw = window.localStorage.getItem(THREADS_KEY);
-  if (!raw) return (cache = []);
-  try {
-    const parsed = JSON.parse(raw) as ChatThread[];
-    cache = Array.isArray(parsed) ? parsed : [];
-  } catch {
-    cache = [];
-  }
-  return cache!;
-}
-
-function commitSoon() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    const data = load();
-    window.localStorage.setItem(THREADS_KEY, JSON.stringify(data));
-  }, 50);
-}
-
-/** 헬퍼: 정렬 일관성 보장 (updatedAt 내림차순) */
-function sortThreads(arr: ChatThread[]): ChatThread[] {
-  return [...arr].sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-/** 공개 API: Repository */
 export const threadRepo = {
-  /** 모든 스레드 조회 (정렬 보장) */
-  list(): ChatThread[] {
-    return sortThreads(load());
-  },
-
-  /** 전체 덮어쓰기 저장 */
-  saveAll(threads: ChatThread[]): void {
-    cache = sortThreads(threads); // 메모리 캐시 업데이트
-    commitSoon();
-  },
-
-  /** 여러 스레드 upsert */
-  upsertMany(newOnes: ChatThread[]): void {
-    const byId = new Map<string, ChatThread>();
-    for (const t of load()) byId.set(t.id, t);
-    for (const t of newOnes) byId.set(t.id, t);
-    cache = sortThreads(Array.from(byId.values()));
-    commitSoon();
-  },
-
-  /** 단건 조회 */
-  get(id: string): ChatThread | null {
-    return load().find((t) => t.id === id) ?? null;
-  },
-
-  /** 생성 (자동 저장) */
-  create(title: string, messages: ChatMessage[] = []): ChatThread {
+  async create(
+    title: string,
+    messages: ChatMessage[] = []
+  ): Promise<ChatThread> {
     const newThread: ChatThread = {
       id: uuid(),
       title,
       messages,
       updatedAt: Date.now(),
     };
-    this.upsertMany([newThread]);
+    await db.threads.put(newThread);
     return newThread;
   },
 
-  /** 부분 업데이트 (updatedAt 자동 갱신) */
-  update(
-    id: string,
-    patch: Partial<Omit<ChatThread, "id">>
-  ): ChatThread | null {
-    const arr = load();
-    const i = arr.findIndex((t) => t.id === id);
-    if (i < 0) return null;
-    const next: ChatThread = {
-      ...arr[i],
-      ...patch,
+  async getThreadList(): Promise<ChatThread[]> {
+    const rows = await db.threads.orderBy("updatedAt").reverse().toArray();
+    return rows ?? [];
+  },
+
+  async getThreadById(id: string): Promise<ChatThread | null> {
+    return (await db.threads.get(id)) ?? null;
+  },
+
+  async updateThreadTitleById(id: string, title: string) {
+    const thread = await this.getThreadById(id);
+    if (!thread) return null;
+
+    const updated = { ...thread, title, updatedAt: Date.now() };
+    await db.threads.put(updated);
+
+    // Zustand 상태 반영 (타이틀 변경)
+    useThreadsStore.getState().updateThreadInStore(updated);
+    return updated.id;
+  },
+
+  async addMessageToThreadById(id: string, message: ChatMessage) {
+    const thread = await this.getThreadById(id);
+    if (!thread) return null;
+
+    const updated = {
+      ...thread,
+      messages: [...thread.messages, message],
       updatedAt: Date.now(),
     };
-    arr[i] = next;
-    this.saveAll(arr);
-    return next;
+    await db.threads.put(updated);
+
+    // Zustand 상태도 업데이트 (메시지 추가)
+    useThreadsStore.getState().updateThreadInStore(updated);
+    return updated;
   },
 
-  /** 제목 변경(편의 함수) */
-  rename(id: string, title: string): ChatThread | null {
-    return this.update(id, { title });
+  async deleteThreadById(id: string): Promise<string | null> {
+    try {
+      await db.threads.delete(id);
+      return id;
+    } catch (error) {
+      return null;
+    }
   },
 
-  /** 스레드 삭제 */
-  removeItem(id: string): void {
-    const next = load().filter((t) => t.id !== id);
-    this.saveAll(next);
+  async upsertMany(newOnes: ChatThread[]): Promise<void> {
+    const sorted = sortThread(newOnes);
+    await db.threads.bulkPut(sorted);
   },
 
-  /** 전부 삭제 */
-  clear(): void {
-    cache = [];
-    commitSoon();
-  },
-
-  /** 제목 추론 (빈 제목 생성 시 유용) */
-  inferTitle(messages: ChatMessage[]): string {
-    const firstUser = messages.find((m) => m.role === "user")?.content?.trim();
-    return firstUser
-      ? firstUser.slice(0, 30) + (firstUser.length > 30 ? "…" : "")
-      : "Imported Conversation";
-  },
-
-  /** updatedAt만 갱신 (정렬 올리기용) */
-  touch(id: string): ChatThread | null {
-    return this.update(id, {});
+  async clearAll(): Promise<void> {
+    await db.threads.clear();
   },
 };
 
