@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-/* @font-face는 어디 있어도 OK. 보통 이 파일 상단/중단에 둬도 됨 */
-/* 우회: 400 파일을 100–500 범위에도 매핑 */
 @font-face {
   font-family: "NotoSansKR";
   src: url("/fonts/NotoSansKR-Thin.ttf") format("opentype");
