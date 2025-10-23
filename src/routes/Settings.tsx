@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { useState } from "react";
 import DropJsonZone from "../components/DropJsonZone";
+import threadRepo from "../managers/threadRepo";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -68,6 +69,15 @@ export default function Settings() {
       </button>
       <div className="h-10"></div>
       <DropJsonZone />
+      <button
+        onClick={async () => {
+          await threadRepo.clearAll();
+          console.log("cleared");
+        }}
+        className="bg-red-500 text-white px-4 py-2 rounded-md"
+      >
+        Clear All Threads
+      </button>
     </div>
   );
 }

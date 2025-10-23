@@ -2,53 +2,73 @@ import { useTranslation } from "react-i18next";
 import threadRepo from "../managers/threadRepo";
 import { FaTrash } from "react-icons/fa";
 import { FaEdit } from "react-icons/fa";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChatThread } from "@/types/Chat";
+import { IoMdAdd } from "react-icons/io";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
+import { useThreadTitleStore } from "@/store/useThreadTitleStore";
 
-export default function ChatList({
-  selectedId,
-  onSelect,
-}: {
-  selectedId?: string;
-  onSelect: (id: string) => void;
-}) {
-  const threads = threadRepo.list();
+export default function ChatList() {
+  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>("");
   const { t } = useTranslation();
+  const { selectedThreadId, setSelectedThreadId } = useSelectedThreadStore();
+  const { threadTitleChanged, setThreadTitleChanged } = useThreadTitleStore();
 
-  const handleSaveTitle = () => {
+  useEffect(() => {
+    const fetchThreads = async () => {
+      const threads = await threadRepo.getThreadList();
+      setThreads(threads);
+      setThreadTitleChanged(false);
+    };
+    fetchThreads();
+  }, [selectedThreadId, threadTitleChanged]);
+
+  const handleSaveTitle = async () => {
     if (editingId) {
-      threadRepo.rename(editingId, editingTitle);
+      const updatedId = await threadRepo.updateThreadTitleById(
+        editingId,
+        editingTitle
+      );
+      if (updatedId) {
+        setThreads(
+          threads.map((t) =>
+            t.id === updatedId ? { ...t, title: editingTitle } : t
+          )
+        );
+      }
       setEditingId(null);
+      setEditingTitle("");
     }
   };
+
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditingTitle("");
   };
 
   return (
-    <div className="w-70 border-r border-gray-200 h-full overflow-y-auto">
-      <div className="p-3 font-bold">{t("home.chatList.title")}</div>
-      {threads.length === 0 && (
-        <div className="p-3 text-gray-500">
-          <p className="mb-3">{t("home.chatList.noChat")}</p>
-          <button
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-150 font-medium"
-            onClick={() => {}}
-          >
-            {t("home.chatList.startChat")}
-          </button>
-        </div>
-      )}
+    <div className="w-70 border-r border-gray-200 h-screen overflow-y-auto">
+      <div className="flex items-center justify-between">
+        <div className="p-3 font-bold">{t("home.chatList.title")}</div>
+        <button
+          className="w-8 h-8 text-gray-500 hover:text-blue-500"
+          onClick={() => {
+            setSelectedThreadId("");
+          }}
+        >
+          <IoMdAdd />
+        </button>
+      </div>
       {threads.map((t) => (
         <div
           key={t.id}
-          onClick={() => onSelect(t.id)}
+          onClick={() => setSelectedThreadId(t.id)}
           className={`
             p-2.5 cursor-pointer transition-colors duration-500 flex items-center justify-between
             ${
-              selectedId === t.id
+              selectedThreadId === t.id
                 ? "bg-blue-50 border-r-2 border-blue-500"
                 : "hover:bg-gray-50"
             }
@@ -95,7 +115,11 @@ export default function ChatList({
               />
             </button>
             <button
-              onClick={() => threadRepo.removeItem(t.id)}
+              onClick={async () => {
+                await threadRepo.deleteThreadById(t.id);
+                setThreads(threads.filter((t) => t.id !== t.id));
+                setSelectedThreadId("");
+              }}
               className="w-6 h-6 text-gray-500 hover:text-red-500"
             >
               <FaTrash className="w-4 h-4" />

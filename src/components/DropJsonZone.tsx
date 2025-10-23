@@ -103,7 +103,7 @@ export default function DropJsonZone() {
 
                 // 로컬 스토리지에 저장
                 try {
-                  const threads = parseConversations(data);
+                  const threads = await parseConversations(data);
                   console.log(
                     "🧩 parseConversations length:",
                     threads?.length,
@@ -200,7 +200,7 @@ export default function DropJsonZone() {
 
               // 로컬 스토리지에 저장
               try {
-                const threads = parseConversations(data);
+                const threads = await parseConversations(data);
                 console.log(
                   "🧩 parseConversations length:",
                   threads?.length,
