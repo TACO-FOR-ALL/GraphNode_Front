@@ -1,50 +1,106 @@
-// ChatWindow.tsx
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
-import threadRepo from "../managers/threadRepo";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownBubble from "./MarkdownBubble";
+import TypingBubble from "./TypingBubble";
+import { useThreadsStore } from "@/store/useThreadStore";
+import type { ChatMessage } from "../types/Chat";
 
-export default function ChatWindow({ threadId }: { threadId?: string }) {
-  const [tick, setTick] = useState(0); // 외부 저장 갱신 이벤트 받으면 setTick(n+1) 하게끔(threadsBus로)
+const PAGE = 10;
+
+export default function ChatWindow({
+  threadId,
+  isTyping,
+}: {
+  threadId?: string;
+  isTyping: boolean;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
 
-  const thread = useMemo(
-    () => (threadId ? threadRepo.get(threadId) : undefined),
-    [threadId, tick]
-  );
-  const messages = useMemo(() => {
-    if (!thread) return [];
-    // 오래된→최신(오름차순) 정렬
-    return [...thread.messages].sort((a, b) => a.ts - b.ts);
-  }, [thread]);
+  const [visibleCount, setVisibleCount] = useState(PAGE);
 
-  // 최초 진입 시 맨 아래로
-  useLayoutEffect(() => {
-    if (!wrapRef.current) return;
-    wrapRef.current.scrollTop = wrapRef.current.scrollHeight;
-  }, [threadId]);
+  const { threads, refreshThread } = useThreadsStore();
+  const thread = threadId ? threads[threadId] : null;
 
-  // 새 메시지가 들어왔는데, 유저가 바닥 근처면 자동으로 바닥 붙이기
   useEffect(() => {
-    if (!wrapRef.current) return;
+    if (threadId) {
+      setVisibleCount(PAGE);
+      refreshThread(threadId);
+      requestAnimationFrame(() => {
+        if (wrapRef.current) {
+          wrapRef.current.scrollTop = wrapRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [threadId, refreshThread]);
+
+  const allMessages = useMemo<ChatMessage[]>(() => {
+    const msgs = thread?.messages ?? [];
+    return msgs.slice().sort((a, b) => a.ts - b.ts);
+  }, [thread?.messages]);
+
+  const total = allMessages.length;
+  const startIndex = Math.max(0, total - visibleCount);
+  const visible = total ? allMessages.slice(startIndex) : [];
+
+  useEffect(() => {
     const el = wrapRef.current;
+    if (!el) return;
     const distanceFromBottom =
       el.scrollHeight - (el.scrollTop + el.clientHeight);
-    const nearBottom = distanceFromBottom < 120; // 임계값
+    const nearBottom = distanceFromBottom < 120;
     if (nearBottom) {
-      // 다음 페인트 이후로 밀어 붙이기
       requestAnimationFrame(() => {
         el.scrollTop = el.scrollHeight;
       });
     }
-  }, [messages.length]);
+  }, [total]);
 
-  if (!threadId) return <div className="p-4">왼쪽에서 채팅을 선택하세요</div>;
-  if (!thread) return <div className="p-4">스레드를 찾을 수 없어요</div>;
+  useEffect(() => {
+    const el = wrapRef.current;
+    const sentinel = topSentinelRef.current;
+    if (!el || !sentinel) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const topVisible = entries.some((e) => e.isIntersecting);
+        if (!topVisible) return;
+        if (startIndex === 0) return;
+
+        const prevHeight = el.scrollHeight;
+        const add = Math.min(PAGE, startIndex);
+        setVisibleCount((c) => c + add);
+
+        requestAnimationFrame(() => {
+          const newHeight = el.scrollHeight;
+          el.scrollTop += newHeight - prevHeight;
+        });
+      },
+      { root: el, threshold: 0.01 }
+    );
+
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, [startIndex, threadId]);
+
+  if (!threadId) {
+    return (
+      <div className="p-4 flex items-center justify-center h-full">
+        <p className="text-gray-500">
+          왼쪽에서 채팅을 선택하거나 새로운 채팅을 시작해주세요
+        </p>
+      </div>
+    );
+  }
+  if (!thread) {
+    return <div className="p-4">스레드를 찾을 수 없어요</div>;
+  }
 
   return (
-    <div ref={wrapRef} className="p-4 h-full overflow-y-auto">
+    <div ref={wrapRef} className="p-4 pb-10 h-full overflow-y-auto">
+      <div ref={topSentinelRef} />
       <h3 className="mt-0 mb-3 font-semibold">{thread.title}</h3>
-      {messages.map((m) => {
+
+      {visible.map((m) => {
         const isUser = m.role === "user";
         return (
           <div
@@ -62,6 +118,12 @@ export default function ChatWindow({ threadId }: { threadId?: string }) {
           </div>
         );
       })}
+
+      {isTyping && (
+        <div className="mb-2 flex justify-start">
+          <TypingBubble />
+        </div>
+      )}
     </div>
   );
 }
