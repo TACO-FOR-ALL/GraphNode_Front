@@ -13,6 +13,7 @@ import {
   OpenAIModel,
 } from "@/constants/OPENAI_MODEL";
 import AutoResizeTextarea from "./AutoResizeTextArea";
+import { indexMessageVector } from "@/managers/embed";
 
 const HISTORY_LIMIT = 5;
 
@@ -79,8 +80,12 @@ export default function ChatSendBox({
       role: "user" as const,
       content: text,
       ts: Date.now(),
+      threadId: tid!,
     };
+    console.log("userMsg", userMsg);
     const msg = await threadRepo.addMessageToThreadById(tid!, userMsg);
+    console.log("끝");
+    await indexMessageVector(userMsg).catch(console.warn);
     setInput("");
     console.log(msg);
 
@@ -131,6 +136,13 @@ export default function ChatSendBox({
           ? result.data
           : text.slice(0, 15) + (text.length > 15 ? "…" : "");
         await threadRepo.updateThreadTitleById(tid!, title);
+        await indexMessageVector({
+          id: uuid(),
+          role: "assistant",
+          content: assistantText,
+          ts: Date.now(),
+          threadId: tid!,
+        }).catch(console.warn);
         setThreadTitleChanged(true);
       }
 
@@ -140,6 +152,7 @@ export default function ChatSendBox({
         role: "assistant",
         content: assistantText,
         ts: Date.now(),
+        threadId: tid!,
       });
     } catch (err: any) {
       await threadRepo.addMessageToThreadById(tid!, {
@@ -147,6 +160,7 @@ export default function ChatSendBox({
         role: "assistant",
         content: `❌ 오류: ${err?.message || err}`,
         ts: Date.now(),
+        threadId: tid!,
       });
     } finally {
       setIsTyping(false);

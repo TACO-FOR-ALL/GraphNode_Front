@@ -18,6 +18,9 @@ export default function SideTabBar() {
         <button onClick={() => navigate("/settings")}>
           {t("sideTabBar.settings")}
         </button>
+        <button onClick={() => navigate("/search")}>
+          {t("sideTabBar.search")}
+        </button>
       </div>
       {path === "/" && <ChatList />}
     </div>

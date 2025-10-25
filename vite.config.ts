@@ -13,7 +13,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ["keytar"],
+              external: ["keytar", "@xenova/transformers"],
             },
           },
         },
@@ -38,5 +38,19 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      external: ["@xenova/transformers"],
+      output: {
+        globals: {
+          "@xenova/transformers": "Transformers",
+        },
+      },
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@xenova/transformers"],
+  },
+  define: {
+    global: "globalThis",
   },
 });

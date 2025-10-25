@@ -104,6 +104,7 @@ export default function ChatWindow({
         const isUser = m.role === "user";
         return (
           <div
+            id={`msg-${m.id}`}
             key={m.id}
             className={`mb-2 flex ${isUser ? "justify-end" : "justify-start"}`}
             title={new Date(m.ts).toLocaleString()}

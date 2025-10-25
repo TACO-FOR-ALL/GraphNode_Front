@@ -35,6 +35,8 @@
     "vite-plugin-electron": "^0.29.0"
   },
   "dependencies": {
+    "@lancedb/lancedb": "^0.22.2",
+    "@xenova/transformers": "^2.14.1",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
     "highlight.js": "^11.11.1",

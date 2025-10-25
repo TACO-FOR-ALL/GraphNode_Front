@@ -48,5 +48,8 @@ declare global {
         cb: (p: { id: string; message: string }) => void
       ) => () => void;
     };
+    embedAPI: {
+      texts: (arr: string[]) => Promise<number[][]>;
+    };
   }
 }

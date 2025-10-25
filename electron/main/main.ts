@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+process.env.TRANSFORMERS_BACKEND = "wasm";
+import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import ipc from "./ipc";

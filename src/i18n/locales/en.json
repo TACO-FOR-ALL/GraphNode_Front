@@ -2,7 +2,8 @@
   "sideTabBar": {
     "home": "Home",
     "visualize": "Visualize",
-    "settings": "Settings"
+    "settings": "Settings",
+    "search": "Search"
   },
   "home": {
     "title": "Home",

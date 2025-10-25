@@ -4,6 +4,7 @@ import SideTabBar from "./components/SideTabBar";
 import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
+import Search from "./routes/Search";
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
           >
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/visualize" element={<Visualize />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

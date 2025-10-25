@@ -3,6 +3,7 @@ import uuid from "../utils/uuid";
 import { db } from "../db/chat.db";
 import sortThread from "../utils/sortThread";
 import { useThreadsStore } from "@/store/useThreadStore";
+import { deleteVectorsByIds } from "./vectorManager";
 
 export const threadRepo = {
   async create(
@@ -58,9 +59,24 @@ export const threadRepo = {
 
   async deleteThreadById(id: string): Promise<string | null> {
     try {
+      // 1. 먼저 해당 스레드의 모든 벡터 데이터 삭제
+      const vectors = await db.vectors.where("threadId").equals(id).toArray();
+      const vectorIds = vectors.map((v) => v.id);
+
+      if (vectorIds.length > 0) {
+        await deleteVectorsByIds(vectorIds);
+        console.log(`🗑️ 스레드 ${id}의 ${vectorIds.length}개 벡터 삭제 완료`);
+      }
+
+      // 2. 스레드 삭제
       await db.threads.delete(id);
+
+      // // 3. Zustand 상태에서도 제거
+      // useThreadsStore.getState().removeThreadFromStore(id);
+
       return id;
     } catch (error) {
+      console.error("스레드 삭제 오류:", error);
       return null;
     }
   },

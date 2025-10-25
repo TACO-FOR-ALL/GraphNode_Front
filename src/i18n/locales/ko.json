@@ -2,7 +2,8 @@
   "sideTabBar": {
     "home": "메인 페이지",
     "visualize": "시각화 페이지",
-    "settings": "설정"
+    "settings": "설정",
+    "search": "검색"
   },
   "home": {
     "title": "메인 페이지",
