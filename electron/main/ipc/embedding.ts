@@ -17,7 +17,7 @@ async function ensureEmbedder() {
   console.log("[embed] pipeline import 완료, 모델 로드 시작");
   _embedder = await pipeline(
     "feature-extraction",
-    "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
+    "Xenova/paraphrase-multilingual-MiniLM-L12-v2" // Xenova/all-MiniLM-L6-v2
   ); // ★ 여기서 '첫 호출'에 모델 다운로드
   console.log("[embed] 모델 로드 완료");
   return _embedder;
