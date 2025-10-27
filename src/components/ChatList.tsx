@@ -5,7 +5,7 @@ import { FaEdit } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import { ChatThread } from "@/types/Chat";
 import { IoMdAdd } from "react-icons/io";
-import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
 import { useQuery } from "@tanstack/react-query";
 
 export default function ChatList() {

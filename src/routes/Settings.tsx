@@ -3,6 +3,7 @@ import i18n from "../i18n";
 import { useState } from "react";
 import DropJsonZone from "../components/DropJsonZone";
 import threadRepo from "../managers/threadRepo";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -17,6 +18,8 @@ export default function Settings() {
     if (res.ok) await window.keytarAPI.setAPIKey("openai", apiKey);
     setKeyStatus(res.ok ? "valid" : "invalid");
   };
+
+  const { setSelectedThreadId } = useSelectedThreadStore();
 
   return (
     <div>
@@ -72,7 +75,7 @@ export default function Settings() {
       <button
         onClick={async () => {
           await threadRepo.clearAll();
-          console.log("cleared");
+          setSelectedThreadId("");
         }}
         className="bg-red-500 text-white px-4 py-2 rounded-md"
       >

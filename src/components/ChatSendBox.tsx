@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { FaRegStopCircle } from "react-icons/fa";
 import uuid from "../utils/uuid";
 import threadRepo from "../managers/threadRepo";
-import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
 import { ChatMessageRequest } from "@/types/Chat";
 import {
   OPENAI_MODEL,
