@@ -2,42 +2,38 @@ import { useTranslation } from "react-i18next";
 import threadRepo from "../managers/threadRepo";
 import { FaTrash } from "react-icons/fa";
 import { FaEdit } from "react-icons/fa";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatThread } from "@/types/Chat";
 import { IoMdAdd } from "react-icons/io";
-import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
-import { useThreadTitleStore } from "@/store/useThreadTitleStore";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ChatList() {
-  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>("");
   const { t } = useTranslation();
   const { selectedThreadId, setSelectedThreadId } = useSelectedThreadStore();
-  const { threadTitleChanged, setThreadTitleChanged } = useThreadTitleStore();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const fetchThreads = async () => {
-      const threads = await threadRepo.getThreadList();
-      setThreads(threads);
-      setThreadTitleChanged(false);
-    };
-    fetchThreads();
-  }, [selectedThreadId, threadTitleChanged]);
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const {
+    isLoading,
+    error,
+    data: threads,
+  } = useQuery<ChatThread[]>({
+    queryKey: ["chatThreads", selectedThreadId, editingId],
+    queryFn: () => threadRepo.getThreadList(),
+  });
 
   const handleSaveTitle = async () => {
-    if (editingId) {
-      const updatedId = await threadRepo.updateThreadTitleById(
-        editingId,
-        editingTitle
-      );
-      if (updatedId) {
-        setThreads(
-          threads.map((t) =>
-            t.id === updatedId ? { ...t, title: editingTitle } : t
-          )
-        );
-      }
+    if (editingId && editingTitle.trim().length > 0) {
+      await threadRepo.updateThreadTitleById(editingId, editingTitle);
       setEditingId(null);
       setEditingTitle("");
     }
@@ -61,7 +57,7 @@ export default function ChatList() {
           <IoMdAdd />
         </button>
       </div>
-      {threads.map((t) => (
+      {threads?.map((t: ChatThread) => (
         <div
           key={t.id}
           onClick={() => setSelectedThreadId(t.id)}
@@ -79,6 +75,7 @@ export default function ChatList() {
               {editingId === t.id ? (
                 <input
                   type="text"
+                  ref={inputRef}
                   value={editingTitle}
                   onChange={(e) => setEditingTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -105,19 +102,20 @@ export default function ChatList() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="w-6 h-6 text-gray-500 hover:text-yellow-500">
-              <FaEdit
-                onClick={() => {
-                  setEditingId(t.id);
-                  setEditingTitle(t.title);
-                }}
-                className="w-4 h-4"
-              />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingId(t.id);
+                setEditingTitle(t.title);
+              }}
+              className="w-6 h-6 text-gray-500 hover:text-yellow-500"
+            >
+              <FaEdit className="w-4 h-4" />
             </button>
             <button
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation();
                 await threadRepo.deleteThreadById(t.id);
-                setThreads(threads.filter((t) => t.id !== t.id));
                 setSelectedThreadId("");
               }}
               className="w-6 h-6 text-gray-500 hover:text-red-500"

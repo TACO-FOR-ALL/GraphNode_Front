@@ -4,15 +4,15 @@ import OpenAI from "openai";
 import { FaRegStopCircle } from "react-icons/fa";
 import uuid from "../utils/uuid";
 import threadRepo from "../managers/threadRepo";
-import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
 import { ChatMessageRequest } from "@/types/Chat";
-import { useThreadTitleStore } from "@/store/useThreadTitleStore";
 import {
   OPENAI_MODEL,
   OPENAI_MODEL_DEFAULT,
   OpenAIModel,
 } from "@/constants/OPENAI_MODEL";
 import AutoResizeTextarea from "./AutoResizeTextArea";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const HISTORY_LIMIT = 5;
 
@@ -21,42 +21,38 @@ export default function ChatSendBox({
 }: {
   setIsTyping: (v: boolean) => void;
 }) {
+  const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [model, setModel] = useState<OpenAIModel>(OPENAI_MODEL_DEFAULT);
   const [end, setEnd] = useState<boolean>(true);
 
   const { selectedThreadId, setSelectedThreadId } = useSelectedThreadStore();
-  const { setThreadTitleChanged } = useThreadTitleStore();
 
   // OpenAI 클라이언트 캐시 (키 로드 후 1회 생성)
   const clientRef = useRef<OpenAI | null>(null);
-  const [clientReady, setClientReady] = useState(false);
+
+  const {
+    data: key,
+    isLoading: keyLoading,
+    error: keyError,
+  } = useQuery<string | null>({
+    queryKey: ["openaiKey"],
+    queryFn: () => window.keytarAPI.getAPIKey("openai"),
+    staleTime: 5 * 60 * 1000, // 캐시 유지 시간
+    retry: 1, // 오류 발생 시 재시도 횟수
+  });
+
+  const clientReady = !keyLoading && !keyError && key !== null;
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (clientRef.current) {
-        setClientReady(true);
-        return;
-      }
-      const key = await window.keytarAPI.getAPIKey("openai");
-      if (!alive) return;
-      if (!key) {
-        console.error("⚠️ OpenAI API Key가 없습니다 (keytar).");
-        setClientReady(false);
-        return;
-      }
+    if (key && !clientRef.current) {
       clientRef.current = new OpenAI({
         apiKey: key,
         dangerouslyAllowBrowser: true,
       });
-      setClientReady(true);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+    }
+  }, [key]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -95,15 +91,8 @@ export default function ChatSendBox({
         .map((m) => ({ role: m.role, content: m.content }));
 
       // 5) OpenAI 호출
-      const key = await window.keytarAPI.getAPIKey("openai");
-      if (!key) {
-        console.error("⚠️ OpenAI API Key가 없습니다 (keytar).");
-        setClientReady(false);
-        return;
-      }
-
       const resp = await window.openaiAPI.request(
-        key,
+        key!,
         false, // stream (실시간 구현), signal도 확장 가능
         model,
         history as ChatMessageRequest[]
@@ -121,7 +110,7 @@ export default function ChatSendBox({
       // 6) 새 스레드면 제목 추론 후 갱신
       if (th?.title === "loading…" || !th?.title) {
         const result = await window.openaiAPI.requestGenerateThreadTitle(
-          key,
+          key!,
           text,
           {
             timeoutMs: 10000,
@@ -131,7 +120,7 @@ export default function ChatSendBox({
           ? result.data
           : text.slice(0, 15) + (text.length > 15 ? "…" : "");
         await threadRepo.updateThreadTitleById(tid!, title);
-        setThreadTitleChanged(true);
+        queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
       }
 
       // 7) 어시스턴트 메시지 저장 (확정본만)
@@ -161,11 +150,11 @@ export default function ChatSendBox({
         <AutoResizeTextarea
           value={input}
           onChange={setInput}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          onKeyDown={(e) => e.key === "Enter" && clientReady && handleSend()}
           disabled={sending || !clientReady}
         />
         <button
-          onClick={handleSend}
+          onClick={() => clientReady && handleSend()}
           disabled={sending || !clientReady}
           className="w-8 h-8 text-gray-500 hover:text-blue-500 disabled:opacity-50"
           title="보내기"

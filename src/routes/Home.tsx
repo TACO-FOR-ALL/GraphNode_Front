@@ -1,6 +1,6 @@
 import ChatWindow from "../components/ChatWindow";
 import ChatSendBox from "../components/ChatSendBox";
-import { useSelectedThreadStore } from "@/store/useSelectedThreadStore";
+import { useSelectedThreadStore } from "@/store/useSelectedThreadIdStore";
 import { useState } from "react";
 
 export default function Home() {
