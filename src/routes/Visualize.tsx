@@ -1,11 +1,5 @@
-import { useTranslation } from "react-i18next";
+import VisualizeToggle from "@/components/visualize/VisualizeToggle";
 
 export default function Visualize() {
-  const { t } = useTranslation();
-
-  return (
-    <div>
-      <h1>{t("visualize.title")}</h1>
-    </div>
-  );
+  return <VisualizeToggle />;
 }
