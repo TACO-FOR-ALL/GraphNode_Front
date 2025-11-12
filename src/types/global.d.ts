@@ -48,5 +48,10 @@ declare global {
         cb: (p: { id: string; message: string }) => void
       ) => () => void;
     };
+    authAPI: {
+      startGoogleOAuth: () => Promise<unknown>;
+      startAppleOAuth: () => Promise<unknown>;
+      completeFakeLogin: () => Promise<unknown>;
+    };
   }
 }
