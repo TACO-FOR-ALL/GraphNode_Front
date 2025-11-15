@@ -80,7 +80,7 @@ function createMainWindow() {
 
   mainWindow = new BrowserWindow({
     width: 1440,
-    height: 800,
+    height: 880,
     frame: false,
     transparent: false,
     webPreferences: {
