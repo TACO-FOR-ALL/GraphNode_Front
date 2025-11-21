@@ -64,6 +64,36 @@ function createLoginWindow() {
     },
   });
 
+  // CSP 헤더 수정: 이미지 로드를 위해 https: 허용
+  loginWindow.webContents.session.webRequest.onHeadersReceived(
+    { urls: ["http://*/*", "https://*/*"] },
+    (details, callback) => {
+      const responseHeaders = { ...details.responseHeaders };
+
+      // 기존 CSP 헤더를 찾아서 수정
+      if (responseHeaders["content-security-policy"]) {
+        const csp = Array.isArray(responseHeaders["content-security-policy"])
+          ? responseHeaders["content-security-policy"][0]
+          : responseHeaders["content-security-policy"];
+
+        // img-src에 https: 추가
+        const updatedCsp = csp.replace(
+          /img-src\s+[^;]+/,
+          "img-src 'self' data: https:"
+        );
+
+        responseHeaders["content-security-policy"] = [updatedCsp];
+      } else {
+        // CSP 헤더가 없으면 추가
+        responseHeaders["Content-Security-Policy"] = [
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+        ];
+      }
+
+      callback({ responseHeaders });
+    }
+  );
+
   loginWindow.removeMenu();
   loginWindow.loadURL(resolveRendererUrl("#/login"));
 
@@ -89,6 +119,36 @@ function createMainWindow() {
       nodeIntegration: false,
     },
   });
+
+  // CSP 헤더 수정: 이미지 로드를 위해 https: 허용
+  mainWindow.webContents.session.webRequest.onHeadersReceived(
+    { urls: ["http://*/*", "https://*/*"] },
+    (details, callback) => {
+      const responseHeaders = { ...details.responseHeaders };
+
+      // 기존 CSP 헤더를 찾아서 수정
+      if (responseHeaders["content-security-policy"]) {
+        const csp = Array.isArray(responseHeaders["content-security-policy"])
+          ? responseHeaders["content-security-policy"][0]
+          : responseHeaders["content-security-policy"];
+
+        // img-src에 https: 추가
+        const updatedCsp = csp.replace(
+          /img-src\s+[^;]+/,
+          "img-src 'self' data: https:"
+        );
+
+        responseHeaders["content-security-policy"] = [updatedCsp];
+      } else {
+        // CSP 헤더가 없으면 추가
+        responseHeaders["Content-Security-Policy"] = [
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+        ];
+      }
+
+      callback({ responseHeaders });
+    }
+  );
 
   // 드래그한 파일이 현재 창에서 이동하여 열리는 것 방지
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());
