@@ -25,7 +25,7 @@ export default function Home() {
 
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["notes"],
-    queryFn: () => noteRepo.getNoteList(),
+    queryFn: () => noteRepo.getAllNotes(),
   });
 
   return (

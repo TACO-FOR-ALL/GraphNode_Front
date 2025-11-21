@@ -4,11 +4,13 @@
 import Dexie, { Table } from "dexie";
 import type { ChatThread } from "../types/Chat";
 import { Note } from "@/types/Note";
+import { Folder } from "@/types/Folder";
 
 export class ChatDB extends Dexie {
   // Table<T, K> T: 테이블 타입, K: 기본키 타입 (T.id의 타입)
   threads!: Table<ChatThread, string>;
   notes!: Table<Note, string>;
+  folders!: Table<Folder, string>;
 
   constructor() {
     super("GraphNode_Front_ChatDB");
@@ -18,11 +20,12 @@ export class ChatDB extends Dexie {
       notes: "id, title, content, createdAt, updatedAt",
     });
 
-    // 인덱스 추가 시 version(n) 증가
-    // this.version(n + 1).stores({
-    //   threads: "id, updatedAt, title, messages, add here...",
-    //   notes: "id, content, createdAt, updatedAt, add here...",
-    // });
+    // 폴더 기능 추가를 위한 버전 업그레이드
+    this.version(2).stores({
+      threads: "id, updatedAt, title, messages",
+      notes: "id, title, content, createdAt, updatedAt, folderId",
+      folders: "id, name, parentId, createdAt, updatedAt",
+    });
   }
 }
 

@@ -4,11 +4,12 @@ import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 
 export const noteRepo = {
-  async create(content: string): Promise<Note> {
+  async create(content: string, folderId: string | null = null): Promise<Note> {
     const newNote: Note = {
       id: uuid(),
       title: extractTitleFromMarkdown(content),
       content,
+      folderId,
       updatedAt: new Date(Date.now()),
       createdAt: new Date(Date.now()),
     };
@@ -17,9 +18,8 @@ export const noteRepo = {
     return newNote;
   },
 
-  async getNoteList(): Promise<Note[]> {
-    const rows = await db.notes.orderBy("updatedAt").reverse().toArray();
-    return rows ?? [];
+  async getAllNotes(): Promise<Note[]> {
+    return await db.notes.toArray();
   },
 
   async getNoteById(id: string): Promise<Note | null> {
@@ -30,14 +30,28 @@ export const noteRepo = {
     const note = await this.getNoteById(id);
     if (!note) return null;
 
-    const updated = {
-      ...note,
+    await db.notes.update(id, {
       title: extractTitleFromMarkdown(content),
       content,
       updatedAt: new Date(Date.now()),
-    };
-    await db.notes.put(updated);
-    return updated;
+    });
+
+    return await this.getNoteById(id);
+  },
+
+  async moveNoteToFolder(
+    noteId: string,
+    folderId: string | null
+  ): Promise<Note | null> {
+    const note = await this.getNoteById(noteId);
+    if (!note) return null;
+
+    await db.notes.update(noteId, {
+      folderId,
+      updatedAt: new Date(Date.now()),
+    });
+
+    return await this.getNoteById(noteId);
   },
 
   async deleteNoteById(id: string): Promise<string | null> {
@@ -48,11 +62,9 @@ export const noteRepo = {
   },
 
   async initializeDefaultNote(): Promise<Note | null> {
-    const notes = await this.getNoteList();
-    // 이미 노트가 있으면 생성하지 않음
+    const notes = await this.getAllNotes();
     if (notes.length > 0) return null;
 
-    const title = "Welcome to GraphNode!";
     const defaultContent = `# Welcome to GraphNode!
 This demo showcases markdown support in GraphNode's Note Editor with extended features.
 
