@@ -1,4 +1,5 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import SideTabBar from "./components/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
@@ -8,6 +9,7 @@ import Login from "./routes/Login";
 import Notes from "./routes/Notes";
 import Search from "./routes/Search";
 import Chat from "./routes/Chat";
+import { noteRepo } from "./managers/noteRepo";
 
 export default function App() {
   return (
@@ -21,6 +23,19 @@ export default function App() {
 }
 
 function MainLayout() {
+  useEffect(() => {
+    const FIRST_LAUNCH_KEY = "graphnode_first_launch";
+    const hasLaunched = localStorage.getItem(FIRST_LAUNCH_KEY);
+
+    if (!hasLaunched) {
+      noteRepo.initializeDefaultNote().catch((err) => {
+        console.error("Failed to initialize default note:", err);
+      });
+      localStorage.setItem(FIRST_LAUNCH_KEY, "true");
+      console.log("Initialized default note");
+    }
+  }, []);
+
   return (
     <div
       style={{
@@ -52,7 +67,7 @@ function MainLayout() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/notes" element={<Notes />} />
+            <Route path="/notes/:noteId?" element={<Notes />} />
             <Route path="/search" element={<Search />} />
           </Routes>
         </div>

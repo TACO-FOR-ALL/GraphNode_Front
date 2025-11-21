@@ -17,6 +17,8 @@
   --color-note-editor-border: #e2e8f0;
   --color-chatbox-active-rgb: 43, 137, 248;
   --color-chatbox-border-rgb: 60, 60, 67;
+  --color-sidebar-button-hover: #d7edff;
+  --color-sidebar-button-border: u#d1d5d8;
   --font-noto-sans-kr:
     "NotoSansKR", system-ui, -apple-system, "Apple SD Gothic Neo",
     "Malgun Gothic", "Segoe UI", Roboto, Arial, sans-serif;

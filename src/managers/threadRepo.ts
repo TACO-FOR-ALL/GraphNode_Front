@@ -1,6 +1,6 @@
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
-import { db } from "../db/chat.db";
+import { db } from "@/db/chat.db";
 import sortThread from "../utils/sortThread";
 import { useThreadsStore } from "@/store/useThreadStore";
 
