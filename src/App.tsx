@@ -5,6 +5,9 @@ import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
 import Login from "./routes/Login";
+import Notes from "./routes/Notes";
+import Search from "./routes/Search";
+import Chat from "./routes/Chat";
 
 export default function App() {
   return (
@@ -46,8 +49,11 @@ function MainLayout() {
         >
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/notes" element={<Notes />} />
+            <Route path="/search" element={<Search />} />
           </Routes>
         </div>
       </div>
