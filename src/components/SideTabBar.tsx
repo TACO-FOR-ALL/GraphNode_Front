@@ -12,7 +12,7 @@ import {
 } from "react-icons/tb";
 
 const NAVIGATION_ITEMS = [
-  { id: "home", image: "/icons/logo.png", label: "home" },
+  { id: "/", image: "/icons/logo.png", label: "/" },
   { id: "chat", icon: <FaPlus />, label: "chat" },
   { id: "notes", icon: <PiNotePencil />, label: "notes" },
   { id: "visualize", icon: <IoShareSocialOutline />, label: "visualize" },
@@ -41,7 +41,7 @@ export default function SideTabBar() {
           {NAVIGATION_ITEMS.map((item) => (
             <div
               key={item.id}
-              className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path.split("/")[1] ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
+              className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path.split("/")[1] ? "bg-sidebar-tab-selected text-white" : ""} ${item.id === "home" ? "bg-transparent" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
               onClick={() => navigate(`/${item.id}`)}
             >
               {item.image ? (
