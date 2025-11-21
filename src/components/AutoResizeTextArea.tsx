@@ -8,16 +8,17 @@ type Props = {
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 };
 
-const MAX_ROWS = 5;
+const MAX_ROWS = 7;
 
 export default function AutoResizeTextarea({
   value,
   onChange,
   placeholder,
   disabled,
-  onKeyDown,
 }: Props) {
   const [inner, setInner] = useState(value ?? "");
+  const [hasScrollbar, setHasScrollbar] = useState(false);
+  const [marginBottom, setMarginBottom] = useState("48px");
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const composingRef = useRef(false);
 
@@ -40,7 +41,21 @@ export default function AutoResizeTextarea({
     const maxH = lineHeight * MAX_ROWS + paddingY;
     const nextH = Math.min(full, maxH);
     el.style.height = `${nextH}px`;
-    el.style.overflowY = full > maxH ? "auto" : "hidden";
+    const needsScrollbar = full > maxH;
+    el.style.overflowY = needsScrollbar ? "auto" : "hidden";
+    setHasScrollbar(needsScrollbar);
+
+    // 라인 수 계산 및 margin-bottom 계산
+    const contentHeight = full - paddingY;
+    const lineCount = Math.max(1, Math.ceil(contentHeight / lineHeight));
+
+    // 라인 1일 때: 48px, 라인 2일 때: 48px - lineHeight, 라인 3일 때: 48px - (lineHeight * 2), ...
+    const baseMargin = 48;
+    const calculatedMargin = baseMargin - lineHeight * (lineCount - 1);
+    const minMargin = 12; // mb-3 = 12px
+    const finalMargin = Math.max(minMargin, calculatedMargin);
+
+    setMarginBottom(`${finalMargin}px`);
   };
 
   useLayoutEffect(resize, [inner]);
@@ -74,7 +89,11 @@ export default function AutoResizeTextarea({
       e.stopPropagation();
       return;
     }
-    onKeyDown?.(e);
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      // handleSend();
+    }
   };
 
   return (
@@ -98,8 +117,9 @@ export default function AutoResizeTextarea({
         overflowY: "hidden",
         whiteSpace: "pre-wrap",
         wordBreak: "break-word",
+        marginBottom: marginBottom,
       }}
-      className="w-full border rounded-lg p-3 leading-6 border-gray-400 focus:outline-none focus:ring-0"
+      className={`w-full text-[14px] placeholder:text-text-placeholder font-noto-sans-kr focus:outline-none focus:ring-0 custom-scrollbar mr-3 pl-1`}
     />
   );
 }
