@@ -64,7 +64,7 @@ function MainLayout() {
         >
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/notes/:noteId?" element={<Notes />} />
