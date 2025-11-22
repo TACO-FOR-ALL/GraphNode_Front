@@ -28,8 +28,8 @@
         "zip"
       ],
       "hardenedRuntime": true,
-      "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist"
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist"
     },
     "afterSign": "scripts/notarize.cjs",
     "win": {
