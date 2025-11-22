@@ -2,11 +2,42 @@ import AutoResizeTextarea from "@/components/AutoResizeTextArea";
 import { IoIosArrowDown } from "react-icons/io";
 import { FaArrowRight } from "react-icons/fa6";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import threadRepo from "@/managers/threadRepo";
+import uuid from "@/utils/uuid";
 
 export default function ChatBox() {
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
-  const handleSend = () => {
-    console.log("send");
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+
+    setSending(true);
+    try {
+      // 새 스레드 생성
+      const created = await threadRepo.create("loading…", []);
+
+      // 첫 메시지 추가
+      const userMsg = {
+        id: uuid(),
+        role: "user" as const,
+        content: text,
+        ts: Date.now(),
+      };
+      await threadRepo.addMessageToThreadById(created.id, userMsg);
+
+      // Chat 페이지로 이동 (자동 전송 플래그와 함께)
+      navigate(`/chat/${created.id}`, {
+        state: { autoSend: true, initialMessage: text },
+      });
+    } catch (error) {
+      console.error("Failed to create chat:", error);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -15,6 +46,13 @@ export default function ChatBox() {
         value={input}
         onChange={setInput}
         placeholder="How can I help you?"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && input.trim() && !sending) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+        disabled={sending}
       />
       <div className="flex items-center justify-between w-full">
         <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
@@ -24,8 +62,12 @@ export default function ChatBox() {
           <IoIosArrowDown className="text-[16px] text-chatbox-active" />
         </div>
         <div
-          onClick={() => input.length > 0 && handleSend()}
-          className={`w-[28px] h-[28px] text-white p-[6px] text-[16px] rounded-[8px] mr-3 ${input.length > 0 ? "bg-chatbox-active cursor-pointer" : "bg-text-placeholder cursor-not-allowed"}`}
+          onClick={() => input.trim().length > 0 && !sending && handleSend()}
+          className={`w-[28px] h-[28px] text-white p-[6px] text-[16px] rounded-[8px] mr-3 flex items-center justify-center ${
+            input.trim().length > 0 && !sending
+              ? "bg-chatbox-active cursor-pointer"
+              : "bg-text-placeholder cursor-not-allowed"
+          }`}
         >
           <FaArrowRight />
         </div>

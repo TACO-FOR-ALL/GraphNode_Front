@@ -17,6 +17,7 @@
   "include": [
     "src",
     "electron",
+    "src/assets.d.ts",
     "vite.config.ts",
     "**/*.test.ts",
     "**/*.test.tsx",

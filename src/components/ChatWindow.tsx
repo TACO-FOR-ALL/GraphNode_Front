@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownBubble from "./MarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
+import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import type { ChatMessage } from "../types/Chat";
+import profile from "@/assets/images/profile.jpeg";
 
 const PAGE = 10;
 
@@ -19,7 +21,11 @@ export default function ChatWindow({
   const [visibleCount, setVisibleCount] = useState(PAGE);
 
   const { threads, refreshThread } = useThreadsStore();
+  const { isExpanded } = useSidebarExpandStore();
   const thread = threadId ? threads[threadId] : null;
+
+  const userMaxWidth = isExpanded ? "708px" : "880px";
+  const assistantMaxWidth = isExpanded ? "696px" : "868px";
 
   useEffect(() => {
     if (threadId) {
@@ -86,7 +92,7 @@ export default function ChatWindow({
     return (
       <div className="p-4 flex items-center justify-center h-full">
         <p className="text-gray-500">
-          왼쪽에서 채팅을 선택하거나 새로운 채팅을 시작해주세요
+          Please select a chat on the left or start a new chat
         </p>
       </div>
     );
@@ -96,32 +102,71 @@ export default function ChatWindow({
   }
 
   return (
-    <div ref={wrapRef} className="p-4 pb-10 h-full overflow-y-auto">
+    <div
+      ref={wrapRef}
+      className="p-4 h-full overflow-y-auto"
+      style={{
+        paddingBottom: "200px",
+        scrollbarWidth: "none", // Firefox
+        msOverflowStyle: "none", // IE and Edge
+      }}
+    >
+      <style>{`
+        div::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
+        }
+      `}</style>
       <div ref={topSentinelRef} />
-      <h3 className="mt-0 mb-3 font-semibold">{thread.title}</h3>
 
-      {visible.map((m) => {
+      {visible.map((m, index) => {
         const isUser = m.role === "user";
+
         return (
           <div
             key={m.id}
-            className={`mb-2 flex ${isUser ? "justify-end" : "justify-start"}`}
+            className={`flex ${isUser ? "justify-end" : "justify-start"} items-start`}
+            style={{ marginBottom: "40px" }}
             title={new Date(m.ts).toLocaleString()}
           >
-            <div
-              className={`max-w-[72%] rounded-2xl px-3 py-2 ${
-                isUser ? "bg-blue-600 text-white" : "bg-gray-100 text-black"
-              }`}
-            >
-              <MarkdownBubble text={m.content} />
-            </div>
+            {isUser ? (
+              <div
+                className="flex items-start gap-3"
+                style={{ maxWidth: userMaxWidth }}
+              >
+                <img
+                  src={profile}
+                  alt="Profile"
+                  className="w-6 h-6 rounded-full flex-shrink-0"
+                  style={{ marginTop: 0 }}
+                />
+                <div className="flex-1 text-text-chat-bubble">
+                  <MarkdownBubble text={m.content} />
+                </div>
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl text-text-chat-bubble"
+                style={{
+                  maxWidth: assistantMaxWidth,
+                  backgroundColor: "transparent",
+                  border: "1px solid #F0F2F5",
+                  padding: "24px",
+                  borderRadius: "16px",
+                  boxShadow: "0 2px 4px 0 rgba(25, 33, 61, 0.08)",
+                }}
+              >
+                <MarkdownBubble text={m.content} />
+              </div>
+            )}
           </div>
         );
       })}
 
       {isTyping && (
         <div className="mb-2 flex justify-start">
-          <TypingBubble />
+          <div style={{ maxWidth: assistantMaxWidth }}>
+            <TypingBubble />
+          </div>
         </div>
       )}
     </div>

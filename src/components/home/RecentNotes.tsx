@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
+import { seperateTitleAndContentFromMarkdown } from "@/utils/extractTitleFromMarkdown";
 
 export default function RecentNotes() {
   const navigate = useNavigate();
@@ -26,26 +27,31 @@ export default function RecentNotes() {
         >
           <FaPlus className="text-[28px] text-[rgba(var(--color-notebox-add-rgb),0.2)]" />
         </div>
-        {notes?.map((note) => (
-          <div
-            key={note.id}
-            className="w-[240px] px-[16px] py-[14px] flex flex-col cursor-pointer h-[180px] rounded-[12px] border-[1px] border-solid border-[rgba(var(--color-chatbox-border-rgb),0.2)] bg-notebox-background"
-            onClick={() => navigate(`/notes/${note.id}`)}
-          >
-            <p className="font-noto-sans-kr font-medium text-[16px] mb-3">
-              {note.title}
-            </p>
-            <p className="line-clamp-3 font-noto-sans-kr text-[12px]">
-              {note.content}
-            </p>
-            <div className="flex mt-11 items-center justify-between text-text-tertiary">
-              <p className="font-noto-sans-kr text-[12px]">
-                {note.createdAt.toLocaleDateString()}
+        {notes?.map((note) => {
+          const { title, content } = seperateTitleAndContentFromMarkdown(
+            note.content
+          );
+          return (
+            <div
+              key={note.id}
+              className="w-[240px] px-[16px] py-[14px] flex flex-col cursor-pointer h-[180px] rounded-[12px] border-[1px] border-solid border-[rgba(var(--color-chatbox-border-rgb),0.2)] bg-notebox-background"
+              onClick={() => navigate(`/notes/${note.id}`)}
+            >
+              <p className="font-noto-sans-kr font-medium text-[16px] mb-3 line-clamp-2">
+                {title}
               </p>
-              <IoIosMore className="text-[16px]" />
+              <p className="line-clamp-3 font-noto-sans-kr text-[12px]">
+                {content}
+              </p>
+              <div className="flex mt-auto items-center justify-between text-text-tertiary">
+                <p className="font-noto-sans-kr text-[12px]">
+                  {note.createdAt.toLocaleDateString()}
+                </p>
+                <IoIosMore className="text-[16px]" />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

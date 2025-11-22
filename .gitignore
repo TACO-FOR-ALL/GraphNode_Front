@@ -12,3 +12,6 @@ Thumbs.db
 # Electron
 electron/*.js
 electron/*.js.map
+
+.env
+/release

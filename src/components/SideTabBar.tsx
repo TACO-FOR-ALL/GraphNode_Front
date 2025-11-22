@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Note } from "@/types/Note";
 import { ChatThread } from "@/types/Chat";
 import { Folder } from "@/types/Folder";
@@ -11,6 +11,7 @@ import SideNavigationBar from "./SideNavigationBar";
 import ToggleSidebarExpand from "./ToggleSidebarExpand";
 import SideExpandBarChat from "./SideExpandBarChat";
 import SideExpandBarNote from "./SideExpandBarNote";
+import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 
 export default function SideTabBar() {
   const path = useLocation().pathname;
@@ -29,7 +30,7 @@ export default function SideTabBar() {
     return null;
   }, [path]);
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const { isExpanded, setIsExpanded } = useSidebarExpandStore();
 
   const { data: chatThreads } = useQuery<ChatThread[]>({
     queryKey: ["chatThreads"],
@@ -71,8 +72,8 @@ export default function SideTabBar() {
                 />
               ) : (
                 <SideExpandBarChat
-                  data={chatThreads as ChatThread[]}
-                  selectedId={selectedId as string}
+                  data={chatThreads ?? []}
+                  selectedId={selectedId ?? ""}
                 />
               )}
             </div>
