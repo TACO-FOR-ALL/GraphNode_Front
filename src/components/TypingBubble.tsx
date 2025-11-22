@@ -1,7 +1,7 @@
 export default function TypingBubble() {
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-2xl px-5 py-3 bg-gray-100 text-black"
+      className="inline-flex items-center gap-1"
       aria-label="assistant is typing"
     >
       <span className="sr-only">Typing…</span>
