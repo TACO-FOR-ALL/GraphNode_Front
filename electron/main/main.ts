@@ -15,8 +15,8 @@ function resolveRendererUrl(hash = "") {
     return `${process.env.VITE_DEV_SERVER_URL!}${hash}`;
   }
 
-  // 배포 모드: 배포 파일 URL 반환 file://.../index.html/#/login
-  const indexHtml = path.join(__dirname, "../index.html");
+  // 배포 모드: dist/index.html을 기준으로 로드
+  const indexHtml = path.join(__dirname, "../dist/index.html"); // <-- 여기!
   const fileUrl = pathToFileURL(indexHtml);
   fileUrl.hash = hash.replace(/^#*/, "");
   return fileUrl.toString();
