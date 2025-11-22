@@ -20,3 +20,26 @@ export default function extractTitleFromMarkdown(markdown: string): string {
 
   return title.length > 0 ? title : "Untitled";
 }
+
+export function seperateTitleAndContentFromMarkdown(markdown: string): {
+  title: string;
+  content: string;
+} {
+  if (!markdown || markdown.trim().length === 0) {
+    return { title: "Untitled", content: "" };
+  }
+
+  const firstLine = markdown.split("\n")[0].trim();
+
+  if (firstLine.length === 0) {
+    return { title: "Untitled", content: "" };
+  }
+
+  // 마크다운 헤더 문법 제거 (#, ##, ### 등)
+  const title = firstLine.replace(/^#+\s*/, "").trim();
+
+  return {
+    title: title.length > 0 ? title : "Untitled",
+    content: markdown.slice(title.length).trim(),
+  };
+}
