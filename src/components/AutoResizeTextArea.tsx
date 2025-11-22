@@ -15,9 +15,9 @@ export default function AutoResizeTextarea({
   onChange,
   placeholder,
   disabled,
+  onKeyDown,
 }: Props) {
   const [inner, setInner] = useState(value ?? "");
-  const [hasScrollbar, setHasScrollbar] = useState(false);
   const [marginBottom, setMarginBottom] = useState("48px");
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const composingRef = useRef(false);
@@ -25,7 +25,6 @@ export default function AutoResizeTextarea({
   // 외부 value 변경 반영
   useEffect(() => {
     if (value !== undefined && value !== inner) setInner(value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   // 높이 자동 조절
@@ -43,7 +42,6 @@ export default function AutoResizeTextarea({
     el.style.height = `${nextH}px`;
     const needsScrollbar = full > maxH;
     el.style.overflowY = needsScrollbar ? "auto" : "hidden";
-    setHasScrollbar(needsScrollbar);
 
     // 라인 수 계산 및 margin-bottom 계산
     const contentHeight = full - paddingY;
@@ -89,10 +87,12 @@ export default function AutoResizeTextarea({
       e.stopPropagation();
       return;
     }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      // handleSend();
+    // 부모의 onKeyDown 핸들러 호출
+    if (onKeyDown) {
+      onKeyDown(e);
+    } else if (e.key === "Enter") {
+      // onKeyDown이 없으면 기본 동작 (개행)
+      // preventDefault 하지 않음
     }
   };
 
