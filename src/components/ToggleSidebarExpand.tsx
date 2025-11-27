@@ -11,7 +11,7 @@ export default function ToggleSidebarExpand({
   setIsExpanded: (isExpanded: boolean) => void;
 }) {
   return (
-    <div className="flex px-3 py-4">
+    <div className="flex px-[12px] py-[16px]">
       {isExpanded ? (
         <TbLayoutSidebarRightExpand
           onClick={() => setIsExpanded(false)}
@@ -26,3 +26,4 @@ export default function ToggleSidebarExpand({
     </div>
   );
 }
+
