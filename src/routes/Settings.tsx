@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DropJsonZone from "../components/DropJsonZone";
 import threadRepo from "../managers/threadRepo";
+import { api } from "@/apiClient";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -10,6 +11,13 @@ export default function Settings() {
   const [keyStatus, setKeyStatus] = useState<
     null | "valid" | "invalid" | "checking"
   >();
+
+  useEffect(() => {
+    (async () => {
+      const me = await api.me.get();
+      console.log(me);
+    })();
+  }, []);
 
   const onCheck = async () => {
     setKeyStatus("checking");
@@ -76,6 +84,14 @@ export default function Settings() {
         className="bg-red-500 text-white px-4 py-2 rounded-md"
       >
         Clear All Threads
+      </button>
+      <button
+        onClick={async () => {
+          await api.me.logout();
+          window.electron?.send("auth-logout");
+        }}
+      >
+        logout
       </button>
     </div>
   );

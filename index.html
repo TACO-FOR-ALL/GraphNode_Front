@@ -2,9 +2,11 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <!-- CSP 설정: 웹 페이지가 어떤 리소스를 어디에서 가져올 수 있는지를 강제로
+    제한하는 보안 규칙입니다 -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://taco4graphnode.online ws://localhost:5173;"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GraphNode</title>
