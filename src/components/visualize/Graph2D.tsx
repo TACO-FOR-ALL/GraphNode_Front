@@ -1,305 +1,508 @@
-import { useEffect, useRef } from "react";
 import * as d3 from "d3-force";
-import { GraphData } from "@/types/GraphData";
+import React, { useEffect, useRef, useState } from "react";
 
-type SimNode = d3.SimulationNodeDatum & {
-  id: string;
+type Node = {
+  id: number;
+  orig_id: string;
+  cluster_id: string;
+  cluster_name: string;
+  num_messages: number;
+};
+
+type Edge = {
+  source: number;
+  target: number;
+};
+
+type SimNode = d3.SimulationNodeDatum &
+  Node & {
+    x: number;
+    y: number;
+    vx?: number;
+    vy?: number;
+  };
+
+type PositionedNode = Node & {
   x: number;
   y: number;
-  vx?: number;
-  vy?: number;
-};
-type SimLink = d3.SimulationLinkDatum<SimNode> & {
-  source: string | SimNode;
-  target: string | SimNode;
 };
 
-export default function Graph2D({ data }: { data: GraphData }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+type PositionedEdge = Edge & {
+  isIntraCluster: boolean;
+};
 
-  useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    const DPR = window.devicePixelRatio || 1;
+type ClusterLayout = {
+  clusterId: string;
+  centerX: number;
+  centerY: number;
+  radius: number;
+};
 
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    canvas.width = width * DPR;
-    canvas.height = height * DPR;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    ctx.scale(DPR, DPR);
+function preprocess(
+  nodes: Node[],
+  edges: Edge[]
+): { clusters: Map<string, Node[]>; edges: PositionedEdge[] } {
+  const clusters = new Map<string, Node[]>();
 
-    let scale = 1;
-    let translateX = 0;
-    let translateY = 0;
+  nodes.forEach((n) => {
+    const list = clusters.get(n.cluster_id) ?? [];
+    list.push(n);
+    clusters.set(n.cluster_id, list);
+  });
 
-    const nodes: SimNode[] = data.nodes.map((n) => ({
-      id: n.id,
-      x: Math.random() * 400 - 200,
-      y: Math.random() * 400 - 200,
-    }));
-    const nodeById = new Map(nodes.map((n) => [n.id, n]));
-    const links: SimLink[] = data.links.map((l) => ({
-      source: nodeById.get(l.source)!,
-      target: nodeById.get(l.target)!,
-    }));
+  const positionedEdges = edges.map((e) => {
+    const s = nodes[e.source];
+    const t = nodes[e.target];
+    const isIntra = s.cluster_id === t.cluster_id;
+    return { ...e, isIntraCluster: isIntra };
+  });
 
-    const sim = d3
-      .forceSimulation<SimNode>(nodes)
+  return { clusters, edges: positionedEdges };
+}
+
+function layoutClustersWithForce(
+  nodes: Node[],
+  edges: Edge[],
+  width: number,
+  height: number
+): {
+  nodes: PositionedNode[];
+  edges: PositionedEdge[];
+  clusters: ClusterLayout[];
+} {
+  const { clusters, edges: classifiedEdges } = preprocess(nodes, edges);
+
+  const clusterIds = Array.from(clusters.keys());
+  const K = clusterIds.length;
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const bigRadius = Math.min(width, height) * 0.35;
+
+  const positionedNodes: PositionedNode[] = [];
+  const clusterLayouts: ClusterLayout[] = [];
+
+  clusterIds.forEach((clusterId, idx) => {
+    const clusterNodes = clusters.get(clusterId)!;
+
+    const theta = (2 * Math.PI * idx) / K;
+    const cx = centerX + bigRadius * Math.cos(theta);
+    const cy = centerY + bigRadius * Math.sin(theta);
+
+    const n = clusterNodes.length;
+    const base = 80;
+    const scale = 8;
+    const clusterRadius = base + scale * Math.sqrt(n);
+
+    const simNodes: SimNode[] = clusterNodes.map((node, i) => {
+      const angle = (2 * Math.PI * i) / n;
+      const r = clusterRadius * 0.3;
+      const jitter = 5;
+      return {
+        ...node,
+        x: cx + r * Math.cos(angle) + (Math.random() - 0.5) * jitter,
+        y: cy + r * Math.sin(angle) + (Math.random() - 0.5) * jitter,
+      };
+    });
+
+    const clusterEdges = classifiedEdges
+      .filter((e) => e.isIntraCluster)
+      .filter((e) => {
+        const s = nodes[e.source];
+        const t = nodes[e.target];
+        return s.cluster_id === clusterId && t.cluster_id === clusterId;
+      })
+      .map((e) => ({
+        source: simNodes.find((n) => n.id === e.source)!,
+        target: simNodes.find((n) => n.id === e.target)!,
+      }));
+
+    const edgeCount = clusterEdges.length;
+    const density = edgeCount / Math.max(n, 1);
+
+    const chargeStrength = -15 - Math.sqrt(n) * 3 - density * 2;
+
+    const collideRadius = 10 + Math.min(10, density * 1.5);
+
+    const radialRadius = clusterRadius * 0.55;
+
+    const boundaryRadius = clusterRadius * 0.9;
+
+    const simulation = d3
+      .forceSimulation<SimNode>(simNodes)
+      .force("center", d3.forceCenter(cx, cy))
+      .force("radial", d3.forceRadial(radialRadius, cx, cy).strength(0.03))
+      .force("charge", d3.forceManyBody().strength(chargeStrength))
       .force(
         "link",
         d3
-          .forceLink<SimNode, SimLink>(links)
-          .id((d) => (d as SimNode).id)
-          .distance(60)
+          .forceLink<SimNode, any>(clusterEdges)
+          .id((d: any) => d.id)
+          .distance(25 + Math.min(15, density * 1.2))
           .strength(0.5)
       )
-      .force("charge", d3.forceManyBody().strength(-120))
-      .force("center", d3.forceCenter(0, 0))
-      .alphaDecay(0.02);
+      .force("collision", d3.forceCollide(collideRadius).iterations(3))
+      .stop();
 
-    const R = 6;
+    for (let i = 0; i < 150; i++) {
+      simulation.tick();
 
-    const onClick = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const [wx, wy] = screenToWorld(mx, my);
-
-      let hit: SimNode | null = null;
-      for (const n of nodes) {
-        const dx = n.x! - wx;
-        const dy = n.y! - wy;
-        if (dx * dx + dy * dy <= (R * 1.2) ** 2) {
-          hit = n;
-          break;
+      simNodes.forEach((node) => {
+        const dx = node.x! - cx;
+        const dy = node.y! - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > boundaryRadius) {
+          const k = boundaryRadius / dist;
+          node.x = cx + dx * k;
+          node.y = cy + dy * k;
         }
-      }
-      if (!hit) return;
+      });
+    }
 
-      focusOnNode(hit, { zoomTo: 1.5, ms: 450 });
+    simNodes.forEach((sn) => {
+      positionedNodes.push({
+        id: sn.id,
+        orig_id: sn.orig_id,
+        cluster_id: sn.cluster_id,
+        cluster_name: sn.cluster_name,
+        num_messages: sn.num_messages,
+        x: sn.x!,
+        y: sn.y!,
+      });
+    });
+
+    clusterLayouts.push({
+      clusterId,
+      centerX: cx,
+      centerY: cy,
+      radius: boundaryRadius,
+    });
+  });
+
+  const positionedEdges: PositionedEdge[] = classifiedEdges.map((e) => ({
+    ...e,
+    isIntraCluster: e.isIntraCluster,
+  }));
+
+  return {
+    nodes: positionedNodes,
+    edges: positionedEdges,
+    clusters: clusterLayouts,
+  };
+}
+
+const NODE_RADIUS = 3;
+const DRAG_MIN_DIST = 10;
+
+type GraphProps = {
+  rawNodes: Node[];
+  rawEdges: Edge[];
+  width: number;
+  height: number;
+};
+
+export default function ClusterCircleGraph({
+  rawNodes,
+  rawEdges,
+  width,
+  height,
+}: GraphProps) {
+  const [nodes, setNodes] = useState<PositionedNode[]>([]);
+  const [edges, setEdges] = useState<PositionedEdge[]>([]);
+  const [clusters, setClusters] = useState<ClusterLayout[]>([]);
+
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
+
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef<{ x: number; y: number } | null>(null);
+  const [scale, setScale] = useState(1);
+
+  const [draggingNodeId, setDraggingNodeId] = useState<number | null>(null);
+  const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
+
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const normalIntraEdges = edges.filter((e) => {
+    if (!e.isIntraCluster) return false;
+    if (!focusNodeId) return true;
+    return e.source !== focusNodeId && e.target !== focusNodeId;
+  });
+
+  const focusedIntraEdges = edges.filter((e) => {
+    if (!focusNodeId) return false;
+    if (!e.isIntraCluster) return false;
+    return e.source === focusNodeId || e.target === focusNodeId;
+  });
+
+  const focusedInterEdges = edges.filter((e) => {
+    if (!focusNodeId) return false;
+    if (e.isIntraCluster) return false;
+    return e.source === focusNodeId || e.target === focusNodeId;
+  });
+
+  useEffect(() => {
+    const { nodes, edges, clusters } = layoutClustersWithForce(
+      rawNodes,
+      rawEdges,
+      width,
+      height
+    );
+    setNodes(nodes);
+    setEdges(edges);
+    setClusters(clusters);
+  }, [rawNodes, rawEdges, width, height]);
+
+  const nodeById = (id: number) => nodes.find((n) => n.id === id)!;
+  const clusterById = (clusterId: string) =>
+    clusters.find((c) => c.clusterId === clusterId)!;
+
+  const screenToWorld = (clientX: number, clientY: number) => {
+    const svg = svgRef.current!;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+    const worldX = (mouseX - offset.x) / scale;
+    const worldY = (mouseY - offset.y) / scale;
+    return { worldX, worldY };
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    const zoomIntensity = 0.003;
+    const { clientX, clientY, deltaY } = e;
+
+    const svg = svgRef.current!;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+
+    const worldX = (mouseX - offset.x) / scale;
+    const worldY = (mouseY - offset.y) / scale;
+
+    const newScale = scale * (1 - deltaY * zoomIntensity);
+    const clampedScale = Math.min(Math.max(newScale, 0.1), 5);
+
+    const newOffsetX = mouseX - worldX * clampedScale;
+    const newOffsetY = mouseY - worldY * clampedScale;
+
+    setScale(clampedScale);
+    setOffset({ x: newOffsetX, y: newOffsetY });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (draggingNodeId !== null) return;
+    setIsPanning(true);
+    panStart.current = {
+      x: e.clientX - offset.x,
+      y: e.clientY - offset.y,
     };
-    canvas.addEventListener("click", onClick);
+  };
 
-    let focusing = false;
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (draggingNodeId !== null && dragNodeOffset.current) {
+      const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
+      const node = nodeById(draggingNodeId);
+      const cluster = clusterById(node.cluster_id);
 
-    function focusOnNode(
-      node: SimNode,
-      opt: { zoomTo?: number; ms?: number } = {}
-    ) {
-      if (focusing) return;
-      focusing = true;
-      sim.stop();
+      let newX = worldX + dragNodeOffset.current.dx;
+      let newY = worldY + dragNodeOffset.current.dy;
 
-      const startScale = scale;
-      const startTX = translateX;
-      const startTY = translateY;
-      const endScale = opt.zoomTo ?? scale;
-      const dur = opt.ms ?? 450;
-
-      let t0 = 0;
-      let rafId = 0;
-
-      const savedDragging = dragging;
-      dragging = false;
-      const blockWheel = (e: WheelEvent) => e.preventDefault();
-      canvas.addEventListener("wheel", blockWheel, { passive: false });
-
-      const EPS = 0.001;
-
-      const run = (ts: number) => {
-        if (!t0) t0 = ts;
-        const p = Math.min(1, (ts - t0) / dur);
-        const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
-
-        const wx = node.x!;
-        const wy = node.y!;
-        const endTX = -wx * endScale;
-        const endTY = -wy * endScale;
-
-        // 보간
-        scale = startScale + (endScale - startScale) * ease;
-        translateX = startTX + (endTX - startTX) * ease;
-        translateY = startTY + (endTY - startTY) * ease;
-
-        // 종료 판단은 근사치로
-        const done =
-          Math.abs(scale - endScale) < EPS &&
-          Math.abs(translateX - endTX) < EPS &&
-          Math.abs(translateY - endTY) < EPS;
-
-        if (!done) {
-          rafId = requestAnimationFrame(run);
-        } else {
-          scale = endScale;
-          translateX = endTX;
-          translateY = endTY;
-
-          canvas.removeEventListener("wheel", blockWheel);
-          dragging = savedDragging;
-          focusing = false;
-        }
-      };
-      rafId = requestAnimationFrame(run);
-    }
-
-    function screenToWorld(x: number, y: number) {
-      return [
-        (x - translateX - width / 2) / scale,
-        (y - translateY - height / 2) / scale,
-      ] as const;
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, width, height);
-      ctx.save();
-      ctx.translate(width / 2 + translateX, height / 2 + translateY);
-      ctx.scale(scale, scale);
-
-      ctx.strokeStyle = "#aaa";
-      ctx.lineWidth = 1 / scale;
-      for (const l of links) {
-        const s = l.source as SimNode;
-        const t = l.target as SimNode;
-        ctx.beginPath();
-        ctx.moveTo(s.x!, s.y!);
-        ctx.lineTo(t.x!, t.y!);
-        ctx.stroke();
+      const dxCenter = newX - cluster.centerX;
+      const dyCenter = newY - cluster.centerY;
+      const distCenter = Math.sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
+      if (distCenter > cluster.radius) {
+        const k = cluster.radius / distCenter;
+        newX = cluster.centerX + dxCenter * k;
+        newY = cluster.centerY + dyCenter * k;
       }
 
-      for (const n of nodes) {
-        ctx.beginPath();
-        ctx.fillStyle = "#4aa8c0";
-        ctx.arc(n.x!, n.y!, R, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    }
-
-    const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const [wx, wy] = screenToWorld(
-        e.clientX - rect.left,
-        e.clientY - rect.top
+      const sameClusterNodes = nodes.filter(
+        (n) => n.cluster_id === node.cluster_id && n.id !== node.id
       );
-      let hit: SimNode | null = null;
-      for (const n of nodes) {
-        const dx = n.x! - wx;
-        const dy = n.y! - wy;
-        if (dx * dx + dy * dy <= (R * 1.2) ** 2) {
-          hit = n;
-          break;
+      sameClusterNodes.forEach((other) => {
+        const dx = newX - other.x;
+        const dy = newY - other.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0 && dist < DRAG_MIN_DIST) {
+          const k = DRAG_MIN_DIST / dist;
+          newX = other.x + dx * k;
+          newY = other.y + dy * k;
         }
-      }
-      if (hit && tooltipRef.current) {
-        tooltipRef.current.textContent = hit.id;
-        tooltipRef.current.style.left = `${e.clientX + 10}px`;
-        tooltipRef.current.style.top = `${e.clientY + 10}px`;
-        tooltipRef.current.style.opacity = "1";
-      } else if (tooltipRef.current) {
-        tooltipRef.current.style.opacity = "0";
-      }
+      });
+
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n
+        )
+      );
+
+      return;
+    }
+
+    if (!isPanning || !panStart.current) return;
+    setOffset({
+      x: e.clientX - panStart.current.x,
+      y: e.clientY - panStart.current.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+    panStart.current = null;
+    setDraggingNodeId(null);
+    dragNodeOffset.current = null;
+  };
+
+  const handleMouseLeave = () => {
+    setIsPanning(false);
+    panStart.current = null;
+    setDraggingNodeId(null);
+    dragNodeOffset.current = null;
+  };
+
+  const handleNodeMouseDown = (
+    e: React.MouseEvent<SVGCircleElement>,
+    nodeId: number
+  ) => {
+    e.stopPropagation();
+    const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
+    const node = nodeById(nodeId);
+
+    dragNodeOffset.current = {
+      dx: node.x - worldX,
+      dy: node.y - worldY,
     };
-
-    const onWheel = (e: WheelEvent) => {
-      if (focusing) {
-        e.preventDefault();
-        return;
-      }
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const zoom = Math.exp(-e.deltaY * 0.0015);
-      const [wx0, wy0] = screenToWorld(mouseX, mouseY);
-
-      scale *= zoom;
-      scale = Math.max(0.3, Math.min(4, scale));
-
-      const [wx1, wy1] = screenToWorld(mouseX, mouseY);
-      translateX += (wx1 - wx0) * scale;
-      translateY += (wy1 - wy0) * scale;
-    };
-
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    const onDown = (e: MouseEvent) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    };
-    const onUp = () => (dragging = false);
-    const onDrag = (e: MouseEvent) => {
-      if (!dragging || focusing) return;
-      translateX += e.clientX - lastX;
-      translateY += e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    };
-
-    const onResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width * DPR;
-      canvas.height = height * DPR;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.scale(DPR, DPR);
-    };
-
-    let raf = 0;
-    const tick = () => {
-      sim.tick();
-      draw();
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
-
-    canvas.addEventListener("mousemove", onMove);
-    canvas.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("mousemove", onDrag);
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      sim.stop();
-      canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("mousedown", onDown);
-      window.removeEventListener("mouseup", onUp);
-      window.removeEventListener("mousemove", onDrag);
-      canvas.removeEventListener("wheel", onWheel);
-      window.removeEventListener("resize", onResize);
-      canvas.removeEventListener("click", onClick);
-    };
-  }, [data]);
+    setDraggingNodeId(nodeId);
+  };
 
   return (
-    <>
-      <canvas ref={canvasRef} />
-      <div
-        ref={tooltipRef}
+    <div style={{ position: "relative", overflow: "hidden" }}>
+      {hoveredId != null &&
+        (() => {
+          const n = nodeById(hoveredId);
+          const left = n.x * scale + offset.x;
+          const top = n.y * scale + offset.y - 24;
+
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left,
+                top,
+                transform: "translate(-50%, -100%)",
+                padding: "2px 6px",
+                fontSize: 10,
+                background: "rgba(0,0,0,0.7)",
+                color: "white",
+                borderRadius: 4,
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {n.orig_id}
+            </div>
+          );
+        })()}
+
+      <svg
+        ref={svgRef}
+        width={width}
+        height={height}
         style={{
-          position: "fixed",
-          pointerEvents: "none",
-          padding: "4px 8px",
-          background: "rgba(0,0,0,0.7)",
-          color: "#fff",
-          borderRadius: 6,
-          fontSize: 12,
-          transform: "translate(-50%,-130%)",
-          opacity: 0,
-          transition: "opacity 120ms",
-          zIndex: 10,
+          border: "1px solid #eee",
+          cursor:
+            draggingNodeId !== null
+              ? "grabbing"
+              : isPanning
+                ? "grabbing"
+                : "grab",
+          touchAction: "none",
         }}
-      />
-    </>
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+      >
+        <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
+          {clusters.map((c) => (
+            <text
+              key={c.clusterId}
+              x={c.centerX}
+              y={c.centerY - c.radius - 10}
+              textAnchor="middle"
+              fontSize={16}
+              fontWeight={600}
+              fill="#ccc"
+              style={{ pointerEvents: "none" }}
+            >
+              {c.clusterId}
+            </text>
+          ))}
+
+          {normalIntraEdges.map((e, idx) => {
+            const s = nodeById(e.source);
+            const t = nodeById(e.target);
+            return (
+              <line
+                key={`intra-normal-${idx}`}
+                x1={s.x}
+                y1={s.y}
+                x2={t.x}
+                y2={t.y}
+                stroke="#c7c7c7"
+                strokeWidth={0.5}
+              />
+            );
+          })}
+
+          {[...focusedIntraEdges, ...focusedInterEdges].map((e, idx) => {
+            const s = nodeById(e.source);
+            const t = nodeById(e.target);
+            return (
+              <line
+                key={`focus-${idx}`}
+                x1={s.x}
+                y1={s.y}
+                x2={t.x}
+                y2={t.y}
+                stroke="#ff4d4f"
+                strokeWidth={0.5}
+              />
+            );
+          })}
+
+          {nodes.map((n) => {
+            const isHovered = hoveredId === n.id;
+            const isFocused = focusNodeId === n.id;
+            const radius = isHovered ? 6 : NODE_RADIUS;
+            const fill = isFocused
+              ? "#ff4d4f"
+              : isHovered
+                ? "#EF7233"
+                : "#767676";
+
+            return (
+              <circle
+                key={n.id}
+                cx={n.x}
+                cy={n.y}
+                r={radius}
+                fill={fill}
+                style={{ cursor: "pointer" }}
+                onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
+                onMouseEnter={() => setHoveredId(n.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFocusNodeId((prev) => (prev === n.id ? null : n.id));
+                }}
+              />
+            );
+          })}
+        </g>
+      </svg>
+    </div>
   );
 }

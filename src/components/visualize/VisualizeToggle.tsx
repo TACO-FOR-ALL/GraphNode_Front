@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { DUMMY_GRAPH } from "../../constants/DUMMY_GRAPH";
+import frontendGraphHys from "../../constants/frontend_graph_ky.json";
 import Graph3D from "./Graph3D";
-import Graph2D from "./Graph2D";
+import ClusterCircleGraph from "./Graph2D";
 
 export default function VisualizeToggle() {
-  const [mode, setMode] = useState<"2d" | "3d">("3d");
+  const [mode, setMode] = useState<"2d" | "3d">("2d");
 
   return (
     <div style={{ position: "relative" }}>
@@ -42,10 +42,15 @@ export default function VisualizeToggle() {
         </button>
       </div>
 
-      {mode === "3d" ? (
-        <Graph3D data={DUMMY_GRAPH} />
+      {mode === "2d" ? (
+        <ClusterCircleGraph
+          rawNodes={frontendGraphHys.nodes}
+          rawEdges={frontendGraphHys.edges}
+          width={window.innerWidth}
+          height={window.innerHeight}
+        />
       ) : (
-        <Graph2D data={DUMMY_GRAPH} />
+        <Graph3D data={frontendGraphHys} />
       )}
     </div>
   );
