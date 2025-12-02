@@ -12,6 +12,11 @@ export default defineConfig({
       main: {
         entry: "electron/main/main.ts",
         vite: {
+          resolve: {
+            alias: {
+              "@": path.resolve(__dirname, "src"),
+            },
+          },
           build: {
             rollupOptions: {
               external: ["keytar"],
@@ -22,6 +27,11 @@ export default defineConfig({
       preload: {
         input: { preload: "electron/preload/preload.ts" },
         vite: {
+          resolve: {
+            alias: {
+              "@": path.resolve(__dirname, "src"),
+            },
+          },
           build: {
             rollupOptions: {
               external: ["keytar"],

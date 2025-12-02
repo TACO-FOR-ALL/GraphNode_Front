@@ -1,4 +1,5 @@
-import { useState, type CSSProperties } from "react";
+import { api } from "@/apiClient";
+import { useEffect, useState, type CSSProperties } from "react";
 
 type DraggableCSSProperties = CSSProperties & {
   WebkitAppRegion?: "drag" | "no-drag";
@@ -69,28 +70,83 @@ export default function Login() {
   const handleMinimizeWindow = () => window.windowAPI.minimize();
   const handleToggleMaximize = () => window.windowAPI.maximize();
 
-  const handleFakeLogin = async () => {
-    if (isLoggingIn) return;
+  // 세션 상태로 로그인 여부 확인
+  useEffect(() => {
+    (async () => {
+      try {
+        await api.me.get();
+        window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
+      } catch (err: any) {
+        console.warn("getMe failed on startup:", err);
+        if (err.status === 401) {
+          return;
+        }
+        setError("로그인 상태 확인 중 오류가 발생했습니다.");
+      }
+    })();
+  }, []);
 
-    try {
-      setIsLoggingIn(true);
-      setError(null);
-      await window.authAPI.completeFakeLogin();
-    } catch (err) {
-      console.error(err);
-      setError("로그인에 실패했습니다. 다시 시도해 주세요.");
-    } finally {
-      setIsLoggingIn(false);
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      // 메시지 오리진 검증
+      if (event.origin !== "https://taco4graphnode.online") return;
+
+      // 백엔드 콜백 HTML postMessage 객체
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "oauth-success") {
+        (async () => {
+          try {
+            await api.me.get();
+            window.electron?.send("auth-success");
+          } catch (err: any) {
+            console.error("getMe failed after oauth:", err);
+            if (err.status === 401) {
+              setError(
+                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요."
+              );
+            } else {
+              setError("로그인 후 사용자 정보를 불러오지 못했습니다.");
+            }
+          }
+        })();
+      } else if (data.type === "oauth-error") {
+        setError(data.message ?? "OAuth 에러가 발생했습니다.");
+      }
     }
-  };
 
-  const handleGoogleLogin = async () => {
+    // 백엔드 콜백 HTML postMessage 수신 이벤트 리스너 등록
+    // message: 다른 Window 간 메시지(데이터) 송수신 시 발생하는 이벤트
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const handleSocialLogin = async (provider: "google" | "apple") => {
     if (isLoggingIn) return;
+
+    const width = 480;
+    const height = 640;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
     try {
       setIsLoggingIn(true);
       setError(null);
-      await window.authAPI.startGoogleOAuth();
+      const url =
+        provider === "google"
+          ? await api.googleAuth.startUrl()
+          : await api.appleAuth.startUrl();
+
+      const popup = window.open(
+        url,
+        `${provider}-oauth`,
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      if (!popup) {
+        alert("팝업이 차단되었습니다. 팝업 허용을 해주세요.");
+      }
     } catch (err) {
       console.error(err);
       setError("Google 로그인 시작에 실패했습니다.");
@@ -130,7 +186,7 @@ export default function Login() {
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <button
             type="button"
-            onClick={handleGoogleLogin}
+            onClick={() => handleSocialLogin("google")}
             style={buttonStyle}
             disabled={isLoggingIn}
           >
@@ -139,11 +195,11 @@ export default function Login() {
 
           <button
             type="button"
-            onClick={handleFakeLogin}
+            onClick={() => handleSocialLogin("apple")}
             style={{ ...buttonStyle, background: "#475569" }}
             disabled={isLoggingIn}
           >
-            {isLoggingIn ? "확인 중..." : "Fake 로그인 (테스트용)"}
+            {isLoggingIn ? "Apple로 로그인 중..." : "Apple 계정으로 로그인"}
           </button>
         </div>
 

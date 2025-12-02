@@ -14,6 +14,9 @@ declare global {
       maximize: () => void;
       close: () => void;
     };
+    electron: {
+      send: (channel: string, ...args: any[]) => void;
+    };
     systemAPI: {
       getLocale: () => Promise<string>;
     };
@@ -47,11 +50,6 @@ declare global {
       onReadError: (
         cb: (p: { id: string; message: string }) => void
       ) => () => void;
-    };
-    authAPI: {
-      startGoogleOAuth: () => Promise<unknown>;
-      startAppleOAuth: () => Promise<unknown>;
-      completeFakeLogin: () => Promise<unknown>;
     };
   }
 }
