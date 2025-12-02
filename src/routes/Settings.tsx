@@ -88,6 +88,7 @@ export default function Settings() {
       <button
         onClick={async () => {
           await api.me.logout();
+          window.electron?.send("auth-logout");
         }}
       >
         logout

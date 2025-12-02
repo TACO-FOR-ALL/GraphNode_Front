@@ -37,6 +37,16 @@ function registerAuthHandlers() {
     }
   });
 
+  ipcMain.on("auth-show-login", () => {
+    if (!loginWindow) {
+      createLoginWindow();
+    }
+    if (loginWindow && !loginWindow.isVisible()) {
+      loginWindow.show();
+      loginWindow.focus();
+    }
+  });
+
   ipcMain.on("auth-logout", () => {
     if (mainWindow) {
       mainWindow.close();
@@ -45,7 +55,9 @@ function registerAuthHandlers() {
 
     if (!loginWindow) {
       createLoginWindow();
-    } else {
+    }
+    if (loginWindow && !loginWindow.isVisible()) {
+      loginWindow.show();
       loginWindow.focus();
     }
   });
@@ -62,6 +74,7 @@ function createLoginWindow() {
     height: 430,
     frame: false,
     alwaysOnTop: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,

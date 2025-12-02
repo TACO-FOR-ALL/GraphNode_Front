@@ -63,6 +63,8 @@ const buttonStyle: CSSProperties = {
 };
 
 export default function Login() {
+  const [checkSession, setCheckSession] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,14 +76,19 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       try {
-        await api.me.get();
+        const me = await api.me.get();
+        setHasSession(true);
         window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
+        return; // 세션 있을 시 로그인 UI 안 보기
       } catch (err: any) {
         console.warn("getMe failed on startup:", err);
         if (err.status === 401) {
+          window.electron?.send("auth-show-login");
           return;
         }
         setError("로그인 상태 확인 중 오류가 발생했습니다.");
+      } finally {
+        setCheckSession(false);
       }
     })();
   }, []);
@@ -155,67 +162,75 @@ export default function Login() {
     }
   };
 
-  return (
-    <div style={containerStyle}>
-      <header style={titleBarStyle}>
-        <button
-          type="button"
-          onClick={handleCloseWindow}
-          aria-label="창 닫기"
-          style={{ ...trafficButtonStyle, background: "#ff5f57" }}
-        />
-        <button
-          type="button"
-          onClick={handleMinimizeWindow}
-          aria-label="창 최소화"
-          style={{ ...trafficButtonStyle, background: "#fdbc2c" }}
-        />
-        <button
-          type="button"
-          onClick={handleToggleMaximize}
-          aria-label="창 최대화"
-          style={{ ...trafficButtonStyle, background: "#28c840" }}
-        />
-      </header>
+  if (checkSession) {
+    return null;
+  }
 
-      <div style={contentStyle}>
-        <h1 style={{ fontSize: "24px", margin: 0 }}>GraphNode</h1>
-        <p style={{ marginTop: "8px", color: "#94a3b8" }}>
-          소셜 계정으로 로그인하세요.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+  if (!hasSession) {
+    return (
+      <div style={containerStyle}>
+        <header style={titleBarStyle}>
           <button
             type="button"
-            onClick={() => handleSocialLogin("google")}
-            style={buttonStyle}
-            disabled={isLoggingIn}
-          >
-            {isLoggingIn ? "Google로 로그인 중..." : "Google 계정으로 로그인"}
-          </button>
-
+            onClick={handleCloseWindow}
+            aria-label="창 닫기"
+            style={{ ...trafficButtonStyle, background: "#ff5f57" }}
+          />
           <button
             type="button"
-            onClick={() => handleSocialLogin("apple")}
-            style={{ ...buttonStyle, background: "#475569" }}
-            disabled={isLoggingIn}
-          >
-            {isLoggingIn ? "Apple로 로그인 중..." : "Apple 계정으로 로그인"}
-          </button>
-        </div>
+            onClick={handleMinimizeWindow}
+            aria-label="창 최소화"
+            style={{ ...trafficButtonStyle, background: "#fdbc2c" }}
+          />
+          <button
+            type="button"
+            onClick={handleToggleMaximize}
+            aria-label="창 최대화"
+            style={{ ...trafficButtonStyle, background: "#28c840" }}
+          />
+        </header>
 
-        {error && (
+        <div style={contentStyle}>
+          <h1 style={{ fontSize: "24px", margin: 0 }}>GraphNode</h1>
+          <p style={{ marginTop: "8px", color: "#94a3b8" }}>
+            소셜 계정으로 로그인하세요.
+          </p>
           <div
-            role="alert"
-            style={{
-              marginTop: "16px",
-              color: "#f87171",
-              fontSize: "13px",
-            }}
+            style={{ display: "flex", flexDirection: "column", gap: "14px" }}
           >
-            {error}
+            <button
+              type="button"
+              onClick={() => handleSocialLogin("google")}
+              style={buttonStyle}
+              disabled={isLoggingIn}
+            >
+              {isLoggingIn ? "Google로 로그인 중..." : "Google 계정으로 로그인"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSocialLogin("apple")}
+              style={{ ...buttonStyle, background: "#475569" }}
+              disabled={isLoggingIn}
+            >
+              {isLoggingIn ? "Apple로 로그인 중..." : "Apple 계정으로 로그인"}
+            </button>
           </div>
-        )}
+
+          {error && (
+            <div
+              role="alert"
+              style={{
+                marginTop: "16px",
+                color: "#f87171",
+                fontSize: "13px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
