@@ -1,5 +1,5 @@
 import { api } from "@/apiClient";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import GoogleIcon from "@/assets/icons/google.svg";
 import AppleIcon from "@/assets/icons/apple.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
@@ -9,6 +9,7 @@ export default function Login() {
   const [hasSession, setHasSession] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCloseWindow = () => window.windowAPI.close();
   const handleMinimizeWindow = () => window.windowAPI.minimize();
@@ -45,6 +46,12 @@ export default function Login() {
       if (!data || typeof data !== "object") return;
 
       if (data.type === "oauth-success") {
+        // 팝업 모니터링 interval 정리
+        if (popupIntervalRef.current) {
+          clearInterval(popupIntervalRef.current);
+          popupIntervalRef.current = null;
+        }
+        setIsLoggingIn(false);
         (async () => {
           try {
             await api.me.get();
@@ -61,6 +68,11 @@ export default function Login() {
           }
         })();
       } else if (data.type === "oauth-error") {
+        if (popupIntervalRef.current) {
+          clearInterval(popupIntervalRef.current);
+          popupIntervalRef.current = null;
+        }
+        setIsLoggingIn(false);
         setError(data.message ?? "OAuth 에러가 발생했습니다.");
       }
     }
@@ -94,13 +106,25 @@ export default function Login() {
       );
 
       if (!popup) {
+        setIsLoggingIn(false);
         alert("팝업이 차단되었습니다. 팝업 허용을 해주세요.");
+        return;
       }
+
+      // 팝업이 닫혔는지 모니터링
+      popupIntervalRef.current = setInterval(() => {
+        if (popup.closed) {
+          if (popupIntervalRef.current) {
+            clearInterval(popupIntervalRef.current);
+            popupIntervalRef.current = null;
+          }
+          setIsLoggingIn(false);
+        }
+      }, 500);
     } catch (err) {
       console.error(err);
-      setError("Google 로그인 시작에 실패했습니다.");
-    } finally {
       setIsLoggingIn(false);
+      setError("Google 로그인 시작에 실패했습니다.");
     }
   };
 
@@ -110,7 +134,7 @@ export default function Login() {
 
   if (!hasSession) {
     return (
-      <div className="h-screen flex flex-col items-stretch justify-start bg-white text-center">
+      <div className="h-screen flex flex-col items-stretch justify-start bg-white text-center relative">
         <header className="pt-3 px-4 flex items-center justify-start gap-2 drag-region">
           <div
             onClick={handleCloseWindow}
@@ -138,8 +162,8 @@ export default function Login() {
           <p className="text-[28px] font-medium">Welcome Back!</p>
           <div className="h-[96px]" />
           <div
-            className="flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer"
-            onClick={() => handleSocialLogin("google")}
+            className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !isLoggingIn && handleSocialLogin("google")}
           >
             <img
               src={GoogleIcon}
@@ -150,8 +174,8 @@ export default function Login() {
           </div>
           <div className="h-3" />
           <div
-            className="flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer"
-            onClick={() => handleSocialLogin("apple")}
+            className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !isLoggingIn && handleSocialLogin("apple")}
           >
             <img
               src={AppleIcon}
@@ -167,6 +191,12 @@ export default function Login() {
             </div>
           )}
         </div>
+
+        {isLoggingIn && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="w-12 h-12 border-4 border-white/20 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     );
   }
