@@ -1,66 +1,8 @@
 import { api } from "@/apiClient";
-import { useEffect, useState, type CSSProperties } from "react";
-
-type DraggableCSSProperties = CSSProperties & {
-  WebkitAppRegion?: "drag" | "no-drag";
-};
-
-const containerStyle: CSSProperties = {
-  height: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "stretch",
-  justifyContent: "flex-start",
-  background: "#0d0f11",
-  color: "#e2e8f0",
-  textAlign: "center",
-};
-
-const titleBarStyle: DraggableCSSProperties = {
-  padding: "12px 16px 0",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: "8px",
-  WebkitAppRegion: "drag",
-};
-
-const trafficButtonStyle: DraggableCSSProperties = {
-  width: "12px",
-  height: "12px",
-  borderRadius: "9999px",
-  border: "none",
-  padding: 0,
-  WebkitAppRegion: "no-drag",
-  cursor: "pointer",
-};
-
-const contentStyle: DraggableCSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "24px",
-  padding: "32px 24px 40px",
-  WebkitAppRegion: "no-drag",
-};
-
-const buttonStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "10px",
-  padding: "12px 24px",
-  borderRadius: "9999px",
-  border: "none",
-  background: "#2563eb",
-  color: "#fff",
-  fontSize: "15px",
-  fontWeight: 600,
-  cursor: "pointer",
-  boxShadow: "0 8px 24px rgba(37, 99, 235, 0.35)",
-};
+import { useEffect, useState } from "react";
+import GoogleIcon from "@/assets/icons/google.svg";
+import AppleIcon from "@/assets/icons/apple.svg";
+import LogoIcon from "@/assets/icons/logo.svg";
 
 export default function Login() {
   const [checkSession, setCheckSession] = useState(true);
@@ -76,7 +18,7 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       try {
-        const me = await api.me.get();
+        await api.me.get();
         setHasSession(true);
         window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
         return; // 세션 있을 시 로그인 UI 안 보기
@@ -168,64 +110,59 @@ export default function Login() {
 
   if (!hasSession) {
     return (
-      <div style={containerStyle}>
-        <header style={titleBarStyle}>
-          <button
-            type="button"
+      <div className="h-screen flex flex-col items-stretch justify-start bg-white text-center">
+        <header className="pt-3 px-4 flex items-center justify-start gap-2 drag-region">
+          <div
             onClick={handleCloseWindow}
             aria-label="창 닫기"
-            style={{ ...trafficButtonStyle, background: "#ff5f57" }}
+            className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#ff5f57]"
           />
-          <button
-            type="button"
+          <div
             onClick={handleMinimizeWindow}
             aria-label="창 최소화"
-            style={{ ...trafficButtonStyle, background: "#fdbc2c" }}
+            className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#fdbc2c]"
           />
-          <button
-            type="button"
+          <div
             onClick={handleToggleMaximize}
             aria-label="창 최대화"
-            style={{ ...trafficButtonStyle, background: "#28c840" }}
+            className="w-3 h-3 min-w-3 max-w-3 min-h-3 max-h-3 aspect-square rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#28c840] flex-shrink-0"
           />
         </header>
 
-        <div style={contentStyle}>
-          <h1 style={{ fontSize: "24px", margin: 0 }}>GraphNode</h1>
-          <p style={{ marginTop: "8px", color: "#94a3b8" }}>
-            소셜 계정으로 로그인하세요.
-          </p>
+        <div className="flex-1 flex flex-col items-center justify-center py-8 px-6 pb-10 no-drag">
+          <div className="flex items-center justify-center gap-2">
+            <img src={LogoIcon} alt="GraphNode" className="w-5 h-5" />
+            <h1 className="text-xl font-semibold text-primary">GraphNode</h1>
+          </div>
+          <div className="h-4" />
+          <p className="text-[28px] font-medium">Welcome Back!</p>
+          <div className="h-[96px]" />
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+            className="flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer"
+            onClick={() => handleSocialLogin("google")}
           >
-            <button
-              type="button"
-              onClick={() => handleSocialLogin("google")}
-              style={buttonStyle}
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Google로 로그인 중..." : "Google 계정으로 로그인"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSocialLogin("apple")}
-              style={{ ...buttonStyle, background: "#475569" }}
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Apple로 로그인 중..." : "Apple 계정으로 로그인"}
-            </button>
+            <img
+              src={GoogleIcon}
+              alt="Google"
+              className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
+            />
+            <p className="text-[14px]">Sign in with Google</p>
+          </div>
+          <div className="h-3" />
+          <div
+            className="flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer"
+            onClick={() => handleSocialLogin("apple")}
+          >
+            <img
+              src={AppleIcon}
+              alt="Apple"
+              className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
+            />
+            <p className="text-[14px]">Sign in with Apple</p>
           </div>
 
           {error && (
-            <div
-              role="alert"
-              style={{
-                marginTop: "16px",
-                color: "#f87171",
-                fontSize: "13px",
-              }}
-            >
+            <div role="alert" className="mt-4 text-red-400 text-[13px]">
               {error}
             </div>
           )}
