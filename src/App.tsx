@@ -1,6 +1,6 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import SideTabBar from "./components/SideTabBar";
+import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";

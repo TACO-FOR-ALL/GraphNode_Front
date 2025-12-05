@@ -6,10 +6,10 @@ import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { folderRepo } from "@/managers/folderRepo";
 import { noteRepo } from "@/managers/noteRepo";
-import NewFolderField from "./NewFolderField";
+import NewFolderField from "../NewFolderField";
 import { buildFolderTree } from "@/utils/buildFolderTree";
-import CreateNewNoteOrFolder from "./CreateNewNoteOrFolder";
-import FolderItem from "./notes/FolderItem";
+import CreateNewNoteOrFolder from "../CreateNewNoteOrFolder";
+import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 
 export default function SideExpandBarNote({

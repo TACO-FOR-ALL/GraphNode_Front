@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --color-primary: #2b89f8;
   --color-text-secondary: #6b7280;
   --color-text-tertiary: #999999;
   --color-text-chat-bubble: #666f8d;

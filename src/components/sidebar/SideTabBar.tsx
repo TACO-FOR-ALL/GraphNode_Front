@@ -12,12 +12,16 @@ import ToggleSidebarExpand from "./ToggleSidebarExpand";
 import SideExpandBarChat from "./SideExpandBarChat";
 import SideExpandBarNote from "./SideExpandBarNote";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import SideExpandBarSettings from "./SideExpandBarSettings";
 
 export default function SideTabBar() {
   const path = useLocation().pathname;
 
   const showSidebarExpanded = useMemo(
-    () => path.includes("/chat") || path.includes("/notes"),
+    () =>
+      path.includes("/chat") ||
+      path.includes("/notes") ||
+      path.includes("/settings"),
     [path]
   );
 
@@ -63,19 +67,21 @@ export default function SideTabBar() {
           />
           {isExpanded && (
             <div>
-              {path.includes("/notes") ? (
+              {path.includes("/notes") && (
                 <SideExpandBarNote
                   path={path}
                   notes={notes ?? []}
                   folders={folders ?? []}
                   selectedId={selectedId ?? ""}
                 />
-              ) : (
+              )}
+              {path.includes("/chat") && (
                 <SideExpandBarChat
                   data={chatThreads ?? []}
                   selectedId={selectedId ?? ""}
                 />
               )}
+              {path.includes("/settings") && <SideExpandBarSettings />}
             </div>
           )}
         </div>

@@ -1,72 +1,15 @@
 import { api } from "@/apiClient";
-import { useEffect, useState, type CSSProperties } from "react";
-
-type DraggableCSSProperties = CSSProperties & {
-  WebkitAppRegion?: "drag" | "no-drag";
-};
-
-const containerStyle: CSSProperties = {
-  height: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "stretch",
-  justifyContent: "flex-start",
-  background: "#0d0f11",
-  color: "#e2e8f0",
-  textAlign: "center",
-};
-
-const titleBarStyle: DraggableCSSProperties = {
-  padding: "12px 16px 0",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: "8px",
-  WebkitAppRegion: "drag",
-};
-
-const trafficButtonStyle: DraggableCSSProperties = {
-  width: "12px",
-  height: "12px",
-  borderRadius: "9999px",
-  border: "none",
-  padding: 0,
-  WebkitAppRegion: "no-drag",
-  cursor: "pointer",
-};
-
-const contentStyle: DraggableCSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "24px",
-  padding: "32px 24px 40px",
-  WebkitAppRegion: "no-drag",
-};
-
-const buttonStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "10px",
-  padding: "12px 24px",
-  borderRadius: "9999px",
-  border: "none",
-  background: "#2563eb",
-  color: "#fff",
-  fontSize: "15px",
-  fontWeight: 600,
-  cursor: "pointer",
-  boxShadow: "0 8px 24px rgba(37, 99, 235, 0.35)",
-};
+import { useEffect, useState, useRef } from "react";
+import GoogleIcon from "@/assets/icons/google.svg";
+import AppleIcon from "@/assets/icons/apple.svg";
+import LogoIcon from "@/assets/icons/logo.svg";
 
 export default function Login() {
   const [checkSession, setCheckSession] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCloseWindow = () => window.windowAPI.close();
   const handleMinimizeWindow = () => window.windowAPI.minimize();
@@ -76,10 +19,18 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       try {
-        const me = await api.me.get();
-        setHasSession(true);
-        window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
-        return; // 세션 있을 시 로그인 UI 안 보기
+        const result = await api.me.get();
+
+        if (result.isSuccess) {
+          setHasSession(true);
+          window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
+          return; // 세션 있을 시 로그인 UI 안 보기
+        } else {
+          setCheckSession(false);
+          setHasSession(false);
+          window.electron?.send("auth-show-login");
+          return;
+        }
       } catch (err: any) {
         console.warn("getMe failed on startup:", err);
         if (err.status === 401) {
@@ -103,6 +54,12 @@ export default function Login() {
       if (!data || typeof data !== "object") return;
 
       if (data.type === "oauth-success") {
+        // 팝업 모니터링 interval 정리
+        if (popupIntervalRef.current) {
+          clearInterval(popupIntervalRef.current);
+          popupIntervalRef.current = null;
+        }
+        setIsLoggingIn(false);
         (async () => {
           try {
             await api.me.get();
@@ -119,6 +76,11 @@ export default function Login() {
           }
         })();
       } else if (data.type === "oauth-error") {
+        if (popupIntervalRef.current) {
+          clearInterval(popupIntervalRef.current);
+          popupIntervalRef.current = null;
+        }
+        setIsLoggingIn(false);
         setError(data.message ?? "OAuth 에러가 발생했습니다.");
       }
     }
@@ -152,13 +114,25 @@ export default function Login() {
       );
 
       if (!popup) {
+        setIsLoggingIn(false);
         alert("팝업이 차단되었습니다. 팝업 허용을 해주세요.");
+        return;
       }
+
+      // 팝업이 닫혔는지 모니터링
+      popupIntervalRef.current = setInterval(() => {
+        if (popup.closed) {
+          if (popupIntervalRef.current) {
+            clearInterval(popupIntervalRef.current);
+            popupIntervalRef.current = null;
+          }
+          setIsLoggingIn(false);
+        }
+      }, 500);
     } catch (err) {
       console.error(err);
-      setError("Google 로그인 시작에 실패했습니다.");
-    } finally {
       setIsLoggingIn(false);
+      setError("Google 로그인 시작에 실패했습니다.");
     }
   };
 
@@ -168,68 +142,69 @@ export default function Login() {
 
   if (!hasSession) {
     return (
-      <div style={containerStyle}>
-        <header style={titleBarStyle}>
-          <button
-            type="button"
+      <div className="h-screen flex flex-col items-stretch justify-start bg-white text-center relative">
+        <header className="pt-3 px-4 flex items-center justify-start gap-2 drag-region">
+          <div
             onClick={handleCloseWindow}
             aria-label="창 닫기"
-            style={{ ...trafficButtonStyle, background: "#ff5f57" }}
+            className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#ff5f57]"
           />
-          <button
-            type="button"
+          <div
             onClick={handleMinimizeWindow}
             aria-label="창 최소화"
-            style={{ ...trafficButtonStyle, background: "#fdbc2c" }}
+            className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#fdbc2c]"
           />
-          <button
-            type="button"
+          <div
             onClick={handleToggleMaximize}
             aria-label="창 최대화"
-            style={{ ...trafficButtonStyle, background: "#28c840" }}
+            className="w-3 h-3 min-w-3 max-w-3 min-h-3 max-h-3 aspect-square rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#28c840] flex-shrink-0"
           />
         </header>
 
-        <div style={contentStyle}>
-          <h1 style={{ fontSize: "24px", margin: 0 }}>GraphNode</h1>
-          <p style={{ marginTop: "8px", color: "#94a3b8" }}>
-            소셜 계정으로 로그인하세요.
-          </p>
+        <div className="flex-1 flex flex-col items-center justify-center py-8 px-6 pb-10 no-drag">
+          <div className="flex items-center justify-center gap-2">
+            <img src={LogoIcon} alt="GraphNode" className="w-5 h-5" />
+            <h1 className="text-xl font-semibold text-primary">GraphNode</h1>
+          </div>
+          <div className="h-4" />
+          <p className="text-[28px] font-medium">Welcome Back!</p>
+          <div className="h-[96px]" />
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+            className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !isLoggingIn && handleSocialLogin("google")}
           >
-            <button
-              type="button"
-              onClick={() => handleSocialLogin("google")}
-              style={buttonStyle}
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Google로 로그인 중..." : "Google 계정으로 로그인"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSocialLogin("apple")}
-              style={{ ...buttonStyle, background: "#475569" }}
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? "Apple로 로그인 중..." : "Apple 계정으로 로그인"}
-            </button>
+            <img
+              src={GoogleIcon}
+              alt="Google"
+              className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
+            />
+            <p className="text-[14px]">Sign in with Google</p>
+          </div>
+          <div className="h-3" />
+          <div
+            className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !isLoggingIn && handleSocialLogin("apple")}
+          >
+            <img
+              src={AppleIcon}
+              alt="Apple"
+              className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
+            />
+            <p className="text-[14px]">Sign in with Apple</p>
           </div>
 
           {error && (
-            <div
-              role="alert"
-              style={{
-                marginTop: "16px",
-                color: "#f87171",
-                fontSize: "13px",
-              }}
-            >
+            <div role="alert" className="mt-4 text-red-400 text-[13px]">
               {error}
             </div>
           )}
         </div>
+
+        {isLoggingIn && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="w-12 h-12 border-4 border-white/20 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     );
   }
