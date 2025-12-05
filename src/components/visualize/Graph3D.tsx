@@ -30,6 +30,8 @@ type ClusterInfo = {
   center: THREE.Vector3;
   radius: number;
   nodeIds: string[];
+  color: number;
+  intraEdgeCount: number;
 };
 
 export default function Graph3D({ data }: { data: GraphData }) {
@@ -39,14 +41,17 @@ export default function Graph3D({ data }: { data: GraphData }) {
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    // 1. Scene Setup
     const scene = new THREE.Scene();
+    // scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0xffffff);
     const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      5000
     );
-    camera.position.set(0, 0, 18);
+    camera.position.set(0, 0, 200);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -57,23 +62,26 @@ export default function Graph3D({ data }: { data: GraphData }) {
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.enableZoom = true;
-    controls.zoomSpeed = 1.2;
-    controls.minDistance = 6;
-    controls.maxDistance = 60;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 1000;
 
+    // 2. Configuration
     const clusterColors: Record<string, number> = {
-      cluster_1: 0x4aa8c0,
-      cluster_2: 0xe74c3c,
-      cluster_3: 0x2ecc71,
-      cluster_4: 0xf39c12,
-      cluster_5: 0x9b59b6,
+      cluster_1: 0x4aa8c0, // Blue
+      cluster_2: 0xe74c3c, // Red
+      cluster_3: 0x2ecc71, // Green
+      cluster_4: 0xf39c12, // Orange
+      cluster_5: 0x9b59b6, // Purple
     };
     const defaultNodeColor = 0x767676;
     const focusColor = 0xff4d4f;
     const hoverColor = 0xffcc00;
-    const intraEdgeColor = 0xb3b3b3;
+    // const intraEdgeColor = 0xb3b3b3;  //for dark background
+    // const interEdgeColor = 0xffffff; // White
+    const intraEdgeColor = 0x999999; // Darkened for white background
+    const interEdgeColor = 0x333333; // Changed from white to dark gray
 
+    // 3. Process Clusters
     const clusters = new Map<string, ClusterInfo>();
 
     data.nodes.forEach((n) => {
@@ -83,90 +91,150 @@ export default function Graph3D({ data }: { data: GraphData }) {
           center: new THREE.Vector3(0, 0, 0),
           radius: 0,
           nodeIds: [],
+          intraEdgeCount: 0,
+          color: clusterColors[cid] || defaultNodeColor,
         });
       }
       clusters.get(cid)!.nodeIds.push(String(n.id));
     });
 
+    // Count intra-cluster edges
+    const nodeToClusterMap = new Map<string, string>();
+    data.nodes.forEach((n) => {
+      nodeToClusterMap.set(String(n.id), (n.cluster_id ?? "default") as string);
+    });
+
+    data.edges.forEach((edge) => {
+      const sourceCid = nodeToClusterMap.get(String(edge.source));
+      const targetCid = nodeToClusterMap.get(String(edge.target));
+      if (sourceCid && sourceCid === targetCid) {
+        clusters.get(sourceCid)!.intraEdgeCount++;
+      }
+    });
+
     const clusterIds = Array.from(clusters.keys());
-    const bigRadius = 18;
+
+    // Layout Calculation
+    const layoutDistance = 100; // Distance between cluster centers
 
     clusterIds.forEach((cid, idx) => {
       const info = clusters.get(cid)!;
       const angle = (idx / clusterIds.length) * Math.PI * 2;
 
-      const center = new THREE.Vector3(
-        Math.cos(angle) * bigRadius,
-        Math.sin(angle) * bigRadius * 0.4,
-        Math.sin(angle * 0.7) * bigRadius * 1.0
+      // Position clusters
+      info.center.set(
+        Math.cos(angle) * layoutDistance,
+        Math.sin(angle) * layoutDistance * 0.7,
+        Math.sin(angle * 2) * (layoutDistance * 0.3)
       );
-      const base = 2.2;
-      const scale = 0.7;
-      const radius = base + scale * Math.sqrt(info.nodeIds.length);
 
-      info.center = center;
-      info.radius = radius;
+      // --- CRITICAL FIX 1: DENSITY NORMALIZATION ---
+      // Use Cubic Root (Math.cbrt) instead of Sqrt.
+      // This ensures 3D volume scales proportionally to node count.
+      // This makes small clusters feel as "dense" as the big blue one.
+      const nodeCount = info.nodeIds.length;
+      const edgeCount = info.intraEdgeCount;
+      const baseRadius = 5; // Minimum size for tiny clusters
+      const nodeVolumeFactor = 8.0;
+      const edgeVolumeFactor = 0.8; // Edges have less impact
+
+      // Radius ~ CubeRoot(N). This keeps constant density.
+      const nodeRadius = Math.pow(nodeCount, 1 / 3) * nodeVolumeFactor;
+      const edgeRadius = Math.pow(edgeCount, 1 / 3) * edgeVolumeFactor;
+      info.radius = baseRadius + nodeRadius + edgeRadius;
     });
 
-    const simNodes: SimNode[] = [];
+    // Calculate edge count per node for sizing
+    const nodeEdgeCounts = new Map<string, number>();
+    data.nodes.forEach((n) => nodeEdgeCounts.set(String(n.id), 0));
+    data.edges.forEach((edge) => {
+      const sourceId = String(edge.source);
+      const targetId = String(edge.target);
+      nodeEdgeCounts.set(sourceId, (nodeEdgeCounts.get(sourceId) ?? 0) + 1);
+      nodeEdgeCounts.set(targetId, (nodeEdgeCounts.get(targetId) ?? 0) + 1);
+    });
+
+    const maxEdgeCount = Math.max(...Array.from(nodeEdgeCounts.values()), 1);
+    const MIN_NODE_RADIUS = 0.4;
+    const MAX_NODE_RADIUS = 0.6;
+
+    const getNodeRadius = (nodeId: string) => {
+      const count = nodeEdgeCounts.get(nodeId) ?? 0;
+      const scale = Math.sqrt(count / maxEdgeCount); // Use sqrt for less extreme scaling
+      return MIN_NODE_RADIUS + (MAX_NODE_RADIUS - MIN_NODE_RADIUS) * scale;
+    };
+
+    // 4. Create Visuals
     const nodeMeshes: THREE.Mesh[] = [];
+    const simNodes: SimNode[] = [];
     const nodeEntryMap: Record<
       string,
       { sim: SimNode; mesh: THREE.Mesh; clusterId: string }
     > = {};
 
-    const clusterCounters = new Map<string, number>();
-    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    // -- A. Cluster Boundary Spheres
+    clusterIds.forEach((cid) => {
+      const info = clusters.get(cid)!;
 
+      const geometry = new THREE.SphereGeometry(info.radius, 48, 48);
+      const material = new THREE.MeshBasicMaterial({
+        color: info.color,
+        transparent: true,
+        opacity: 0.02,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.copy(info.center);
+      scene.add(sphere);
+
+      const edges = new THREE.EdgesGeometry(geometry);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: info.color,
+        transparent: true,
+        opacity: 0.15,
+      });
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      wireframe.position.copy(info.center);
+      scene.add(wireframe);
+    });
+
+    // -- B. Nodes (Start exactly at center)
+    // Starting them at center prevents them from getting stuck outside initially
     data.nodes.forEach((node) => {
       const id = String(node.id);
       const cid = (node.cluster_id ?? "default") as string;
       const cluster = clusters.get(cid)!;
 
-      const count = clusterCounters.get(cid) ?? 0;
-      const n = cluster.nodeIds.length;
-      const t = count + 0.5;
-      clusterCounters.set(cid, count + 1);
+      // Initialize randomly inside
+      const r = Math.cbrt(Math.random()) * (cluster.radius * 0.5);
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
 
-      const y = 1 - (2 * t) / n;
-      const r = Math.sqrt(Math.max(0, 1 - y * y));
-      const theta = goldenAngle * t;
+      const x = cluster.center.x + r * Math.sin(phi) * Math.cos(theta);
+      const y = cluster.center.y + r * Math.sin(phi) * Math.sin(theta);
+      const z = cluster.center.z + r * Math.cos(phi);
 
-      const localX = Math.cos(theta) * r;
-      const localZ = Math.sin(theta) * r;
-      const localY = y;
-
-      const sphereRadius = cluster.radius * 0.75;
-      const worldX = cluster.center.x + localX * sphereRadius;
-      const worldY = cluster.center.y + localY * sphereRadius;
-      const worldZ = cluster.center.z + localZ * sphereRadius;
-
-      const sim: SimNode = {
-        id,
-        clusterId: cid,
-        x: worldX,
-        y: worldY,
-        z: worldZ,
-      };
+      const sim: SimNode = { id, clusterId: cid, x, y, z };
       simNodes.push(sim);
 
-      const color =
-        (cid in clusterColors ? clusterColors[cid] : defaultNodeColor) ??
-        defaultNodeColor;
-
+      const color = cluster.color;
+      const radius = getNodeRadius(id);
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.23, 16, 16),
+        new THREE.SphereGeometry(radius, 12, 12),
         new THREE.MeshBasicMaterial({ color })
       );
-      mesh.position.set(worldX, worldY, worldZ);
-      mesh.userData.id = id;
-      mesh.userData.clusterId = cid;
+      mesh.position.set(x, y, z);
+      mesh.userData = { id, clusterId: cid };
 
       scene.add(mesh);
       nodeMeshes.push(mesh);
       nodeEntryMap[id] = { sim, mesh, clusterId: cid };
     });
 
+    // -- C. Edges
     const simLinks: SimLink[] = data.edges.map((e) => ({
       source: String(e.source),
       target: String(e.target),
@@ -178,106 +246,118 @@ export default function Graph3D({ data }: { data: GraphData }) {
       targetId: string;
       isIntra: boolean;
     };
-
     const edgeObjs: EdgeObj[] = [];
 
     data.edges.forEach((edge) => {
       const sId = String(edge.source);
       const tId = String(edge.target);
-      const sNode = data.nodes.find((n) => String(n.id) === sId);
-      const tNode = data.nodes.find((n) => String(n.id) === tId);
+      const sNode = nodeEntryMap[sId];
+      const tNode = nodeEntryMap[tId];
       if (!sNode || !tNode) return;
 
-      const sCid = (sNode.cluster_id ?? "default") as string;
-      const tCid = (tNode.cluster_id ?? "default") as string;
-      const isIntra = sCid === tCid;
+      const isIntra = sNode.clusterId === tNode.clusterId;
 
       const mat = new THREE.LineBasicMaterial({
-        color: isIntra ? intraEdgeColor : focusColor,
+        color: isIntra ? intraEdgeColor : interEdgeColor,
         transparent: true,
-        opacity: isIntra ? 0.6 : 0.9,
+        opacity: isIntra ? 0.2 : 0.05,
       });
 
-      const a = nodeEntryMap[sId].mesh.position;
-      const b = nodeEntryMap[tId].mesh.position;
       const geom = new THREE.BufferGeometry().setFromPoints([
-        a.clone(),
-        b.clone(),
+        sNode.mesh.position,
+        tNode.mesh.position,
       ]);
 
       const line = new THREE.Line(geom, mat);
-      line.visible = isIntra;
-
       scene.add(line);
       edgeObjs.push({ line, sourceId: sId, targetId: tId, isIntra });
     });
 
-    const clusterSphereForce = () => {
-      let nodes: SimNode[] = [];
+    // 5. Physics Forces
 
-      function force() {
-        nodes.forEach((n) => {
-          const info = clusters.get(n.clusterId);
-          if (!info) return;
-          const { center, radius } = info;
+    // --- CRITICAL FIX 2: STRONGER LOCAL GRAVITY ---
+    // This force now scales with distance. The further you are from center, the harder the pull.
+    const clusterGravityForce = (alpha: number) => {
+      simNodes.forEach((n) => {
+        const cluster = clusters.get(n.clusterId);
+        if (!cluster) return;
 
-          const dx = n.x - center.x;
-          const dy = n.y - center.y;
-          const dz = n.z - center.z;
-          let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+        // Linear pull towards center
+        // Strong enough to counteract local repulsion, but weak enough to allow spread
+        const k = 0.3 * alpha; // Increased from 0.2 to 0.3 for a stronger pull
 
-          const targetR = radius * 0.9;
+        n.vx = (n.vx ?? 0) + (cluster.center.x - n.x) * k;
+        n.vy = (n.vy ?? 0) + (cluster.center.y - n.y) * k;
+        n.vz = (n.vz ?? 0) + (cluster.center.z - n.z) * k;
+      });
+    };
 
-          const strength = 0.3;
-          const delta = (targetR - dist) * strength;
+    // --- CRITICAL FIX 3: CONTAINMENT WALL ---
+    const clusterContainmentForce = (alpha: number) => {
+      simNodes.forEach((n) => {
+        const cluster = clusters.get(n.clusterId);
+        if (!cluster) return;
+
+        const dx = n.x - cluster.center.x;
+        const dy = n.y - cluster.center.y;
+        const dz = n.z - cluster.center.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+
+        // Soft boundary starts at 85% of radius
+        const limit = cluster.radius * 0.85;
+
+        if (dist > limit) {
+          // If outside limit, push back
+          const strength = 0.5 * alpha;
+          const overlap = dist - limit;
 
           const ux = dx / dist;
           const uy = dy / dist;
           const uz = dz / dist;
 
-          const damping = 0.9;
-          n.vx = (n.vx ?? 0) * damping + ux * delta;
-          n.vy = (n.vy ?? 0) * damping + uy * delta;
-          n.vz = (n.vz ?? 0) * damping + uz * delta;
-        });
-      }
-
-      (force as any).initialize = (ns: SimNode[]) => {
-        nodes = ns;
-      };
-
-      return force as any;
+          n.vx = (n.vx ?? 0) - ux * overlap * strength;
+          n.vy = (n.vy ?? 0) - uy * overlap * strength;
+          n.vz = (n.vz ?? 0) - uz * overlap * strength;
+        }
+      });
     };
+
+    // 6. Simulation
     const simulation = forceSimulation(simNodes as any)
-      .force("charge", forceManyBody().strength(-5))
-      //.force("center", forceCenter(0, 0, 0))
+      // --- CRITICAL FIX 4: DISTANCE MAX ---
+      // This is the most important change.
+      // We set distanceMax to roughly the max diameter of a cluster (e.g., 60).
+      // This prevents the Blue Cluster from repelling the Red Cluster nodes.
+      // They will ignore each other physics-wise.
+      .force("charge", forceManyBody().strength(-8).distanceMax(50))
+
+      .force("collide", forceCollide().radius(0.6).iterations(1))
       .force(
         "link",
         forceLink(simLinks as any)
-          .id((d: any) => (d as SimNode).id)
+          .id((d: any) => d.id)
           .distance((l: any) => {
-            const s = l.source as SimNode;
-            const t = l.target as SimNode;
-            if (!s.clusterId || !t.clusterId) return 4;
-            return s.clusterId === t.clusterId ? 2.5 : 9.0;
+            return l.source.clusterId === l.target.clusterId ? 5 : 0;
           })
           .strength((l: any) => {
-            const s = l.source as SimNode;
-            const t = l.target as SimNode;
-            if (!s.clusterId || !t.clusterId) return 0.08;
-            return s.clusterId === t.clusterId ? 0.12 : 0.04;
+            const source = l.source as SimNode;
+            const target = l.target as SimNode;
+            if (source.clusterId !== target.clusterId) return 0;
+            return 0.15;
           })
       )
-      .force("collide", forceCollide().radius(0.4).iterations(2))
-      .force("clusterSphere", clusterSphereForce())
-      .alpha(0.6)
+      .force("clusterGravity", clusterGravityForce)
+      .force("clusterContainment", clusterContainmentForce)
+      .alpha(1)
       .restart();
 
+    // 7. Animation
     simulation.on("tick", () => {
       simNodes.forEach((n) => {
         const entry = nodeEntryMap[n.id];
-        if (!entry) return;
-        entry.mesh.position.set(n.x, n.y, n.z);
+        if (entry) {
+          entry.mesh.position.set(n.x, n.y, n.z);
+        }
       });
 
       edgeObjs.forEach((e) => {
@@ -288,6 +368,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       });
     });
 
+    // 8. Interaction
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let hovered: THREE.Mesh | null = null;
@@ -295,43 +376,36 @@ export default function Graph3D({ data }: { data: GraphData }) {
 
     const resetNodeColors = () => {
       nodeMeshes.forEach((mesh) => {
-        const cid = mesh.userData.clusterId as string;
-        const id = mesh.userData.id as string;
-        const baseColor =
-          id === focusedNodeId
-            ? focusColor
-            : cid && clusterColors[cid]
-              ? clusterColors[cid]
-              : defaultNodeColor;
-        (mesh.material as THREE.MeshBasicMaterial).color.set(baseColor);
+        const id = mesh.userData.id;
+        const cid = mesh.userData.clusterId;
+        let c = clusters.get(cid)?.color ?? defaultNodeColor;
+
+        if (focusedNodeId) {
+          if (id === focusedNodeId) c = focusColor;
+          else c = 0x555555;
+        }
+        (mesh.material as THREE.MeshBasicMaterial).color.setHex(c);
       });
     };
+    resetNodeColors();
 
     const resetEdgeStyles = () => {
-      edgeObjs.forEach((e) => {
-        const connected =
+      edgeObjs.forEach((edge) => {
+        const mat = edge.line.material as THREE.LineBasicMaterial;
+        const isConnected =
           focusedNodeId &&
-          (e.sourceId === focusedNodeId || e.targetId === focusedNodeId);
+          (edge.sourceId === focusedNodeId || edge.targetId === focusedNodeId);
 
-        const mat = e.line.material as THREE.LineBasicMaterial;
-
-        if (e.isIntra) {
-          e.line.visible = true;
-          mat.color.set(connected ? focusColor : intraEdgeColor);
-          mat.opacity = connected ? 1.0 : 0.6;
-        } else {
-          if (connected) {
-            e.line.visible = true;
-            mat.color.set(focusColor);
-            mat.opacity = 1.0;
-          } else {
-            e.line.visible = false;
-          }
-        }
+        mat.color.setHex(
+          isConnected
+            ? focusColor
+            : edge.isIntra
+              ? intraEdgeColor
+              : interEdgeColor
+        );
+        mat.opacity = isConnected ? 0.8 : edge.isIntra ? 0.2 : 0.05;
       });
     };
-
-    resetNodeColors();
     resetEdgeStyles();
 
     const onMove = (e: MouseEvent) => {
@@ -342,7 +416,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       const isects = raycaster.intersectObjects(nodeMeshes, false);
 
       if (hovered && (!isects.length || isects[0].object !== hovered)) {
-        resetNodeColors();
+        if (!focusedNodeId) resetNodeColors();
         hovered = null;
         if (tooltipRef.current) tooltipRef.current.style.opacity = "0";
       }
@@ -350,50 +424,36 @@ export default function Graph3D({ data }: { data: GraphData }) {
       if (isects.length) {
         const obj = isects[0].object as THREE.Mesh;
         hovered = obj;
-        const id = obj.userData.id as string;
-
-        if (id !== focusedNodeId) {
-          (obj.material as THREE.MeshBasicMaterial).color.set(hoverColor);
-        }
+        if (!focusedNodeId)
+          (obj.material as THREE.MeshBasicMaterial).color.setHex(hoverColor);
 
         if (tooltipRef.current) {
-          tooltipRef.current.textContent = id ?? "";
+          tooltipRef.current.textContent = obj.userData.id;
           tooltipRef.current.style.left = `${e.clientX + 10}px`;
           tooltipRef.current.style.top = `${e.clientY + 10}px`;
           tooltipRef.current.style.opacity = "1";
         }
       }
     };
-    renderer.domElement.addEventListener("mousemove", onMove);
 
     const onClick = (e: MouseEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
-      const m = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      raycaster.setFromCamera(m, camera);
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
       const isects = raycaster.intersectObjects(nodeMeshes, false);
 
-      if (!isects.length) {
-        focusedNodeId = null;
-        resetNodeColors();
-        resetEdgeStyles();
-        return;
-      }
-
-      const mesh = isects[0].object as THREE.Mesh;
-      const id = mesh.userData.id as string;
-
-      if (focusedNodeId === id) {
-        focusedNodeId = null;
+      if (isects.length > 0) {
+        const id = isects[0].object.userData.id;
+        focusedNodeId = focusedNodeId === id ? null : id;
       } else {
-        focusedNodeId = id;
+        focusedNodeId = null;
       }
-
       resetNodeColors();
       resetEdgeStyles();
     };
+
+    renderer.domElement.addEventListener("mousemove", onMove);
     renderer.domElement.addEventListener("click", onClick);
 
     const onResize = () => {
@@ -430,14 +490,13 @@ export default function Graph3D({ data }: { data: GraphData }) {
         style={{
           position: "fixed",
           pointerEvents: "none",
-          padding: "4px 8px",
-          background: "rgba(0,0,0,0.7)",
+          padding: "6px 10px",
+          background: "rgba(0,0,0,0.8)",
           color: "#fff",
-          borderRadius: 6,
+          borderRadius: 4,
           fontSize: 12,
-          transform: "translate(-50%,-130%)",
           opacity: 0,
-          transition: "opacity 120ms",
+          transition: "opacity 0.2s",
           zIndex: 10,
         }}
       />

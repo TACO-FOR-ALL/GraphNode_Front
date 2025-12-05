@@ -1,4 +1,4 @@
-import * as d3 from "d3-force";
+import * as d3Force from "d3-force";
 import React, { useEffect, useRef, useState } from "react";
 
 type Node = {
@@ -14,53 +14,64 @@ type Edge = {
   target: number;
 };
 
-type SimNode = d3.SimulationNodeDatum &
+type SimNode = d3Force.SimulationNodeDatum &
   Node & {
     x: number;
     y: number;
     vx?: number;
     vy?: number;
+    edgeCount: number;
   };
 
 type PositionedNode = Node & {
   x: number;
   y: number;
+  edgeCount: number;
 };
 
 type PositionedEdge = Edge & {
   isIntraCluster: boolean;
 };
 
-type ClusterLayout = {
+type ClusterCircle = {
   clusterId: string;
+  clusterName: string;
   centerX: number;
   centerY: number;
   radius: number;
 };
 
-function preprocess(
+function classifyEdges(
   nodes: Node[],
   edges: Edge[]
-): { clusters: Map<string, Node[]>; edges: PositionedEdge[] } {
-  const clusters = new Map<string, Node[]>();
+): {
+  edges: PositionedEdge[];
+  nodeMap: Map<number, Node>;
+  edgeCounts: Map<number, number>;
+} {
+  const nodeMap = new Map<number, Node>();
+  nodes.forEach((n) => nodeMap.set(n.id, n));
 
-  nodes.forEach((n) => {
-    const list = clusters.get(n.cluster_id) ?? [];
-    list.push(n);
-    clusters.set(n.cluster_id, list);
+  // 노드별 엣지 수 계산
+  const edgeCounts = new Map<number, number>();
+  nodes.forEach((n) => edgeCounts.set(n.id, 0));
+
+  edges.forEach((e) => {
+    edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
+    edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
   });
 
   const positionedEdges = edges.map((e) => {
-    const s = nodes[e.source];
-    const t = nodes[e.target];
-    const isIntra = s.cluster_id === t.cluster_id;
-    return { ...e, isIntraCluster: isIntra };
+    const s = nodeMap.get(e.source);
+    const t = nodeMap.get(e.target);
+    const isIntra = s && t && s.cluster_id === t.cluster_id;
+    return { ...e, isIntraCluster: !!isIntra };
   });
 
-  return { clusters, edges: positionedEdges };
+  return { edges: positionedEdges, nodeMap, edgeCounts };
 }
 
-function layoutClustersWithForce(
+function layoutWithBoundedForce(
   nodes: Node[],
   edges: Edge[],
   width: number,
@@ -68,11 +79,19 @@ function layoutClustersWithForce(
 ): {
   nodes: PositionedNode[];
   edges: PositionedEdge[];
-  clusters: ClusterLayout[];
+  circles: ClusterCircle[];
 } {
-  const { clusters, edges: classifiedEdges } = preprocess(nodes, edges);
+  const { edges: classifiedEdges, edgeCounts } = classifyEdges(nodes, edges);
 
-  const clusterIds = Array.from(clusters.keys());
+  // 클러스터별 노드 그룹화
+  const clusterGroups = new Map<string, Node[]>();
+  nodes.forEach((n) => {
+    const list = clusterGroups.get(n.cluster_id) ?? [];
+    list.push(n);
+    clusterGroups.set(n.cluster_id, list);
+  });
+
+  const clusterIds = Array.from(clusterGroups.keys());
   const K = clusterIds.length;
 
   const centerX = width / 2;
@@ -80,20 +99,35 @@ function layoutClustersWithForce(
   const bigRadius = Math.min(width, height) * 0.35;
 
   const positionedNodes: PositionedNode[] = [];
-  const clusterLayouts: ClusterLayout[] = [];
+  const circles: ClusterCircle[] = [];
 
   clusterIds.forEach((clusterId, idx) => {
-    const clusterNodes = clusters.get(clusterId)!;
+    const clusterNodes = clusterGroups.get(clusterId)!;
 
     const theta = (2 * Math.PI * idx) / K;
     const cx = centerX + bigRadius * Math.cos(theta);
     const cy = centerY + bigRadius * Math.sin(theta);
 
     const n = clusterNodes.length;
-    const base = 80;
-    const scale = 8;
-    const clusterRadius = base + scale * Math.sqrt(n);
 
+    const tempNodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
+    const clusterEdges = classifiedEdges.filter(
+      (e) =>
+        e.isIntraCluster &&
+        tempNodeMap.has(e.source) &&
+        tempNodeMap.has(e.target)
+    );
+    const edgeCount = clusterEdges.length;
+
+    const baseRadius = 15; // 기본 최소 반경
+    const nodeScaleFactor = 8; // 노드 수에 따른 크기 증가율
+    const edgeScaleFactor = 4; // 엣지 수에 따른 크기 증가율
+    const clusterRadius =
+      baseRadius +
+      nodeScaleFactor * Math.sqrt(n) +
+      edgeScaleFactor * Math.sqrt(edgeCount);
+
+    // 이제 clusterRadius를 사용하여 simNodes를 생성합니다.
     const simNodes: SimNode[] = clusterNodes.map((node, i) => {
       const angle = (2 * Math.PI * i) / n;
       const r = clusterRadius * 0.3;
@@ -102,46 +136,38 @@ function layoutClustersWithForce(
         ...node,
         x: cx + r * Math.cos(angle) + (Math.random() - 0.5) * jitter,
         y: cy + r * Math.sin(angle) + (Math.random() - 0.5) * jitter,
+        edgeCount: edgeCounts.get(node.id) ?? 0,
       };
     });
 
-    const clusterEdges = classifiedEdges
-      .filter((e) => e.isIntraCluster)
-      .filter((e) => {
-        const s = nodes[e.source];
-        const t = nodes[e.target];
-        return s.cluster_id === clusterId && t.cluster_id === clusterId;
-      })
-      .map((e) => ({
-        source: simNodes.find((n) => n.id === e.source)!,
-        target: simNodes.find((n) => n.id === e.target)!,
-      }));
+    const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
 
-    const edgeCount = clusterEdges.length;
+    const simClusterEdges = clusterEdges.map((e) => ({
+      source: nodeMap.get(e.source)!,
+      target: nodeMap.get(e.target)!,
+    }));
+
     const density = edgeCount / Math.max(n, 1);
 
-    const chargeStrength = -15 - Math.sqrt(n) * 3 - density * 2;
-
-    const collideRadius = 10 + Math.min(10, density * 1.5);
-
-    const radialRadius = clusterRadius * 0.55;
-
+    const chargeStrength = -20 - Math.sqrt(n) * 3 - density * 2;
+    const collideRadius = 12 + Math.min(10, density * 1.5);
+    const radialRadius = clusterRadius * 0.3;
     const boundaryRadius = clusterRadius * 0.9;
 
-    const simulation = d3
+    const simulation = d3Force
       .forceSimulation<SimNode>(simNodes)
-      .force("center", d3.forceCenter(cx, cy))
-      .force("radial", d3.forceRadial(radialRadius, cx, cy).strength(0.03))
-      .force("charge", d3.forceManyBody().strength(chargeStrength))
+      .force("center", d3Force.forceCenter(cx, cy))
+      .force("radial", d3Force.forceRadial(0, cx, cy).strength(0.06))
+      .force("charge", d3Force.forceManyBody().strength(chargeStrength))
       .force(
         "link",
-        d3
-          .forceLink<SimNode, any>(clusterEdges)
+        d3Force
+          .forceLink<SimNode, any>(simClusterEdges)
           .id((d: any) => d.id)
-          .distance(25 + Math.min(15, density * 1.2))
+          .distance(20 + Math.min(15, density * 1.2))
           .strength(0.5)
       )
-      .force("collision", d3.forceCollide(collideRadius).iterations(3))
+      .force("collision", d3Force.forceCollide(collideRadius).iterations(3))
       .stop();
 
     for (let i = 0; i < 150; i++) {
@@ -168,31 +194,40 @@ function layoutClustersWithForce(
         num_messages: sn.num_messages,
         x: sn.x!,
         y: sn.y!,
+        edgeCount: sn.edgeCount,
       });
     });
 
-    clusterLayouts.push({
+    if (clusterNodes.length === 0) return;
+
+    circles.push({
       clusterId,
+      clusterName: clusterNodes[0].cluster_name,
       centerX: cx,
       centerY: cy,
-      radius: boundaryRadius,
+      radius: clusterRadius,
     });
   });
 
-  const positionedEdges: PositionedEdge[] = classifiedEdges.map((e) => ({
-    ...e,
-    isIntraCluster: e.isIntraCluster,
-  }));
-
+  // 클러스터별 원형 아웃라인 계산
   return {
     nodes: positionedNodes,
-    edges: positionedEdges,
-    clusters: clusterLayouts,
+    edges: classifiedEdges,
+    circles,
   };
 }
 
-const NODE_RADIUS = 3;
-const DRAG_MIN_DIST = 10;
+// 노드 크기 계산 (엣지 수 기반)
+const BASE_NODE_RADIUS = 3;
+const MAX_NODE_RADIUS = 5;
+
+function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
+  if (maxEdgeCount === 0) return BASE_NODE_RADIUS;
+  const scale = edgeCount / maxEdgeCount;
+  return (
+    BASE_NODE_RADIUS + (MAX_NODE_RADIUS - BASE_NODE_RADIUS) * Math.sqrt(scale)
+  );
+}
 
 type GraphProps = {
   rawNodes: Node[];
@@ -201,7 +236,7 @@ type GraphProps = {
   height: number;
 };
 
-export default function ClusterCircleGraph({
+export default function ClusterGraph({
   rawNodes,
   rawEdges,
   width,
@@ -209,7 +244,8 @@ export default function ClusterCircleGraph({
 }: GraphProps) {
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
-  const [clusters, setClusters] = useState<ClusterLayout[]>([]);
+  const [circles, setCircles] = useState<ClusterCircle[]>([]);
+  const [maxEdgeCount, setMaxEdgeCount] = useState(0);
 
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
@@ -224,6 +260,7 @@ export default function ClusterCircleGraph({
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
+  // 엣지 분류
   const normalIntraEdges = edges.filter((e) => {
     if (!e.isIntraCluster) return false;
     if (!focusNodeId) return true;
@@ -242,8 +279,16 @@ export default function ClusterCircleGraph({
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
+  const normalInterEdges = edges.filter((e) => {
+    if (e.isIntraCluster) return false;
+    if (focusNodeId === null) return true;
+    return e.source !== focusNodeId && e.target !== focusNodeId;
+  });
+
   useEffect(() => {
-    const { nodes, edges, clusters } = layoutClustersWithForce(
+    if (rawNodes.length === 0) return;
+
+    const { nodes, edges, circles } = layoutWithBoundedForce(
       rawNodes,
       rawEdges,
       width,
@@ -251,12 +296,13 @@ export default function ClusterCircleGraph({
     );
     setNodes(nodes);
     setEdges(edges);
-    setClusters(clusters);
+    setCircles(circles);
+
+    const max = Math.max(...nodes.map((n) => n.edgeCount), 1);
+    setMaxEdgeCount(max);
   }, [rawNodes, rawEdges, width, height]);
 
-  const nodeById = (id: number) => nodes.find((n) => n.id === id)!;
-  const clusterById = (clusterId: string) =>
-    clusters.find((c) => c.clusterId === clusterId)!;
+  const nodeById = (id: number) => nodes.find((n) => n.id === id);
 
   const screenToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current!;
@@ -302,41 +348,15 @@ export default function ClusterCircleGraph({
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (draggingNodeId !== null && dragNodeOffset.current) {
       const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-      const node = nodeById(draggingNodeId);
-      const cluster = clusterById(node.cluster_id);
 
-      let newX = worldX + dragNodeOffset.current.dx;
-      let newY = worldY + dragNodeOffset.current.dy;
-
-      const dxCenter = newX - cluster.centerX;
-      const dyCenter = newY - cluster.centerY;
-      const distCenter = Math.sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
-      if (distCenter > cluster.radius) {
-        const k = cluster.radius / distCenter;
-        newX = cluster.centerX + dxCenter * k;
-        newY = cluster.centerY + dyCenter * k;
-      }
-
-      const sameClusterNodes = nodes.filter(
-        (n) => n.cluster_id === node.cluster_id && n.id !== node.id
-      );
-      sameClusterNodes.forEach((other) => {
-        const dx = newX - other.x;
-        const dy = newY - other.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0 && dist < DRAG_MIN_DIST) {
-          const k = DRAG_MIN_DIST / dist;
-          newX = other.x + dx * k;
-          newY = other.y + dy * k;
-        }
-      });
+      const newX = worldX + dragNodeOffset.current.dx;
+      const newY = worldY + dragNodeOffset.current.dy;
 
       setNodes((prev) =>
         prev.map((n) =>
           n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n
         )
       );
-
       return;
     }
 
@@ -368,6 +388,7 @@ export default function ClusterCircleGraph({
     e.stopPropagation();
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
     const node = nodeById(nodeId);
+    if (!node) return;
 
     dragNodeOffset.current = {
       dx: node.x - worldX,
@@ -378,9 +399,11 @@ export default function ClusterCircleGraph({
 
   return (
     <div style={{ position: "relative", overflow: "hidden" }}>
+      {/* 툴팁 */}
       {hoveredId != null &&
         (() => {
           const n = nodeById(hoveredId);
+          if (!n) return null;
           const left = n.x * scale + offset.x;
           const top = n.y * scale + offset.y - 24;
 
@@ -398,6 +421,7 @@ export default function ClusterCircleGraph({
                 borderRadius: 4,
                 pointerEvents: "none",
                 whiteSpace: "nowrap",
+                zIndex: 10,
               }}
             >
               {n.orig_id}
@@ -426,24 +450,60 @@ export default function ClusterCircleGraph({
         onWheel={handleWheel}
       >
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-          {clusters.map((c) => (
+          {/* 클러스터 원형 아웃라인 */}
+          {circles.map((circle) => (
+            <g key={`circle-${circle.clusterId}`}>
+              <circle
+                cx={circle.centerX}
+                cy={circle.centerY}
+                r={circle.radius}
+                fill="#f5f5f5"
+                stroke="#e0e0e0"
+                strokeWidth={1}
+                style={{ pointerEvents: "none" }}
+              />
+            </g>
+          ))}
+
+          {/* 클러스터 라벨 */}
+          {circles.map((circle) => (
             <text
-              key={c.clusterId}
-              x={c.centerX}
-              y={c.centerY - c.radius - 10}
+              key={`label-${circle.clusterId}`}
+              x={circle.centerX}
+              y={circle.centerY - circle.radius - 12}
               textAnchor="middle"
               fontSize={16}
               fontWeight={600}
               fill="#ccc"
               style={{ pointerEvents: "none" }}
             >
-              {c.clusterId}
+              {circle.clusterId}
             </text>
           ))}
 
+          {/* Inter-cluster 엣지 (일반) */}
+          {normalInterEdges.map((e, idx) => {
+            const s = nodeById(e.source);
+            const t = nodeById(e.target);
+            if (!s || !t) return null;
+            return (
+              <line
+                key={`inter-normal-${idx}`}
+                x1={s.x}
+                y1={s.y}
+                x2={t.x}
+                y2={t.y}
+                stroke="#f0f0f0" // 아주 연한 색
+                strokeWidth={0.5}
+              />
+            );
+          })}
+
+          {/* Intra-cluster 엣지 (일반) */}
           {normalIntraEdges.map((e, idx) => {
             const s = nodeById(e.source);
             const t = nodeById(e.target);
+            if (!s || !t) return null;
             return (
               <line
                 key={`intra-normal-${idx}`}
@@ -457,9 +517,11 @@ export default function ClusterCircleGraph({
             );
           })}
 
+          {/* 포커스된 노드의 엣지 */}
           {[...focusedIntraEdges, ...focusedInterEdges].map((e, idx) => {
             const s = nodeById(e.source);
             const t = nodeById(e.target);
+            if (!s || !t) return null;
             return (
               <line
                 key={`focus-${idx}`}
@@ -468,15 +530,19 @@ export default function ClusterCircleGraph({
                 x2={t.x}
                 y2={t.y}
                 stroke="#ff4d4f"
-                strokeWidth={0.5}
+                strokeWidth={1.5}
               />
             );
           })}
 
+          {/* 노드 */}
           {nodes.map((n) => {
             const isHovered = hoveredId === n.id;
             const isFocused = focusNodeId === n.id;
-            const radius = isHovered ? 6 : NODE_RADIUS;
+
+            const baseRadius = getNodeRadius(n.edgeCount, maxEdgeCount);
+            const radius = isHovered ? baseRadius + 2 : baseRadius;
+
             const fill = isFocused
               ? "#ff4d4f"
               : isHovered
