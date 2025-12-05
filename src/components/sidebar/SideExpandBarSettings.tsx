@@ -13,6 +13,9 @@ import KeybindsIcon from "@/assets/icons/keybinds.svg";
 import KeybindsIconActive from "@/assets/icons/keybinds_active.svg";
 import LanguageTimeIcon from "@/assets/icons/language.svg";
 import LanguageTimeIconActive from "@/assets/icons/language_active.svg";
+import LogoutIcon from "@/assets/icons/logout.svg";
+import LogoutIconActive from "@/assets/icons/logout_active.svg";
+import { api } from "@/apiClient";
 
 export default function SideExpandBarSettings() {
   const { t } = useTranslation();
@@ -55,41 +58,56 @@ export default function SideExpandBarSettings() {
   ];
 
   return (
-    <div className="px-3 flex flex-col items-start justify-start">
+    <div className="px-3 flex flex-col items-start justify-start h-full">
       {/* Settings Category Top */}
-
-      <SettingsCategoryText text="User Settings" />
-      <div className="flex flex-col gap-[6px]">
-        {USER_SETTINGS.map((setting) => (
-          <SettingsCategoryButton
-            id={setting.id}
-            key={setting.id}
-            text={t(`settings.userSettings.${setting.id}`)}
-            icon={setting.icon}
-            iconActive={setting.iconActive}
-            onClick={() =>
-              setSelectedCategory({ id: setting.id } as SettingsCategory)
-            }
-            isSelected={selectedCategory.id === setting.id}
-          />
-        ))}
+      <div className="flex-1 flex flex-col">
+        <SettingsCategoryText text="User Settings" />
+        <div className="flex flex-col gap-[6px]">
+          {USER_SETTINGS.map((setting) => (
+            <SettingsCategoryButton
+              id={setting.id}
+              key={setting.id}
+              text={t(`settings.userSettings.${setting.id}`)}
+              icon={setting.icon}
+              iconActive={setting.iconActive}
+              onClick={() =>
+                setSelectedCategory({ id: setting.id } as SettingsCategory)
+              }
+              isSelected={selectedCategory.id === setting.id}
+            />
+          ))}
+        </div>
+        <div className="h-[6px]" />
+        <SettingsCategoryText text="App Settings" />
+        <div className="flex flex-col gap-[6px]">
+          {APP_SETTINGS.map((setting) => (
+            <SettingsCategoryButton
+              id={setting.id}
+              key={setting.id}
+              text={t(`settings.appSettings.${setting.id}`)}
+              icon={setting.icon}
+              iconActive={setting.iconActive}
+              onClick={() =>
+                setSelectedCategory({ id: setting.id } as SettingsCategory)
+              }
+              isSelected={selectedCategory.id === setting.id}
+            />
+          ))}
+        </div>
       </div>
-      <div className="h-[6px]" />
-      <SettingsCategoryText text="App Settings" />
-      <div className="flex flex-col gap-[6px]">
-        {APP_SETTINGS.map((setting) => (
-          <SettingsCategoryButton
-            id={setting.id}
-            key={setting.id}
-            text={t(`settings.appSettings.${setting.id}`)}
-            icon={setting.icon}
-            iconActive={setting.iconActive}
-            onClick={() =>
-              setSelectedCategory({ id: setting.id } as SettingsCategory)
-            }
-            isSelected={selectedCategory.id === setting.id}
-          />
-        ))}
+      {/* Settings Category Bottom */}
+      <div className="mt-auto pb-3">
+        <SettingsCategoryButton
+          id="logout"
+          text={t("settings.logout")}
+          icon={LogoutIcon}
+          iconActive={LogoutIconActive}
+          onClick={async () => {
+            await api.me.logout();
+            window.electron?.send("auth-logout");
+          }}
+          isSelected={false}
+        />
       </div>
     </div>
   );

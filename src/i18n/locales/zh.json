@@ -22,6 +22,19 @@
       "en": "English",
       "zh": "简体中文"
     },
+    "userSettings": {
+      "title": "用户设置",
+      "my-account": "我的账号",
+      "data-privacy": "数据与隐私"
+    },
+    "appSettings": {
+      "title": "APP设置",
+      "appearance": "外观",
+      "notification": "通知",
+      "keybinds": "快捷键",
+      "language-time": "语言和时间"
+    },
+    "logout": "登出",
     "dropJsonZone": {
       "title": "拖拽 & 上传 JSON 文件",
       "description": "将 <b className=\"font-semibold\">conversation.json</b> 文件拖拽到这里",

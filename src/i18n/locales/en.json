@@ -22,6 +22,19 @@
       "en": "English",
       "zh": "简体中文"
     },
+    "userSettings": {
+      "title": "User Settings",
+      "my-account": "My Account",
+      "data-privacy": "Data & Privacy"
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "appearance": "Appearance",
+      "notification": "Notification",
+      "keybinds": "Keybinds",
+      "language-time": "Language & Time"
+    },
+    "logout": "Logout",
     "dropJsonZone": {
       "title": "Drag & Drop JSON File Upload",
       "description": "Drop your <b className=\"font-semibold\">conversation.json</b> file here",

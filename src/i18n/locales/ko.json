@@ -22,6 +22,19 @@
       "en": "English",
       "zh": "简体中文"
     },
+    "userSettings": {
+      "title": "사용자 설정",
+      "my-account": "내 계정",
+      "data-privacy": "데이터 및 개인정보"
+    },
+    "appSettings": {
+      "title": "앱 설정",
+      "appearance": "디스플레이",
+      "notification": "알림",
+      "keybinds": "단축키",
+      "language-time": "언어 및 시간"
+    },
+    "logout": "로그아웃",
     "dropJsonZone": {
       "title": "드래그 & 드롭으로 JSON 파일 업로드하기",
       "description": "여기로 <b className=\"font-semibold\">conversation.json</b> 파일을 끌어다 놓으세요",

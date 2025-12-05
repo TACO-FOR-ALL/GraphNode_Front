@@ -22,7 +22,6 @@ export default function Login() {
         const result = await api.me.get();
 
         if (result.isSuccess) {
-          alert("success");
           setHasSession(true);
           window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
           return; // 세션 있을 시 로그인 UI 안 보기
