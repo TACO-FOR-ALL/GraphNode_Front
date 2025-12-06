@@ -22,9 +22,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { common, createLowlight } from "lowlight";
 import { noteRepo } from "@/managers/noteRepo";
 import { CustomReactNode } from "./CustomReactComponent";
-import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
+import { agentAnswerNoteStream } from "@/managers/agentClient";
+import { useAgentToolBoxStore } from "@/store/useAgentToolBoxStore";
+import { useNoteGenerationStore } from "@/store/useNoteGenerationStore";
 
 const lowlight = createLowlight(common);
 
@@ -35,6 +37,8 @@ export default ({ noteId }: { noteId: string | null }) => {
   const queryClient = useQueryClient();
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | null>(null);
   const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { setIsOpen, setResponse } = useAgentToolBoxStore();
+  const { phase } = useNoteGenerationStore();
 
   const editor = useEditor({
     extensions: [
@@ -204,8 +208,72 @@ export default ({ noteId }: { noteId: string | null }) => {
     };
   }, []);
 
+  const handleAskSummary = async () => {
+    if (!editor) return;
+
+    const markdown = editor.getMarkdown();
+
+    setIsOpen(true);
+    setResponse(null);
+
+    try {
+      let accumulatedText = "";
+
+      const answer = await agentAnswerNoteStream({
+        instruction: "이 노트의 핵심 내용을 간단하게 정리해서 알려줘.",
+        currentContent: markdown,
+        callbacks: {
+          onStatus: (event) => {
+            const statusMessages: Record<string, string> = {
+              analyzing: "노트 내용 분석 중...",
+              writing: "최종 정리 중...",
+              done: "완료",
+            };
+            const message =
+              statusMessages[event.phase] || event.message || "처리 중...";
+            setResponse(message);
+          },
+          onChunk: (event) => {
+            accumulatedText += event.text;
+            setResponse(accumulatedText);
+          },
+          onResult: (event) => {
+            setResponse(event.noteContent);
+          },
+          onError: (event) => {
+            setResponse(`오류가 발생했습니다: ${event.message}`);
+          },
+        },
+      });
+
+      // 최종 응답이 없으면 누적된 텍스트 사용
+      if (!answer && accumulatedText) {
+        setResponse(accumulatedText);
+      } else if (answer) {
+        setResponse(answer);
+      }
+    } catch (e) {
+      console.error(e);
+
+      setResponse(
+        `오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
+
   return (
     <div className="markdown-parser-demo bg-white border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative">
+      <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
+        <button
+          disabled={phase !== "idle"}
+          onClick={handleAskSummary}
+          className="px-2 py-[2px] text-[11px] border border-gray-300 rounded-md hover:bg-gray-50 shadow-[0_2px_20px_0_#badaff]"
+        >
+          AI Summarize
+        </button>
+      </div>
+
+      {/* 기존 저장 상태 UI (우측 상단) 그대로 */}
       {saveStatus && (
         <div className="absolute top-1 right-2 flex items-center gap-2 p-2 justify-center">
           {saveStatus === "saving" && (
@@ -216,7 +284,7 @@ export default ({ noteId }: { noteId: string | null }) => {
           </p>
         </div>
       )}
-      <div className="editor-container">
+      <div className="editor-container pt-6">
         {editor ? (
           <EditorContent editor={editor} />
         ) : (
