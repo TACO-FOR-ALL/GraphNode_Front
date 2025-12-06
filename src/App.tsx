@@ -1,5 +1,5 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
@@ -10,6 +10,8 @@ import Notes from "./routes/Notes";
 import Search from "./routes/Search";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
+import AgentToolTipButton from "./components/layout/AgentToolTipButton";
+import AiToolTip from "./components/layout/AiToolTip";
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ function MainLayout() {
       console.log("Initialized default note");
     }
   }, []);
+
+  const [openAgentTooltip, setOpenAgentTooltip] = useState(false);
 
   return (
     <div
@@ -71,6 +75,10 @@ function MainLayout() {
             <Route path="/search" element={<Search />} />
           </Routes>
         </div>
+        <AgentToolTipButton setOpenAgentTooltip={setOpenAgentTooltip} />
+        {openAgentTooltip && (
+          <AiToolTip setOpenAgentTooltip={setOpenAgentTooltip} />
+        )}
       </div>
     </div>
   );
