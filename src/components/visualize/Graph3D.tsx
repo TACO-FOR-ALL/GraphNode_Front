@@ -34,6 +34,13 @@ type ClusterInfo = {
   intraEdgeCount: number;
 };
 
+type SimCluster = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+};
 export default function Graph3D({ data }: { data: GraphData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -144,6 +151,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       info.radius = baseRadius + nodeRadius + edgeRadius;
     });
 
+    const simClusters: SimCluster[] = [];
     // Calculate edge count per node for sizing
     const nodeEdgeCounts = new Map<string, number>();
     data.nodes.forEach((n) => nodeEdgeCounts.set(String(n.id), 0));
@@ -155,8 +163,8 @@ export default function Graph3D({ data }: { data: GraphData }) {
     });
 
     const maxEdgeCount = Math.max(...Array.from(nodeEdgeCounts.values()), 1);
-    const MIN_NODE_RADIUS = 0.4;
-    const MAX_NODE_RADIUS = 0.6;
+    const MIN_NODE_RADIUS = 0.6;
+    const MAX_NODE_RADIUS = 0.9;
 
     const getNodeRadius = (nodeId: string) => {
       const count = nodeEdgeCounts.get(nodeId) ?? 0;
@@ -175,6 +183,13 @@ export default function Graph3D({ data }: { data: GraphData }) {
     // -- A. Cluster Boundary Spheres
     clusterIds.forEach((cid) => {
       const info = clusters.get(cid)!;
+      simClusters.push({
+        id: cid,
+        x: info.center.x,
+        y: info.center.y,
+        z: info.center.z,
+        radius: info.radius,
+      });
 
       const geometry = new THREE.SphereGeometry(info.radius, 48, 48);
       const material = new THREE.MeshBasicMaterial({
@@ -186,6 +201,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       });
       const sphere = new THREE.Mesh(geometry, material);
       sphere.position.copy(info.center);
+      sphere.userData = { isClusterSphere: true, clusterId: cid }; // Tag for cluster sim
       scene.add(sphere);
 
       const edges = new THREE.EdgesGeometry(geometry);
@@ -196,6 +212,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       });
       const wireframe = new THREE.LineSegments(edges, lineMat);
       wireframe.position.copy(info.center);
+      wireframe.userData = { isClusterSphere: true, clusterId: cid }; // Tag for cluster sim
       scene.add(wireframe);
     });
 
@@ -255,7 +272,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       const tNode = nodeEntryMap[tId];
       if (!sNode || !tNode) return;
 
-      const isIntra = sNode.clusterId === tNode.clusterId;
+      const isIntra = sNode.clusterId === tNode.clusterId; // This is correct here
 
       const mat = new THREE.LineBasicMaterial({
         color: isIntra ? intraEdgeColor : interEdgeColor,
@@ -336,14 +353,14 @@ export default function Graph3D({ data }: { data: GraphData }) {
         "link",
         forceLink(simLinks as any)
           .id((d: any) => d.id)
-          .distance((l: any) => {
-            return l.source.clusterId === l.target.clusterId ? 5 : 0;
-          })
+          .distance(
+            (l: any) => (l.source.clusterId === l.target.clusterId ? 5 : 100) // Inter-cluster link distance
+          )
           .strength((l: any) => {
             const source = l.source as SimNode;
             const target = l.target as SimNode;
-            if (source.clusterId !== target.clusterId) return 0;
-            return 0.15;
+            // Weaker strength for inter-cluster links
+            return source.clusterId === target.clusterId ? 0.15 : 0.08;
           })
       )
       .force("clusterGravity", clusterGravityForce)
@@ -351,12 +368,43 @@ export default function Graph3D({ data }: { data: GraphData }) {
       .alpha(1)
       .restart();
 
+    // --- NEW: Cluster Repulsion Simulation ---
+    const clusterSim = forceSimulation(simClusters as any)
+      .force(
+        "charge",
+        forceManyBody()
+          .strength(-1) // Weak repulsion is enough
+          .distanceMax(500)
+      )
+      .force(
+        "collide",
+        forceCollide()
+          .radius((c: any) => c.radius * 1.2) // Use radius + 20% padding
+          .strength(0.8)
+      )
+      .alpha(0.5)
+      .restart();
+
     // 7. Animation
+    clusterSim.on("tick", () => {
+      simClusters.forEach((sc) => {
+        clusters.get(sc.id)!.center.set(sc.x, sc.y, sc.z);
+      });
+    });
     simulation.on("tick", () => {
       simNodes.forEach((n) => {
         const entry = nodeEntryMap[n.id];
         if (entry) {
           entry.mesh.position.set(n.x, n.y, n.z);
+        }
+      });
+
+      // Update cluster sphere positions from the cluster simulation
+      scene.children.forEach((child) => {
+        if (child.userData.isClusterSphere) {
+          const cid = child.userData.clusterId;
+          const clusterInfo = clusters.get(cid);
+          if (clusterInfo) child.position.copy(clusterInfo.center);
         }
       });
 
@@ -382,7 +430,8 @@ export default function Graph3D({ data }: { data: GraphData }) {
 
         if (focusedNodeId) {
           if (id === focusedNodeId) c = focusColor;
-          else c = 0x555555;
+          // When a node is focused, other nodes now retain their original color
+          // instead of turning gray, so the else statement is removed.
         }
         (mesh.material as THREE.MeshBasicMaterial).color.setHex(c);
       });
@@ -403,7 +452,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
               ? intraEdgeColor
               : interEdgeColor
         );
-        mat.opacity = isConnected ? 0.8 : edge.isIntra ? 0.2 : 0.05;
+        mat.opacity = isConnected ? 0.8 : edge.isIntra ? 0.3 : 0.03;
       });
     };
     resetEdgeStyles();
@@ -477,6 +526,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       renderer.domElement.removeEventListener("mousemove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
       simulation.stop();
+      clusterSim.stop();
       renderer.dispose();
       scene.clear();
     };
