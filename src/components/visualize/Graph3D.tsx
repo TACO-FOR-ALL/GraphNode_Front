@@ -40,7 +40,11 @@ type SimCluster = {
   y: number;
   z: number;
   radius: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
 };
+
 export default function Graph3D({ data }: { data: GraphData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -121,19 +125,12 @@ export default function Graph3D({ data }: { data: GraphData }) {
 
     const clusterIds = Array.from(clusters.keys());
 
-    // Layout Calculation
-    const layoutDistance = 100; // Distance between cluster centers
-
     clusterIds.forEach((cid, idx) => {
       const info = clusters.get(cid)!;
-      const angle = (idx / clusterIds.length) * Math.PI * 2;
-
-      // Position clusters
-      info.center.set(
-        Math.cos(angle) * layoutDistance,
-        Math.sin(angle) * layoutDistance * 0.7,
-        Math.sin(angle * 2) * (layoutDistance * 0.3)
-      );
+      // By removing the deterministic layout calculation,
+      // all clusters will start at their default position (0,0,0).
+      // The cluster simulation will then push them apart organically
+      // based on repulsion and attraction forces.
 
       // --- CRITICAL FIX 1: DENSITY NORMALIZATION ---
       // Use Cubic Root (Math.cbrt) instead of Sqrt.
@@ -149,6 +146,15 @@ export default function Graph3D({ data }: { data: GraphData }) {
       const nodeRadius = Math.pow(nodeCount, 1 / 3) * nodeVolumeFactor;
       const edgeRadius = Math.pow(edgeCount, 1 / 3) * edgeVolumeFactor;
       info.radius = baseRadius + nodeRadius + edgeRadius;
+    });
+
+    // --- NEW: Calculate Inter-Cluster Edge Counts ---
+    const interClusterEdgeCounts: Record<string, Record<string, number>> = {};
+    clusterIds.forEach((id1) => {
+      interClusterEdgeCounts[id1] = {}; // Initialize inner object for id1
+      clusterIds.forEach((id2) => {
+        interClusterEdgeCounts[id1][id2] = 0; // Then set value for each id2
+      });
     });
 
     const simClusters: SimCluster[] = [];
@@ -173,6 +179,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
     };
 
     // 4. Create Visuals
+
     const nodeMeshes: THREE.Mesh[] = [];
     const simNodes: SimNode[] = [];
     const nodeEntryMap: Record<
@@ -290,6 +297,18 @@ export default function Graph3D({ data }: { data: GraphData }) {
       edgeObjs.push({ line, sourceId: sId, targetId: tId, isIntra });
     });
 
+    // Calculate inter-cluster edge counts (moved here, after nodeEntryMap is populated)
+    data.edges.forEach((edge) => {
+      const sourceId = String(edge.source);
+      const targetId = String(edge.target);
+      const sourceCid = nodeEntryMap[sourceId]?.clusterId;
+      const targetCid = nodeEntryMap[targetId]?.clusterId;
+      if (sourceCid && targetCid && sourceCid !== targetCid) {
+        interClusterEdgeCounts[sourceCid][targetCid] =
+          (interClusterEdgeCounts[sourceCid][targetCid] || 0) + 1;
+      }
+    });
+
     // 5. Physics Forces
 
     // --- CRITICAL FIX 2: STRONGER LOCAL GRAVITY ---
@@ -354,7 +373,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
         forceLink(simLinks as any)
           .id((d: any) => d.id)
           .distance(
-            (l: any) => (l.source.clusterId === l.target.clusterId ? 5 : 100) // Inter-cluster link distance
+            (l: any) => (l.source.clusterId === l.target.clusterId ? 5 : 50) // Inter-cluster link distance
           )
           .strength((l: any) => {
             const source = l.source as SimNode;
@@ -369,13 +388,47 @@ export default function Graph3D({ data }: { data: GraphData }) {
       .restart();
 
     // --- NEW: Cluster Repulsion Simulation ---
+    const interClusterAttractionForce = (alpha: number) => {
+      simClusters.forEach((cluster1) => {
+        simClusters.forEach((cluster2) => {
+          if (cluster1.id === cluster2.id) return;
+          const edgeCount =
+            interClusterEdgeCounts[cluster1.id][cluster2.id] || 0;
+          if (edgeCount > 0) {
+            const dx = cluster2.x - cluster1.x;
+            const dy = cluster2.y - cluster1.y;
+            const dz = cluster2.z - cluster1.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9; // Use 1e-9 to prevent division by zero
+            const strength = 0.04 * edgeCount * alpha; // Significantly increased strength (from 0.001 to 0.1)
+            cluster1.vx = (cluster1.vx ?? 0) + (dx / dist) * strength;
+            cluster1.vy = (cluster1.vy ?? 0) + (dy / dist) * strength;
+            cluster1.vz = (cluster1.vz ?? 0) + (dz / dist) * strength;
+          }
+        });
+      });
+    };
+
+    // --- NEW: Global Centering Force for Clusters ---
+    // This force gently pulls all clusters towards the center of the scene,
+    // preventing unconnected clusters from drifting too far away.
+    const globalClusterCenteringForce = (alpha: number) => {
+      const k = 0.005 * alpha; // A very gentle pull towards the origin (0,0,0)
+      simClusters.forEach((c) => {
+        c.vx = (c.vx ?? 0) - c.x * k;
+        c.vy = (c.vy ?? 0) - c.y * k;
+        c.vz = (c.vz ?? 0) - c.z * k;
+      });
+    };
+
     const clusterSim = forceSimulation(simClusters as any)
       .force(
         "charge",
         forceManyBody()
-          .strength(-1) // Weak repulsion is enough
+          .strength(-1) // Reduced repulsion to allow attraction to be more effective
           .distanceMax(500)
       )
+      .force("interClusterAttraction", interClusterAttractionForce)
+      .force("globalCentering", globalClusterCenteringForce)
       .force(
         "collide",
         forceCollide()
