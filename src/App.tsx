@@ -1,5 +1,5 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
@@ -11,7 +11,8 @@ import Search from "./routes/Search";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
-import AiToolTip from "./components/layout/AiToolTip";
+import AiToolBox from "./components/layout/AiToolBox";
+import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 
 export default function App() {
   return (
@@ -38,7 +39,7 @@ function MainLayout() {
     }
   }, []);
 
-  const [openAgentTooltip, setOpenAgentTooltip] = useState(false);
+  const { isOpen, setIsOpen } = useAgentToolBoxStore();
 
   return (
     <div
@@ -75,10 +76,8 @@ function MainLayout() {
             <Route path="/search" element={<Search />} />
           </Routes>
         </div>
-        <AgentToolTipButton setOpenAgentTooltip={setOpenAgentTooltip} />
-        {openAgentTooltip && (
-          <AiToolTip setOpenAgentTooltip={setOpenAgentTooltip} />
-        )}
+        <AgentToolTipButton setIsOpen={setIsOpen} />
+        {isOpen && <AiToolBox setIsOpen={setIsOpen} />}
       </div>
     </div>
   );

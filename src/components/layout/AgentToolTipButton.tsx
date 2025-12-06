@@ -1,14 +1,14 @@
 import logo from "@/assets/icons/logo.svg";
 
 export default function AgentToolTipButton({
-  setOpenAgentTooltip,
+  setIsOpen,
 }: {
-  setOpenAgentTooltip: (open: boolean) => void;
+  setIsOpen: (isOpen: boolean) => void;
 }) {
   return (
     <div
       className="absolute bottom-9 right-9 z-50 group"
-      onClick={() => setOpenAgentTooltip(true)}
+      onClick={() => setIsOpen(true)}
     >
       <div className="w-16 h-16 cursor-pointer flex items-center justify-center bg-white rounded-full shadow-[0_2px_20px_0_#badaff] hover:rotate-360 transition-all duration-500 relative">
         <img
