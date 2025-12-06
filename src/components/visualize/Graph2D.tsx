@@ -64,7 +64,7 @@ function classifyEdges(
   const positionedEdges = edges.map((e) => {
     const s = nodeMap.get(e.source);
     const t = nodeMap.get(e.target);
-    const isIntra = s && t && s.cluster_id === t.cluster_id;
+    const isIntra = s && t && s.cluster_name === t.cluster_name;
     return { ...e, isIntraCluster: !!isIntra };
   });
 
@@ -86,23 +86,24 @@ function layoutWithBoundedForce(
   // 클러스터별 노드 그룹화
   const clusterGroups = new Map<string, Node[]>();
   nodes.forEach((n) => {
-    const list = clusterGroups.get(n.cluster_id) ?? [];
+    // cluster_name을 기준으로 그룹화
+    const list = clusterGroups.get(n.cluster_name) ?? [];
     list.push(n);
-    clusterGroups.set(n.cluster_id, list);
+    clusterGroups.set(n.cluster_name, list);
   });
 
-  const clusterIds = Array.from(clusterGroups.keys());
-  const K = clusterIds.length;
+  const clusterNames = Array.from(clusterGroups.keys());
+  const K = clusterNames.length;
 
   const centerX = width / 2;
   const centerY = height / 2;
-  const bigRadius = Math.min(width, height) * 0.35;
+  const bigRadius = Math.min(width, height) * 0.4;
 
-  const positionedNodes: PositionedNode[] = [];
+  const allSimNodes: SimNode[] = [];
   const circles: ClusterCircle[] = [];
 
-  clusterIds.forEach((clusterId, idx) => {
-    const clusterNodes = clusterGroups.get(clusterId)!;
+  clusterNames.forEach((clusterName, idx) => {
+    const clusterNodes = clusterGroups.get(clusterName)!;
 
     const theta = (2 * Math.PI * idx) / K;
     const cx = centerX + bigRadius * Math.cos(theta);
@@ -111,13 +112,13 @@ function layoutWithBoundedForce(
     const n = clusterNodes.length;
 
     const tempNodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
-    const clusterEdges = classifiedEdges.filter(
+    const intraClusterEdges = classifiedEdges.filter(
       (e) =>
         e.isIntraCluster &&
         tempNodeMap.has(e.source) &&
         tempNodeMap.has(e.target)
     );
-    const edgeCount = clusterEdges.length;
+    const edgeCount = intraClusterEdges.length;
 
     const baseRadius = 15; // 기본 최소 반경
     const nodeScaleFactor = 8; // 노드 수에 따른 크기 증가율
@@ -142,7 +143,7 @@ function layoutWithBoundedForce(
 
     const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
 
-    const simClusterEdges = clusterEdges.map((e) => ({
+    const simClusterEdges = intraClusterEdges.map((e) => ({
       source: nodeMap.get(e.source)!,
       target: nodeMap.get(e.target)!,
     }));
@@ -185,29 +186,29 @@ function layoutWithBoundedForce(
       });
     }
 
-    simNodes.forEach((sn) => {
-      positionedNodes.push({
-        id: sn.id,
-        orig_id: sn.orig_id,
-        cluster_id: sn.cluster_id,
-        cluster_name: sn.cluster_name,
-        num_messages: sn.num_messages,
-        x: sn.x!,
-        y: sn.y!,
-        edgeCount: sn.edgeCount,
-      });
-    });
+    allSimNodes.push(...simNodes);
 
     if (clusterNodes.length === 0) return;
 
     circles.push({
-      clusterId,
-      clusterName: clusterNodes[0].cluster_name,
+      clusterId: clusterName, // clusterName을 ID로 사용
+      clusterName: clusterName,
       centerX: cx,
       centerY: cy,
       radius: clusterRadius,
     });
   });
+
+  const positionedNodes: PositionedNode[] = allSimNodes.map((sn) => ({
+    id: sn.id,
+    orig_id: sn.orig_id,
+    cluster_id: sn.cluster_id,
+    cluster_name: sn.cluster_name,
+    num_messages: sn.num_messages,
+    x: sn.x!,
+    y: sn.y!,
+    edgeCount: sn.edgeCount,
+  }));
 
   // 클러스터별 원형 아웃라인 계산
   return {
@@ -257,6 +258,10 @@ export default function ClusterGraph({
 
   const [draggingNodeId, setDraggingNodeId] = useState<number | null>(null);
   const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
+  const [draggingClusterId, setDraggingClusterId] = useState<string | null>(
+    null
+  );
+  const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -281,8 +286,7 @@ export default function ClusterGraph({
 
   const normalInterEdges = edges.filter((e) => {
     if (e.isIntraCluster) return false;
-    if (focusNodeId === null) return true;
-    return e.source !== focusNodeId && e.target !== focusNodeId;
+    return true;
   });
 
   useEffect(() => {
@@ -346,6 +350,38 @@ export default function ClusterGraph({
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (draggingClusterId && dragClusterOffset.current) {
+      const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
+      const newCenterX = worldX + dragClusterOffset.current.dx;
+      const newCenterY = worldY + dragClusterOffset.current.dy;
+
+      const originalCircle = circles.find(
+        (c) => c.clusterId === draggingClusterId
+      );
+      if (!originalCircle) return;
+
+      const dx = newCenterX - originalCircle.centerX;
+      const dy = newCenterY - originalCircle.centerY;
+
+      setCircles((prev) =>
+        prev.map((c) =>
+          c.clusterId === draggingClusterId
+            ? { ...c, centerX: newCenterX, centerY: newCenterY }
+            : c
+        )
+      );
+
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.cluster_name === draggingClusterId
+            ? { ...n, x: n.x + dx, y: n.y + dy }
+            : n
+        )
+      );
+
+      return;
+    }
+
     if (draggingNodeId !== null && dragNodeOffset.current) {
       const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
 
@@ -371,14 +407,18 @@ export default function ClusterGraph({
     setIsPanning(false);
     panStart.current = null;
     setDraggingNodeId(null);
+    setDraggingClusterId(null);
     dragNodeOffset.current = null;
+    dragClusterOffset.current = null;
   };
 
   const handleMouseLeave = () => {
     setIsPanning(false);
     panStart.current = null;
     setDraggingNodeId(null);
+    setDraggingClusterId(null);
     dragNodeOffset.current = null;
+    dragClusterOffset.current = null;
   };
 
   const handleNodeMouseDown = (
@@ -395,6 +435,22 @@ export default function ClusterGraph({
       dy: node.y - worldY,
     };
     setDraggingNodeId(nodeId);
+  };
+
+  const handleClusterLabelMouseDown = (
+    e: React.MouseEvent<SVGTextElement>,
+    clusterId: string
+  ) => {
+    e.stopPropagation();
+    const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
+    const circle = circles.find((c) => c.clusterId === clusterId);
+    if (!circle) return;
+
+    dragClusterOffset.current = {
+      dx: circle.centerX - worldX,
+      dy: circle.centerY - worldY,
+    };
+    setDraggingClusterId(clusterId);
   };
 
   return (
@@ -440,7 +496,9 @@ export default function ClusterGraph({
               ? "grabbing"
               : isPanning
                 ? "grabbing"
-                : "grab",
+                : draggingClusterId
+                  ? "grabbing"
+                  : "grab",
           touchAction: "none",
         }}
         onMouseDown={handleMouseDown}
@@ -474,10 +532,18 @@ export default function ClusterGraph({
               textAnchor="middle"
               fontSize={16}
               fontWeight={600}
-              fill="#ccc"
-              style={{ pointerEvents: "none" }}
+              fill="#888"
+              style={{
+                cursor:
+                  draggingClusterId === circle.clusterId ? "grabbing" : "grab",
+                pointerEvents: "all",
+                userSelect: "none",
+              }}
+              onMouseDown={(e) =>
+                handleClusterLabelMouseDown(e, circle.clusterId)
+              }
             >
-              {circle.clusterId}
+              {circle.clusterName}
             </text>
           ))}
 
@@ -493,8 +559,9 @@ export default function ClusterGraph({
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="#f0f0f0" // 아주 연한 색
+                stroke="#e0e0e0"
                 strokeWidth={0.5}
+                strokeOpacity={0.7}
               />
             );
           })}
