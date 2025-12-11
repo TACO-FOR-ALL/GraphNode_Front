@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import MarkdownEditor from "@/components/notes/MarkdownEditor";
 
-export default function Notes() {
+export default function Note() {
   const { noteId } = useParams<{ noteId?: string }>();
 
   return (

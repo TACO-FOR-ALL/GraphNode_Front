@@ -6,10 +6,10 @@ import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
 import Login from "./routes/Login";
-import Notes from "./routes/Notes";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
-import SearchModal from "./components/SearchModal";
+import SearchModal from "./components/search/SearchModal";
+import Note from "./routes/Note";
 
 export default function App() {
   return (
@@ -87,7 +87,7 @@ function MainLayout() {
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/notes/:noteId?" element={<Notes />} />
+            <Route path="/note/:noteId?" element={<Note />} />
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
