@@ -26,6 +26,14 @@ export const noteRepo = {
     return (await db.notes.get(id)) ?? null;
   },
 
+  async getNoteByQuery(query: string): Promise<Note[]> {
+    return await db.notes
+      .filter((note) =>
+        note.content.toLowerCase().includes(query.toLowerCase())
+      )
+      .toArray();
+  },
+
   async updateNoteById(id: string, content: string) {
     const note = await this.getNoteById(id);
     if (!note) return null;
