@@ -1,15 +1,15 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
 import Login from "./routes/Login";
-import Notes from "./routes/Notes";
-import Search from "./routes/Search";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
+import SearchModal from "./components/search/SearchModal";
+import Note from "./routes/Note";
 
 export default function App() {
   return (
@@ -23,7 +23,10 @@ export default function App() {
 }
 
 function MainLayout() {
+  const [openSearch, setOpenSearch] = useState(false);
+
   useEffect(() => {
+    // 최초 실행 시 기본 노트 추가
     const FIRST_LAUNCH_KEY = "graphnode_first_launch";
     const hasLaunched = localStorage.getItem(FIRST_LAUNCH_KEY);
 
@@ -34,6 +37,23 @@ function MainLayout() {
       localStorage.setItem(FIRST_LAUNCH_KEY, "true");
       console.log("Initialized default note");
     }
+
+    // 검색 단축키 감지 (Search 단축키)
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLocaleLowerCase() === "f") {
+        e.preventDefault();
+        setOpenSearch(true);
+      }
+
+      if (e.key === "Escape") {
+        setOpenSearch(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   return (
@@ -53,7 +73,7 @@ function MainLayout() {
           overflow: "hidden", // 전체 스크롤 방지
         }}
       >
-        <SideTabBar />
+        <SideTabBar setOpenSearch={setOpenSearch} />
         <div
           style={{
             flex: 1,
@@ -67,10 +87,10 @@ function MainLayout() {
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/notes/:noteId?" element={<Notes />} />
-            <Route path="/search" element={<Search />} />
+            <Route path="/note/:noteId?" element={<Note />} />
           </Routes>
         </div>
+        {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
       </div>
     </div>
   );

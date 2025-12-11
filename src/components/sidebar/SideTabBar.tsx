@@ -14,7 +14,11 @@ import SideExpandBarNote from "./SideExpandBarNote";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import SideExpandBarSettings from "./SideExpandBarSettings";
 
-export default function SideTabBar() {
+export default function SideTabBar({
+  setOpenSearch,
+}: {
+  setOpenSearch: (open: boolean) => void;
+}) {
   const path = useLocation().pathname;
 
   const showSidebarExpanded = useMemo(
@@ -56,7 +60,10 @@ export default function SideTabBar() {
 
   return (
     <div className="flex h-full">
-      <SideNavigationBar path={path.split("/")[1]} />
+      <SideNavigationBar
+        path={path.split("/")[1]}
+        setOpenSearch={setOpenSearch}
+      />
       {showSidebarExpanded && (
         <div
           className={`bg-sidebar-expanded-background duration-500 transition-all ${isExpanded ? "w-[259px]" : "w-[40px]"} flex flex-col`}
