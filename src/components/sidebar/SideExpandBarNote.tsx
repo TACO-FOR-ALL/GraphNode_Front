@@ -42,7 +42,7 @@ export default function SideExpandBarNote({
 
   // 트리 구조로 폴더와 노트 구성
   const buildTree = useMemo(() => {
-    if (!path.includes("/notes") || !folders || !notes) return null;
+    if (!path.includes("/note") || !folders || !notes) return null;
     return buildFolderTree(folders, notes);
   }, [folders, notes, path]);
 
@@ -279,7 +279,7 @@ export default function SideExpandBarNote({
                       ? "bg-sidebar-button-hover text-chatbox-active"
                       : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
                   } ${isDragging ? "opacity-50" : ""}`}
-                  onClick={() => navigate(`/notes/${note.id}`)}
+                  onClick={() => navigate(`/note/${note.id}`)}
                 >
                   <div className="w-[195px] truncate">{note.title}</div>
                 </div>

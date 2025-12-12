@@ -5,12 +5,14 @@ import Dexie, { Table } from "dexie";
 import type { ChatThread } from "../types/Chat";
 import { Note } from "@/types/Note";
 import { Folder } from "@/types/Folder";
+import { OutboxOp } from "@/types/Outbox";
 
 export class ChatDB extends Dexie {
   // Table<T, K> T: 테이블 타입, K: 기본키 타입 (T.id의 타입)
   threads!: Table<ChatThread, string>;
   notes!: Table<Note, string>;
   folders!: Table<Folder, string>;
+  outbox!: Table<OutboxOp, string>;
 
   constructor() {
     super("GraphNode_Front_ChatDB");
@@ -25,6 +27,14 @@ export class ChatDB extends Dexie {
       threads: "id, updatedAt, title, messages",
       notes: "id, title, content, createdAt, updatedAt, folderId",
       folders: "id, name, parentId, createdAt, updatedAt",
+    });
+
+    // 아웃박스 패턴 추가를 위한 버전 업데이트
+    this.version(3).stores({
+      threads: "id, updatedAt, title, messages",
+      notes: "id, title, content, createdAt, updatedAt, folderId",
+      folders: "id, name, parentId, createdAt, updatedAt",
+      outbox: "opId, entityId, type, status, createdAt, [status+nextRetryAt]",
     });
   }
 }

@@ -62,8 +62,16 @@ export default function Login() {
         setIsLoggingIn(false);
         (async () => {
           try {
-            await api.me.get();
-            window.electron?.send("auth-success");
+            const me = await api.me.get();
+            if (me.isSuccess) {
+              setHasSession(true);
+              setCheckSession(false);
+              window.electron?.send("auth-success");
+            } else {
+              setError(
+                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요."
+              );
+            }
           } catch (err: any) {
             console.error("getMe failed after oauth:", err);
             if (err.status === 401) {

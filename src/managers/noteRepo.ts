@@ -2,6 +2,7 @@ import { db } from "@/db/chat.db";
 import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
+import { outboxRepo } from "./outboxRepo";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -14,7 +15,18 @@ export const noteRepo = {
       createdAt: new Date(Date.now()),
     };
 
-    await db.notes.put(newNote);
+    // transaction 안에서 실행되는 DB 작업은 전부 성공 또는 전부 실패 (rw = read write, 접근할 테이블 목록 전부 명시)
+    await db.transaction("rw", db.notes, db.outbox, async () => {
+      await db.notes.put(newNote);
+
+      await outboxRepo.enqueueNoteCreate(newNote.id, {
+        id: newNote.id,
+        title: newNote.title,
+        content: newNote.content,
+        folderId: newNote.folderId,
+      });
+    });
+
     return newNote;
   },
 
@@ -38,10 +50,20 @@ export const noteRepo = {
     const note = await this.getNoteById(id);
     if (!note) return null;
 
-    await db.notes.update(id, {
-      title: extractTitleFromMarkdown(content),
-      content,
-      updatedAt: new Date(Date.now()),
+    const title = extractTitleFromMarkdown(content);
+    const updatedAt = new Date();
+
+    await db.transaction("rw", db.notes, db.outbox, async () => {
+      await db.notes.update(id, {
+        title: title,
+        content,
+        updatedAt: updatedAt,
+      });
+
+      await outboxRepo.enqueueNoteUpdate(id, {
+        title: title,
+        content: content,
+      });
     });
 
     return await this.getNoteById(id);
@@ -54,9 +76,15 @@ export const noteRepo = {
     const note = await this.getNoteById(noteId);
     if (!note) return null;
 
-    await db.notes.update(noteId, {
-      folderId,
-      updatedAt: new Date(Date.now()),
+    await db.transaction("rw", db.notes, db.outbox, async () => {
+      await db.notes.update(noteId, {
+        folderId,
+        updatedAt: new Date(Date.now()),
+      });
+
+      await outboxRepo.enqueueNoteMove(noteId, {
+        folderId: folderId,
+      });
     });
 
     return await this.getNoteById(noteId);
@@ -65,7 +93,12 @@ export const noteRepo = {
   async deleteNoteById(id: string): Promise<string | null> {
     const note = await this.getNoteById(id);
     if (!note) return null;
-    await db.notes.delete(id);
+
+    await db.transaction("rw", db.notes, db.outbox, async () => {
+      await db.notes.delete(id);
+      await outboxRepo.enqueueNoteDelete(id);
+    });
+
     return id;
   },
 
