@@ -4,10 +4,12 @@ import { MdDeleteOutline, MdEdit } from "react-icons/md";
 import { FaPlus } from "react-icons/fa6";
 import { FolderItemContextValue } from "@/hooks/useFolderItemContext";
 import NewFolderField from "../NewFolderField";
+import { FaTrash } from "react-icons/fa";
 
 type FolderItemProps = {
   folder: Folder; // 현재 폴더
   depth: number; // 깊이 (들여쓰기)
+  handleDeleteNote: (noteId: string) => void;
   context: FolderItemContextValue; // 모든 상태와 핸들러를 포함한 컨텍스트
 };
 
@@ -15,6 +17,7 @@ export default function FolderItem({
   folder,
   depth,
   context,
+  handleDeleteNote,
 }: FolderItemProps) {
   const {
     expandedFolders,
@@ -150,6 +153,7 @@ export default function FolderItem({
               folder={child}
               depth={depth + 1}
               context={context}
+              handleDeleteNote={handleDeleteNote}
             />
           ))}
           {/* 하위 폴더 생성 UI */}
@@ -171,7 +175,7 @@ export default function FolderItem({
                 draggable
                 onDragStart={(e) => onNoteDragStart(note.id, e)}
                 onDragEnd={onNoteDragEnd}
-                className={`text-[14px] font-normal font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] ml-4 rounded-[6px] transition-colors duration-300 cursor-move ${
+                className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group ${
                   isSelected
                     ? "bg-sidebar-button-hover text-chatbox-active"
                     : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
@@ -179,6 +183,13 @@ export default function FolderItem({
                 onClick={() => onNoteClick(note.id)}
               >
                 <div className="w-[195px] truncate">{note.title}</div>
+                <FaTrash
+                  className="text-[10px] cursor-pointer hidden group-hover:block"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNote(note.id);
+                  }}
+                />
               </div>
             );
           })}
