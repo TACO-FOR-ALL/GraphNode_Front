@@ -13,7 +13,7 @@ export default function CreateNewNoteOrFolder({
     <div className="flex gap-1 mb-2">
       <div
         className="cursor-pointer w-full flex items-center gap-1 px-[6px] py-2 text-text-secondary bg-white border-[0.6px] border-solid rounded-[6px] border-sidebar-button-border hover:bg-sidebar-button-hover transition-colors duration-300"
-        onClick={() => navigate("/notes")}
+        onClick={() => navigate("/note")}
       >
         <FaPlus className="text-[14px]" />
         <p className="text-[14px] font-light font-noto-sans-kr">New Note</p>

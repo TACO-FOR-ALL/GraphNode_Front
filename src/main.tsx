@@ -4,6 +4,9 @@ import App from "./App";
 import "./index.css";
 import { initI18n } from "./i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { startSyncLoop } from "./managers/startSyncLoop";
+
+startSyncLoop();
 
 const queryClient = new QueryClient();
 

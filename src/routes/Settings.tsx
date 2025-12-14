@@ -12,18 +12,12 @@ export default function Settings() {
     null | "valid" | "invalid" | "checking"
   >();
 
-  useEffect(() => {
-    (async () => {
-      const me = await api.me.get();
-      console.log(me);
-    })();
-  }, []);
-
   const onCheck = async () => {
     setKeyStatus("checking");
-    const res = await window.openaiAPI.checkAPIKeyValid(apiKey);
-    if (res.ok) await window.keytarAPI.setAPIKey("openai", apiKey);
-    setKeyStatus(res.ok ? "valid" : "invalid");
+    // const res = await window.openaiAPI.checkAPIKeyValid(apiKey);
+    // if (res.ok) await window.keytarAPI.setAPIKey("openai", apiKey);
+    const res = await api.me.updateApiKey("openai", apiKey);
+    setKeyStatus(res.isSuccess ? "valid" : "invalid");
   };
 
   return (
