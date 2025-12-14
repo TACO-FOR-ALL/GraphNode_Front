@@ -16,8 +16,10 @@ import SideExpandBarSettings from "./SideExpandBarSettings";
 
 export default function SideTabBar({
   setOpenSearch,
+  avatarUrl,
 }: {
   setOpenSearch: (open: boolean) => void;
+  avatarUrl: string | null;
 }) {
   const path = useLocation().pathname;
 
@@ -63,6 +65,7 @@ export default function SideTabBar({
       <SideNavigationBar
         path={path.split("/")[1]}
         setOpenSearch={setOpenSearch}
+        avatarUrl={avatarUrl}
       />
       {showSidebarExpanded && (
         <div

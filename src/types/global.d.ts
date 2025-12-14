@@ -1,4 +1,5 @@
 import type { ChatCompletion } from "openai/resources/chat/completions";
+import { Me } from "./Me";
 
 export {};
 
@@ -38,6 +39,8 @@ declare global {
       getAPIKey: (modelName: string) => Promise<string | null>;
       setAPIKey: (modelName: string, apiKey: string) => Promise<void>;
       deleteAPIKey: (modelName: string) => Promise<void>;
+      getMe: () => Promise<Me | null>;
+      setMe: (me: Me) => Promise<void>;
     };
     fileAPI: {
       readFileStream: (absPath: string, id: string) => void;

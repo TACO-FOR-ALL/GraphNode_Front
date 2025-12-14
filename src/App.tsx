@@ -10,6 +10,7 @@ import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
 import SearchModal from "./components/search/SearchModal";
 import Note from "./routes/Note";
+import { Me } from "./types/Me";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
 
 function MainLayout() {
   const [openSearch, setOpenSearch] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
     // 최초 실행 시 기본 노트 추가
@@ -56,6 +58,13 @@ function MainLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const me = await window.keytarAPI.getMe();
+      setMe(me as Me);
+    })();
+  }, []);
+
   return (
     <div
       style={{
@@ -73,7 +82,10 @@ function MainLayout() {
           overflow: "hidden", // 전체 스크롤 방지
         }}
       >
-        <SideTabBar setOpenSearch={setOpenSearch} />
+        <SideTabBar
+          setOpenSearch={setOpenSearch}
+          avatarUrl={me?.profile?.avatarUrl ?? null}
+        />
         <div
           style={{
             flex: 1,
@@ -83,7 +95,10 @@ function MainLayout() {
           }}
         >
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route
+              path="/"
+              element={<Home username={me?.profile?.displayName ?? "Guest"} />}
+            />
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
             <Route path="/settings" element={<Settings />} />

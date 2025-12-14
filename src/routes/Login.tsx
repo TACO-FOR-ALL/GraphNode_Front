@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import GoogleIcon from "@/assets/icons/google.svg";
 import AppleIcon from "@/assets/icons/apple.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
+import { Me } from "@/types/Me";
 
 export default function Login() {
   const [checkSession, setCheckSession] = useState(true);
@@ -23,6 +24,7 @@ export default function Login() {
 
         if (result.isSuccess) {
           setHasSession(true);
+          await window.keytarAPI.setMe(result.data as Me);
           window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
           return; // 세션 있을 시 로그인 UI 안 보기
         } else {
@@ -65,6 +67,7 @@ export default function Login() {
             const me = await api.me.get();
             if (me.isSuccess) {
               setHasSession(true);
+              await window.keytarAPI.setMe(me.data as Me);
               setCheckSession(false);
               window.electron?.send("auth-success");
             } else {
