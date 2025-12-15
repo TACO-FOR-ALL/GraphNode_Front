@@ -28,6 +28,16 @@ export const threadRepo = {
     return (await db.threads.get(id)) ?? null;
   },
 
+  async getThreadByQuery(query: string): Promise<ChatThread[]> {
+    return await db.threads
+      .filter((thread) =>
+        thread.messages.some((message) =>
+          message.content.toLowerCase().includes(query.toLowerCase())
+        )
+      )
+      .toArray();
+  },
+
   async updateThreadTitleById(id: string, title: string) {
     const thread = await this.getThreadById(id);
     if (!thread) return null;

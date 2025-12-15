@@ -11,6 +11,7 @@ import { buildFolderTree } from "@/utils/buildFolderTree";
 import CreateNewNoteOrFolder from "../CreateNewNoteOrFolder";
 import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
+import { FaTrash } from "react-icons/fa";
 
 export default function SideExpandBarNote({
   path,
@@ -42,7 +43,7 @@ export default function SideExpandBarNote({
 
   // 트리 구조로 폴더와 노트 구성
   const buildTree = useMemo(() => {
-    if (!path.includes("/notes") || !folders || !notes) return null;
+    if (!path.includes("/note") || !folders || !notes) return null;
     return buildFolderTree(folders, notes);
   }, [folders, notes, path]);
 
@@ -201,6 +202,11 @@ export default function SideExpandBarNote({
     setExpandedFolders,
   });
 
+  const handleDeleteNote = async (noteId: string) => {
+    await noteRepo.deleteNoteById(noteId);
+    queryClient.invalidateQueries({ queryKey: ["notes"] });
+  };
+
   return (
     <div className="px-3">
       {/* 새 노트 혹 폴더 생성*/}
@@ -257,6 +263,7 @@ export default function SideExpandBarNote({
                 key={folder.id}
                 folder={folder}
                 depth={0}
+                handleDeleteNote={handleDeleteNote}
                 context={folderItemContext}
               />
             ))}
@@ -274,14 +281,18 @@ export default function SideExpandBarNote({
                   draggable
                   onDragStart={(e) => handleNoteDragStart(note.id, e)}
                   onDragEnd={handleNoteDragEnd}
-                  className={`text-[14px] font-normal font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 cursor-move ${
+                  className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
                     isSelected
                       ? "bg-sidebar-button-hover text-chatbox-active"
                       : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
                   } ${isDragging ? "opacity-50" : ""}`}
-                  onClick={() => navigate(`/notes/${note.id}`)}
+                  onClick={() => navigate(`/note/${note.id}`)}
                 >
                   <div className="w-[195px] truncate">{note.title}</div>
+                  <FaTrash
+                    className="text-[10px] cursor-pointer hidden group-hover:block"
+                    onClick={() => handleDeleteNote(note.id)}
+                  />
                 </div>
               );
             })}

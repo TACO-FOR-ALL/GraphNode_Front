@@ -1,17 +1,18 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
 import Login from "./routes/Login";
-import Notes from "./routes/Notes";
-import Search from "./routes/Search";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
-import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import AiToolBox from "./components/layout/AiToolBox";
+import SearchModal from "./components/search/SearchModal";
+import AgentToolTipButton from "./components/layout/AgentToolTipButton";
+import { Me } from "./types/Me";
+import Note from "./routes/Note";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 
 export default function App() {
@@ -26,7 +27,11 @@ export default function App() {
 }
 
 function MainLayout() {
+  const [openSearch, setOpenSearch] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
+
   useEffect(() => {
+    // 최초 실행 시 기본 노트 추가
     const FIRST_LAUNCH_KEY = "graphnode_first_launch";
     const hasLaunched = localStorage.getItem(FIRST_LAUNCH_KEY);
 
@@ -37,6 +42,30 @@ function MainLayout() {
       localStorage.setItem(FIRST_LAUNCH_KEY, "true");
       console.log("Initialized default note");
     }
+
+    // 검색 단축키 감지 (Search 단축키)
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLocaleLowerCase() === "f") {
+        e.preventDefault();
+        setOpenSearch(true);
+      }
+
+      if (e.key === "Escape") {
+        setOpenSearch(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const me = await window.keytarAPI.getMe();
+      setMe(me as Me);
+    })();
   }, []);
 
   const { isOpen, setIsOpen } = useAgentToolBoxStore();
@@ -58,7 +87,10 @@ function MainLayout() {
           overflow: "hidden", // 전체 스크롤 방지
         }}
       >
-        <SideTabBar />
+        <SideTabBar
+          setOpenSearch={setOpenSearch}
+          avatarUrl={me?.profile?.avatarUrl ?? null}
+        />
         <div
           style={{
             flex: 1,
@@ -68,14 +100,20 @@ function MainLayout() {
           }}
         >
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route
+              path="/"
+              element={<Home username={me?.profile?.displayName ?? "Guest"} />}
+            />
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/notes/:noteId?" element={<Notes />} />
-            <Route path="/search" element={<Search />} />
+            <Route
+              path="/settings"
+              element={<Settings userInfo={me as Me} />}
+            />
+            <Route path="/note/:noteId?" element={<Note />} />
           </Routes>
         </div>
+        {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
         <AgentToolTipButton setIsOpen={setIsOpen} />
         {isOpen && <AiToolBox setIsOpen={setIsOpen} />}
       </div>

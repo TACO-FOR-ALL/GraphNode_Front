@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import profile from "@/assets/images/profile.jpeg";
 import LogoIcon from "@/assets/icons/logo.svg";
@@ -30,7 +30,15 @@ const NAVIGATION_ITEMS = [
   },
 ];
 
-export default function SideNavigationBar({ path }: { path: string }) {
+export default function SideNavigationBar({
+  path,
+  setOpenSearch,
+  avatarUrl,
+}: {
+  path: string;
+  setOpenSearch: (open: boolean) => void;
+  avatarUrl: string | null;
+}) {
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -50,7 +58,11 @@ export default function SideNavigationBar({ path }: { path: string }) {
           <div
             key={item.id}
             className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} ${item.id === "home" ? "bg-transparent" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
-            onClick={() => navigate(`/${item.id}`)}
+            onClick={
+              item.id === "search"
+                ? () => setOpenSearch(true)
+                : () => navigate(`/${item.id}`)
+            }
             onMouseEnter={() => setHoveredItem(item.id)}
             onMouseLeave={() => setHoveredItem(null)}
           >
@@ -69,7 +81,7 @@ export default function SideNavigationBar({ path }: { path: string }) {
       <div className="flex flex-col items-center justify-center gap-2">
         <div key="profile" className="flex items-center justify-center p-[6px]">
           <img
-            src={profile}
+            src={avatarUrl ?? profile}
             alt="profile"
             className="w-[28px] h-[28px] rounded-full hover:bg-sidebar-tab-selected transition-colors duration-300"
           />

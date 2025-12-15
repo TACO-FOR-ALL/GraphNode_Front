@@ -14,13 +14,19 @@ import SideExpandBarNote from "./SideExpandBarNote";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import SideExpandBarSettings from "./SideExpandBarSettings";
 
-export default function SideTabBar() {
+export default function SideTabBar({
+  setOpenSearch,
+  avatarUrl,
+}: {
+  setOpenSearch: (open: boolean) => void;
+  avatarUrl: string | null;
+}) {
   const path = useLocation().pathname;
 
   const showSidebarExpanded = useMemo(
     () =>
       path.includes("/chat") ||
-      path.includes("/notes") ||
+      path.includes("/note") ||
       path.includes("/settings"),
     [path]
   );
@@ -29,7 +35,7 @@ export default function SideTabBar() {
   const selectedId = useMemo(() => {
     const pathParts = path.split("/");
     if (pathParts.length >= 3) {
-      return pathParts[2]; // /notes/:noteId 또는 /chat/:threadId
+      return pathParts[2]; // /note/:noteId 또는 /chat/:threadId
     }
     return null;
   }, [path]);
@@ -45,18 +51,22 @@ export default function SideTabBar() {
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["notes"],
     queryFn: () => noteRepo.getAllNotes(),
-    enabled: path.includes("/notes"),
+    enabled: path.includes("/note"),
   });
 
   const { data: folders } = useQuery<Folder[]>({
     queryKey: ["folders"],
     queryFn: () => folderRepo.getFolderList(),
-    enabled: path.includes("/notes"),
+    enabled: path.includes("/note"),
   });
 
   return (
     <div className="flex h-full">
-      <SideNavigationBar path={path.split("/")[1]} />
+      <SideNavigationBar
+        path={path.split("/")[1]}
+        setOpenSearch={setOpenSearch}
+        avatarUrl={avatarUrl}
+      />
       {showSidebarExpanded && (
         <div
           className={`bg-sidebar-expanded-background duration-500 transition-all ${isExpanded ? "w-[259px]" : "w-[40px]"} flex flex-col`}
@@ -67,7 +77,7 @@ export default function SideTabBar() {
           />
           {isExpanded && (
             <div>
-              {path.includes("/notes") && (
+              {path.includes("/note") && (
                 <SideExpandBarNote
                   path={path}
                   notes={notes ?? []}

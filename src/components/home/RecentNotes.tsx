@@ -23,7 +23,7 @@ export default function RecentNotes() {
       <div className="grid grid-cols-3 gap-3">
         <div
           className="w-[240px] flex items-center justify-center cursor-pointer h-[180px] rounded-[12px] border-[1px] border-dashed border-[rgba(var(--color-chatbox-border-rgb),0.2)] bg-notebox-background"
-          onClick={() => navigate("/notes")}
+          onClick={() => navigate("/note")}
         >
           <FaPlus className="text-[28px] text-[rgba(var(--color-notebox-add-rgb),0.2)]" />
         </div>
@@ -35,7 +35,7 @@ export default function RecentNotes() {
             <div
               key={note.id}
               className="w-[240px] px-[16px] py-[14px] flex flex-col cursor-pointer h-[180px] rounded-[12px] border-[1px] border-solid border-[rgba(var(--color-chatbox-border-rgb),0.2)] bg-notebox-background"
-              onClick={() => navigate(`/notes/${note.id}`)}
+              onClick={() => navigate(`/note/${note.id}`)}
             >
               <p className="font-noto-sans-kr font-medium text-[16px] mb-3 line-clamp-2">
                 {title}
