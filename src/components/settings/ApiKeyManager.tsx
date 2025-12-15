@@ -54,14 +54,14 @@ export default function ApiKeyManager({
           )}
         </div>
       </div>
-      <div
-        onClick={loading ? undefined : handleSubmit}
-        className="flex items-center justify-center gap-4"
-      >
+      <div className="flex items-center justify-center gap-4">
         {isVerified ? (
           <p className="cursor-pointer text-[14px] text-[#00CA4E]">Verified</p>
         ) : (
-          <p className="cursor-pointer text-[14px] text-text-secondary hover:text-text-primary transition-colors duration-300">
+          <p
+            onClick={loading ? undefined : handleSubmit}
+            className="cursor-pointer text-[14px] text-text-secondary hover:text-text-primary transition-colors duration-300"
+          >
             Sumbit
           </p>
         )}

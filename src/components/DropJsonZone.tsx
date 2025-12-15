@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import threadRepo from "../managers/threadRepo";
@@ -7,6 +7,7 @@ import { toMarkdownFromUnknown } from "../utils/toMarkdown";
 import { ChatMessage } from "../types/Chat";
 import type { Status } from "../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
+import { api } from "@/apiClient";
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
@@ -69,6 +70,13 @@ export default function DropJsonZone() {
       // 6) 로컬 저장
       if (normalized.length) {
         threadRepo.upsertMany(normalized);
+        await api.conversations.bulkCreate({
+          conversations: normalized.map((n) => ({
+            id: n.id,
+            title: n.title,
+            messages: n.messages,
+          })),
+        });
       }
     },
 
