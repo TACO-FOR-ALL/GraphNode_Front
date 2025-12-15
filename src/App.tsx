@@ -101,7 +101,10 @@ function MainLayout() {
             />
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/settings"
+              element={<Settings userInfo={me as Me} />}
+            />
             <Route path="/note/:noteId?" element={<Note />} />
           </Routes>
         </div>
