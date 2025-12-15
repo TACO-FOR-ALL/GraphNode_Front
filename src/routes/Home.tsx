@@ -3,12 +3,23 @@ import ChatBox from "@/components/home/ChatBox";
 import RecentNotes from "@/components/home/RecentNotes";
 import { useEffect } from "react";
 import { pullNotesOnce } from "@/managers/syncNoteWorker";
+import { api } from "@/apiClient";
+import { useSyncStore } from "@/store/useSyncStore";
 
 export default function Home({ username }: { username: string }) {
-  // 로그인 후 메인에서 노트 및 채팅 동기화 작업을 진행합니다 (로그인 화면에서 진행해야함, 아니면 메인화면 올 때마다 불필요한 요청이 발생)
+  const { isSyncronized, setIsSyncronized } = useSyncStore();
+
   useEffect(() => {
     (async () => {
       await pullNotesOnce();
+      // 서버 데이터를 가져와서 로컬 데이터와 비교하여 동기화
+      if (!isSyncronized) {
+        const res = await api.sync.pull();
+        // TODO: 채팅 노트 비교 후 동기화 필요하면 동기화
+        if (res.isSuccess) {
+          setIsSyncronized(true);
+        }
+      }
     })();
   }, []);
 
