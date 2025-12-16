@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import profile from "@/assets/images/profile.jpeg";
+import profile from "@/assets/icons/logo.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
 import ChatIcon from "@/assets/icons/chat.svg";
 import NoteIcon from "@/assets/icons/note.svg";
@@ -42,6 +42,8 @@ export default function SideNavigationBar({
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
+  console.log(avatarUrl);
+
   return (
     <div
       className={`bg-sidebar-background flex flex-col py-2.5 px-2.5 items-stretch justify-between`}
@@ -81,9 +83,15 @@ export default function SideNavigationBar({
       <div className="flex flex-col items-center justify-center gap-2">
         <div key="profile" className="flex items-center justify-center p-[6px]">
           <img
-            src={avatarUrl ?? profile}
+            src={avatarUrl && avatarUrl.trim() ? avatarUrl : profile}
             alt="profile"
             className="w-[28px] h-[28px] rounded-full hover:bg-sidebar-tab-selected transition-colors duration-300"
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              console.warn("Failed to load avatar image:", avatarUrl, e);
+              e.currentTarget.src = profile;
+            }}
           />
         </div>
         <div
