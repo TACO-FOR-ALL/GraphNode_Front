@@ -4,6 +4,14 @@
     "visualize": "Visualize",
     "settings": "Settings"
   },
+  "aiAgentChatBox": {
+    "title": "HI!",
+    "subtitle": "How can I help you today?",
+    "summary": "Summarize this content",
+    "note": "Make a note of this content",
+    "placeholder": "Ask, search, or tell me anything",
+    "selectSourceFirst": "Please select a source first (click @ to select a chat or note)"
+  },
   "home": {
     "title": "Home",
     "chatList": {
@@ -18,9 +26,17 @@
   "settings": {
     "title": "Settings",
     "language": {
-      "ko": "한국어",
-      "en": "English",
-      "zh": "简体中文"
+      "title": "Select a Language",
+      "subtitle": "Choose the language you want GraphNode to display.",
+      "ko": "🇰🇷 한국어",
+      "en": "🇺🇸 English",
+      "zh": "🇨🇳 简体中文"
+    },
+    "timeFormat": {
+      "title": "Time Format",
+      "auto": "Auto",
+      "12hour": "12-hour",
+      "24hour": "24-hour"
     },
     "userSettings": {
       "title": "User Settings",

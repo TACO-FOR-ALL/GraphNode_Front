@@ -1,92 +1,29 @@
-import { useTranslation } from "react-i18next";
-import i18n from "../i18n";
-import { useEffect, useState } from "react";
-import DropJsonZone from "../components/DropJsonZone";
-import threadRepo from "../managers/threadRepo";
-import { api } from "@/apiClient";
+import { useSidebarSettingsStore } from "@/store/useSidebarSettingsStore";
+import MyAccountPanel from "@/components/settings/MyAccountPanel";
+import DataPrivacyPanel from "@/components/settings/DataPrivacyPanel";
+import AppearancePanel from "@/components/settings/AppearancePanel";
+import NotificationPanel from "@/components/settings/NotificationPanel";
+import KeybindsPanel from "@/components/settings/KeybindsPanel";
+import LanguageTimePanel from "@/components/settings/LanguageTimePanel";
+import { Me } from "@/types/Me";
 
-export default function Settings() {
-  const { t } = useTranslation();
-  const [apiKey, setAPIKey] = useState("");
-  const [keyStatus, setKeyStatus] = useState<
-    null | "valid" | "invalid" | "checking"
-  >();
+export default function Settings({ userInfo }: { userInfo: Me }) {
+  const { selectedCategory } = useSidebarSettingsStore();
 
-  const onCheck = async () => {
-    setKeyStatus("checking");
-    // const res = await window.openaiAPI.checkAPIKeyValid(apiKey);
-    // if (res.ok) await window.keytarAPI.setAPIKey("openai", apiKey);
-    const res = await api.me.updateApiKey("openai", apiKey);
-    setKeyStatus(res.isSuccess ? "valid" : "invalid");
-  };
-
-  return (
-    <div>
-      <h1>{t("settings.title")}</h1>
-      <div>
-        <button onClick={() => i18n.changeLanguage("ko")}>
-          {t("settings.language.ko")}
-        </button>
-        <button onClick={() => i18n.changeLanguage("en")}>
-          {t("settings.language.en")}
-        </button>
-        <button onClick={() => i18n.changeLanguage("zh")}>
-          {t("settings.language.zh")}
-        </button>
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => setAPIKey(e.target.value)}
-        />
-        <button onClick={onCheck} disabled={keyStatus === "checking"}>
-          {keyStatus === "checking" ? "Checking..." : "Check API Key"}
-        </button>
-      </div>
-      {keyStatus === "valid" && (
-        <p className="text-green-500">API Key is valid</p>
-      )}
-      {keyStatus === "invalid" && (
-        <p className="text-red-500">API Key is invalid</p>
-      )}
-      {keyStatus === "checking" && (
-        <p className="text-yellow-500">Checking...</p>
-      )}
-      <button
-        onClick={async () => {
-          const key = await window.keytarAPI.getAPIKey("openai");
-          console.log(key);
-        }}
-      >
-        Get API Key
-      </button>
-      <button
-        onClick={async () => {
-          await window.keytarAPI.deleteAPIKey("openai");
-          console.log("deleted");
-        }}
-      >
-        Delete API Key
-      </button>
-      <div className="h-10"></div>
-      <DropJsonZone />
-      <button
-        onClick={async () => {
-          await threadRepo.clearAll();
-        }}
-        className="bg-red-500 text-white px-4 py-2 rounded-md"
-      >
-        Clear All Threads
-      </button>
-      <button
-        onClick={async () => {
-          await api.me.logout();
-          window.electron?.send("auth-logout");
-        }}
-      >
-        logout
-      </button>
-    </div>
-  );
+  switch (selectedCategory.id) {
+    case "my-account":
+      return <MyAccountPanel userInfo={userInfo} />;
+    case "data-privacy":
+      return <DataPrivacyPanel />;
+    case "appearance":
+      return <AppearancePanel />;
+    case "notification":
+      return <NotificationPanel />;
+    case "keybinds":
+      return <KeybindsPanel />;
+    case "language-time":
+      return <LanguageTimePanel />;
+    default:
+      return <MyAccountPanel userInfo={userInfo} />;
+  }
 }

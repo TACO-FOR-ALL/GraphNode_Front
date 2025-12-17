@@ -7,6 +7,7 @@ import { toMarkdownFromUnknown } from "../utils/toMarkdown";
 import { ChatMessage } from "../types/Chat";
 import type { Status } from "../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
+import { api } from "@/apiClient";
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
@@ -66,9 +67,16 @@ export default function DropJsonZone() {
         })),
       }));
 
-      // 6) 로컬 저장
+      // 6) 로컬 저장 (TODO: 저장 실패 로직 추가 필요)
       if (normalized.length) {
         threadRepo.upsertMany(normalized);
+        await api.conversations.bulkCreate({
+          conversations: normalized.map((n) => ({
+            id: n.id,
+            title: n.title,
+            messages: n.messages,
+          })),
+        });
       }
     },
 

@@ -4,7 +4,7 @@ import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import type { ChatMessage } from "../types/Chat";
-import profile from "@/assets/images/profile.jpeg";
+import profile from "@/assets/icons/logo.svg";
 
 const PAGE = 10;
 
@@ -26,6 +26,15 @@ export default function ChatWindow({
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const me = await window.keytarAPI.getMe();
+      setAvatarUrl(me?.profile?.avatarUrl ?? null);
+    })();
+  }, []);
 
   useEffect(() => {
     if (threadId) {
@@ -134,8 +143,10 @@ export default function ChatWindow({
                 style={{ maxWidth: userMaxWidth }}
               >
                 <img
-                  src={profile}
+                  src={avatarUrl ?? profile}
                   alt="Profile"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="w-6 h-6 rounded-full flex-shrink-0"
                   style={{ marginTop: 0 }}
                 />

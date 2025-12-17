@@ -9,8 +9,11 @@ import Login from "./routes/Login";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
 import SearchModal from "./components/search/SearchModal";
-import Note from "./routes/Note";
+import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
+import Note from "./routes/Note";
+import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
+import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 
 export default function App() {
   return (
@@ -65,6 +68,8 @@ function MainLayout() {
     })();
   }, []);
 
+  const { isOpen, setIsOpen } = useAgentToolBoxStore();
+
   return (
     <div
       style={{
@@ -101,11 +106,16 @@ function MainLayout() {
             />
             <Route path="/chat/:threadId?" element={<Chat />} />
             <Route path="/visualize" element={<Visualize />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/settings"
+              element={<Settings userInfo={me as Me} />}
+            />
             <Route path="/note/:noteId?" element={<Note />} />
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
+        <AgentToolTipButton setIsOpen={setIsOpen} />
+        {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
       </div>
     </div>
   );

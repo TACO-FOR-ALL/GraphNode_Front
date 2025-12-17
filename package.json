@@ -66,7 +66,7 @@
     "vite-plugin-electron": "^0.29.0"
   },
   "dependencies": {
-    "@taco_tsinghua/graphnode-sdk": "^0.1.7",
+    "@taco_tsinghua/graphnode-sdk": "^0.1.13",
     "@tanstack/react-query": "^5.90.5",
     "@tiptap/core": "^3.11.0",
     "@tiptap/extension-code-block-lowlight": "^3.11.0",
