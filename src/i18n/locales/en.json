@@ -25,7 +25,7 @@
     "selectChat": "Please select a chat on the left or start a new chat."
   },
   "visualize": {
-    "title": "Visualize"
+    "loading": "Constructing graph..."
   },
   "settings": {
     "title": "Settings",

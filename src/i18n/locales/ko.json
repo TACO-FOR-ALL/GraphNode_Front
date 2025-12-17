@@ -25,7 +25,7 @@
     "selectChat": "왼쪽에서 대화를 선택하거나 새 대화를 시작하세요."
   },
   "visualize": {
-    "title": "시각화 페이지"
+    "loading": "그래프를 구성하는 중..."
   },
   "settings": {
     "title": "설정",

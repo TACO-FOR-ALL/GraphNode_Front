@@ -31,7 +31,6 @@ export default function DataPrivacyPanel() {
       <div className="flex gap-4">
         <button
           onClick={async () => {
-            console.log("click");
             const result = await threadRepo.getThreadList();
             console.log(result);
           }}
@@ -40,7 +39,6 @@ export default function DataPrivacyPanel() {
         </button>
         <button
           onClick={async () => {
-            console.log("click");
             const result = await api.conversations.list();
             console.log(result);
           }}
@@ -51,7 +49,6 @@ export default function DataPrivacyPanel() {
       <div className="flex gap-4">
         <button
           onClick={async () => {
-            console.log("click");
             const result = await noteRepo.getAllNotes();
             console.log(result);
           }}
@@ -60,7 +57,6 @@ export default function DataPrivacyPanel() {
         </button>
         <button
           onClick={async () => {
-            console.log("click");
             const result = await api.note.listNotes();
             console.log(result);
           }}
@@ -70,7 +66,6 @@ export default function DataPrivacyPanel() {
       </div>
       <button
         onClick={async () => {
-          console.log("click");
           const result = await api.graphAi.generateGraph();
           console.log(result);
         }}
