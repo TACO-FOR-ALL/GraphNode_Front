@@ -1,4 +1,4 @@
-import { db } from "@/db/chat.db";
+import { db } from "@/db/graphnode.db";
 import { Folder } from "@/types/Folder";
 import uuid from "@/utils/uuid";
 

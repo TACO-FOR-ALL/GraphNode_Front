@@ -1,4 +1,4 @@
-import { db } from "@/db/chat.db";
+import { db } from "@/db/graphnode.db";
 import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";

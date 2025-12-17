@@ -1,4 +1,4 @@
-import { db } from "@/db/chat.db";
+import { db } from "@/db/graphnode.db";
 import uuid from "@/utils/uuid";
 import type { OutboxOp, OutboxOpType } from "@/types/Outbox";
 import type {
