@@ -20,6 +20,10 @@
       "startChat": "Start New Chat"
     }
   },
+  "chat": {
+    "noChat": "No saved conversations yet",
+    "selectChat": "Please select a chat on the left or start a new chat."
+  },
   "visualize": {
     "title": "Visualize"
   },

@@ -20,6 +20,10 @@
       "startChat": "새 대화 시작"
     }
   },
+  "chat": {
+    "noChat": "아직 저장된 대화가 없어요",
+    "selectChat": "왼쪽에서 대화를 선택하거나 새 대화를 시작하세요."
+  },
   "visualize": {
     "title": "시각화 페이지"
   },

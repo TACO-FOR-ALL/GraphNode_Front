@@ -20,6 +20,10 @@
       "startChat": "开始新对话"
     }
   },
+  "chat": {
+    "noChat": "还没有保存的对话",
+    "selectChat": "请先选择一个对话或开始新对话。"
+  },
   "visualize": {
     "title": "可视化"
   },

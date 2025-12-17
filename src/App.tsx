@@ -104,7 +104,10 @@ function MainLayout() {
               path="/"
               element={<Home username={me?.profile?.displayName ?? "Guest"} />}
             />
-            <Route path="/chat/:threadId?" element={<Chat />} />
+            <Route
+              path="/chat/:threadId?"
+              element={<Chat avatarUrl={me?.profile?.avatarUrl ?? null} />}
+            />
             <Route path="/visualize" element={<Visualize />} />
             <Route
               path="/settings"
