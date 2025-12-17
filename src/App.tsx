@@ -8,12 +8,12 @@ import Settings from "./routes/Settings";
 import Login from "./routes/Login";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
-import AiToolBox from "./components/layout/AiToolBox";
 import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
+import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 
 export default function App() {
   return (
@@ -115,7 +115,7 @@ function MainLayout() {
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
         <AgentToolTipButton setIsOpen={setIsOpen} />
-        {isOpen && <AiToolBox setIsOpen={setIsOpen} />}
+        {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
       </div>
     </div>
   );

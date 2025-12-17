@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import threadRepo from "../managers/threadRepo";
@@ -67,7 +67,7 @@ export default function DropJsonZone() {
         })),
       }));
 
-      // 6) 로컬 저장
+      // 6) 로컬 저장 (TODO: 저장 실패 로직 추가 필요)
       if (normalized.length) {
         threadRepo.upsertMany(normalized);
         await api.conversations.bulkCreate({

@@ -14,6 +14,7 @@ import {
 import AutoResizeTextarea from "./AutoResizeTextArea";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import { api } from "@/apiClient";
 
 const HISTORY_LIMIT = 5;
 
@@ -98,6 +99,13 @@ export default function ChatSendBox({
         model,
         history as ChatMessageRequest[]
       );
+
+      console.log("백엔드 데이터 호출");
+      const result = await api.conversations.createMessage(targetThreadId, {
+        role: "user",
+        content: messageText,
+      });
+      console.log(result);
 
       const assistantText = resp.ok
         ? (resp.data.choices?.[0]?.message?.content ??

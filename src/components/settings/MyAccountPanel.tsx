@@ -32,6 +32,8 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
           </div>
           <img
             src={userInfo.profile.avatarUrl}
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
             alt="avatar"
             className="w-full h-full object-cover"
           />

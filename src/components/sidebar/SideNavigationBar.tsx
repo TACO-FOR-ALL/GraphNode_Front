@@ -42,8 +42,6 @@ export default function SideNavigationBar({
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  console.log(avatarUrl);
-
   return (
     <div
       className={`bg-sidebar-background flex flex-col py-2.5 px-2.5 items-stretch justify-between`}
@@ -89,7 +87,6 @@ export default function SideNavigationBar({
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
             onError={(e) => {
-              console.warn("Failed to load avatar image:", avatarUrl, e);
               e.currentTarget.src = profile;
             }}
           />

@@ -4,6 +4,14 @@
     "visualize": "可视化",
     "settings": "设置"
   },
+  "aiAgentChatBox": {
+    "title": "你好！",
+    "subtitle": "有什么可以帮你的吗？",
+    "summary": "总结这个内容",
+    "note": "将这个内容做成笔记",
+    "placeholder": "问、搜索、或者告诉我任何事情",
+    "selectSourceFirst": "请先选择来源 (点击 @ 选择聊天或笔记)"
+  },
   "home": {
     "title": "首页",
     "chatList": {
