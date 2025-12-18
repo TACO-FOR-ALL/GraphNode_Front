@@ -138,7 +138,7 @@ export default function NodeChatPreview({
     setTimeout(() => {
       onExpand();
       navigate(`/chat/${threadId}`);
-    }, 600);
+    }, 400);
   };
 
   if (!thread) {
