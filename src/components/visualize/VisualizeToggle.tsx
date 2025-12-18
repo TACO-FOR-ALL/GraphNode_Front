@@ -11,9 +11,11 @@ import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
 export default function VisualizeToggle({
   nodeData,
   statisticData,
+  avatarUrl,
 }: {
   nodeData: GraphSnapshotDto;
   statisticData: GraphStatsDto;
+  avatarUrl: string | null;
 }) {
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
@@ -93,6 +95,7 @@ export default function VisualizeToggle({
           rawEdges={nodeData.edges}
           width={window.innerWidth}
           height={window.innerHeight}
+          avatarUrl={avatarUrl}
         />
       ) : (
         <Graph3D data={nodeData} />

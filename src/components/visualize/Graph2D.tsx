@@ -5,6 +5,7 @@ import {
   GraphNodeDto,
 } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
 import React, { useEffect, useRef, useState } from "react";
+import NodeChatPreview from "./NodeChatPreview";
 
 type SimNode = d3Force.SimulationNodeDatum &
   GraphNodeDto & {
@@ -229,6 +230,7 @@ type GraphProps = {
   rawEdges: GraphEdgeDto[];
   width: number;
   height: number;
+  avatarUrl: string | null;
 };
 
 export default function Graph2D({
@@ -236,6 +238,7 @@ export default function Graph2D({
   rawEdges,
   width,
   height,
+  avatarUrl,
 }: GraphProps) {
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
@@ -247,6 +250,7 @@ export default function Graph2D({
     null
   );
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -255,6 +259,7 @@ export default function Graph2D({
 
   const [draggingNodeId, setDraggingNodeId] = useState<number | null>(null);
   const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const [draggingClusterId, setDraggingClusterId] = useState<string | null>(
     null
   );
@@ -423,13 +428,33 @@ export default function Graph2D({
     });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
     setIsPanning(false);
     panStart.current = null;
+
+    // 드래그가 발생했는지 확인 (5px 이상 이동했으면 드래그로 간주)
+    const wasDragging =
+      dragStartPos.current &&
+      (() => {
+        const dx = Math.abs(e.clientX - dragStartPos.current!.x);
+        const dy = Math.abs(e.clientY - dragStartPos.current!.y);
+        return Math.sqrt(dx * dx + dy * dy) > 5;
+      })();
+
+    const prevDraggingNodeId = draggingNodeId;
     setDraggingNodeId(null);
     setDraggingClusterId(null);
     dragNodeOffset.current = null;
     dragClusterOffset.current = null;
+    dragStartPos.current = null;
+
+    // 드래그가 아니고 노드를 클릭한 경우에만 채팅 미리보기 표시
+    if (!wasDragging && prevDraggingNodeId) {
+      const node = nodeById(prevDraggingNodeId);
+      if (node) {
+        setSelectedNodeId(node.origId);
+      }
+    }
   };
 
   const handleMouseLeave = () => {
@@ -454,6 +479,7 @@ export default function Graph2D({
       dx: node.x - worldX,
       dy: node.y - worldY,
     };
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
     setDraggingNodeId(nodeId);
   };
 
@@ -649,6 +675,16 @@ export default function Graph2D({
           })}
         </g>
       </svg>
+
+      {/* 노드 클릭 시 채팅 미리보기 */}
+      {selectedNodeId && (
+        <NodeChatPreview
+          threadId={selectedNodeId}
+          avatarUrl={avatarUrl}
+          onClose={() => setSelectedNodeId(null)}
+          onExpand={() => setSelectedNodeId(null)}
+        />
+      )}
     </div>
   );
 }
