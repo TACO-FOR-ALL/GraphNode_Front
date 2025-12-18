@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Graph3D from "./Graph3D";
 import {
   GraphSnapshotDto,
@@ -7,6 +7,11 @@ import {
 import Graph2D from "./Graph2D";
 import ChevronsDown from "@/assets/icons/ChevronsDown.svg";
 import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
+import {
+  ClusterCircle,
+  PositionedNode,
+  PositionedEdge,
+} from "@/types/GraphData";
 
 export default function VisualizeToggle({
   nodeData,
@@ -19,6 +24,23 @@ export default function VisualizeToggle({
 }) {
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
+  const [clusters, setClusters] = useState<ClusterCircle[]>([]);
+  const [nodes, setNodes] = useState<PositionedNode[]>([]);
+  const [edges, setEdges] = useState<PositionedEdge[]>([]);
+  const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+
+  const handleClustersReady = useCallback(
+    (
+      newClusters: ClusterCircle[],
+      newNodes: PositionedNode[],
+      newEdges: PositionedEdge[]
+    ) => {
+      setClusters(newClusters);
+      setNodes(newNodes);
+      setEdges(newEdges);
+    },
+    []
+  );
 
   return (
     <div style={{ position: "relative" }}>
@@ -50,13 +72,120 @@ export default function VisualizeToggle({
             )}
           </div>
           <div
-            className={`absolute z-20 top-[46px] left-1/2 -translate-x-1/2 w-[751px] h-[77px] rounded-[20px] bg-[#BADAFF]/10 shadow-[0_2px_20px_#BADAFF] transition-all duration-300 ease-out ${
+            className={`absolute z-20 top-[46px] left-1/2 -translate-x-1/2 w-[751px] h-[77px] rounded-[20px] bg-[#BADAFF]/10 backdrop-blur-md shadow-[0_2px_20px_#BADAFF] transition-all duration-300 ease-out ${
               toggleTopClutserPanel
                 ? "opacity-100 translate-y-0 pointer-events-auto"
                 : "opacity-0 -translate-y-4 pointer-events-none"
             }`}
           >
-            {/* 패널 내용 추후 추가 */}
+            <div className="w-full h-full flex items-center justify-between px-14 overflow-x-auto">
+              {clusters.map((cluster) => {
+                // 클러스터 내부 노드들 가져오기
+                const clusterNodes = nodes.filter(
+                  (n) => n.clusterName === cluster.clusterId
+                );
+
+                // 클러스터 내부 엣지들 가져오기 (intra-cluster만)
+                const clusterEdges = edges.filter(
+                  (e) =>
+                    e.isIntraCluster &&
+                    clusterNodes.some((n) => n.id === e.source) &&
+                    clusterNodes.some((n) => n.id === e.target)
+                );
+
+                // 노드 ID로 매핑 생성 (엣지 렌더링용)
+                const nodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
+
+                // viewBox 계산 (클러스터 원을 포함하도록)
+                const padding = cluster.radius * 0.2;
+                const minX =
+                  Math.min(
+                    ...clusterNodes.map((n) => n.x),
+                    cluster.centerX - cluster.radius
+                  ) - padding;
+                const minY =
+                  Math.min(
+                    ...clusterNodes.map((n) => n.y),
+                    cluster.centerY - cluster.radius
+                  ) - padding;
+                const maxX =
+                  Math.max(
+                    ...clusterNodes.map((n) => n.x),
+                    cluster.centerX + cluster.radius
+                  ) + padding;
+                const maxY =
+                  Math.max(
+                    ...clusterNodes.map((n) => n.y),
+                    cluster.centerY + cluster.radius
+                  ) + padding;
+                const viewBoxWidth = maxX - minX;
+                const viewBoxHeight = maxY - minY;
+
+                return (
+                  <div
+                    key={cluster.clusterId}
+                    className="flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                    onClick={() => {
+                      setZoomToClusterId(cluster.clusterId);
+                      // 줌인 후 리셋 (애니메이션 시간보다 길게)
+                      setTimeout(() => setZoomToClusterId(null), 900);
+                    }}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                    }}
+                  >
+                    <svg
+                      width="50"
+                      height="50"
+                      viewBox={`${minX} ${minY} ${viewBoxWidth} ${viewBoxHeight}`}
+                      style={{ overflow: "visible" }}
+                    >
+                      {/* 클러스터 원 */}
+                      <circle
+                        cx={cluster.centerX}
+                        cy={cluster.centerY}
+                        r={cluster.radius}
+                        fill="var(--color-cluster-default)"
+                        stroke="var(--color-edge-default)"
+                        strokeWidth={1}
+                      />
+                      {/* 클러스터 내부 엣지들 */}
+                      {clusterEdges.map((edge, idx) => {
+                        const sourceNode = nodeMap.get(edge.source);
+                        const targetNode = nodeMap.get(edge.target);
+                        if (!sourceNode || !targetNode) return null;
+                        return (
+                          <line
+                            key={`edge-${edge.source}-${edge.target}-${idx}`}
+                            x1={sourceNode.x}
+                            y1={sourceNode.y}
+                            x2={targetNode.x}
+                            y2={targetNode.y}
+                            stroke="var(--color-edge-default)"
+                            strokeWidth={0.5}
+                            strokeOpacity={0.6}
+                          />
+                        );
+                      })}
+                      {/* 클러스터 내부 노드들 (실제 위치 사용) */}
+                      {clusterNodes.map((node) => (
+                        <circle
+                          key={node.id}
+                          cx={node.x}
+                          cy={node.y}
+                          r={2}
+                          fill="var(--color-node-default)"
+                        />
+                      ))}
+                    </svg>
+                    <span className="text-[10px] text-text-secondary mt-1 truncate max-w-[50px] text-center">
+                      {cluster.clusterName}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </>
       )}
@@ -96,6 +225,8 @@ export default function VisualizeToggle({
           width={window.innerWidth}
           height={window.innerHeight}
           avatarUrl={avatarUrl}
+          onClustersReady={handleClustersReady}
+          zoomToClusterId={zoomToClusterId}
         />
       ) : (
         <Graph3D data={nodeData} />
