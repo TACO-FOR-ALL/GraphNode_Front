@@ -5,6 +5,7 @@ export type ChatMessage = {
   role: ChatRole;
   content: string;
   ts: number;
+  temp?: boolean;
 };
 
 export type ChatThread = {
