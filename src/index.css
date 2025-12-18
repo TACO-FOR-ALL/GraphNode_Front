@@ -20,9 +20,16 @@
   --color-chatbox-active-rgb: 43, 137, 248;
   --color-chatbox-border-rgb: 60, 60, 67;
   --color-sidebar-button-hover: #d7edff;
-  --color-sidebar-button-border: u#d1d5d8;
+  --color-sidebar-button-border: #d1d5d8;
   --color-border-quaternary: 116, 116, 128;
   --color-search-item-hover: #f5f5f5;
+  --color-base-border: #e5e5e5;
+  --color-bg-tertiary: #f5f5f5;
+  --color-node-default: #bcbcbc;
+  --color-node-focus: #badaff;
+  --color-edge-default: #d6d6d6;
+  --color-cluster-default: #f5f5f5;
+  --color-cluster-focus:;
   --font-family-noto-sans-kr:
     "NotoSansKR", system-ui, -apple-system, "Apple SD Gothic Neo",
     "Malgun Gothic", "Segoe UI", Roboto, Arial, sans-serif;

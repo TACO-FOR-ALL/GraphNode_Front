@@ -1,3 +1,4 @@
+import threadRepo from "@/managers/threadRepo";
 import * as d3Force from "d3-force";
 import {
   GraphEdgeDto,
@@ -242,6 +243,9 @@ export default function Graph2D({
   const [maxEdgeCount, setMaxEdgeCount] = useState(0);
 
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [hoveredThreadTitle, setHoveredThreadTitle] = useState<string | null>(
+    null
+  );
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -281,6 +285,29 @@ export default function Graph2D({
     if (e.isIntraCluster) return false;
     return true;
   });
+
+  // hoveredId가 변경될 때 thread title 가져오기
+  useEffect(() => {
+    if (hoveredId == null) {
+      setHoveredThreadTitle(null);
+      return;
+    }
+
+    const n = nodes.find((node) => node.id === hoveredId);
+    if (!n) {
+      setHoveredThreadTitle(null);
+      return;
+    }
+
+    threadRepo
+      .getThreadById(n.origId)
+      .then((thread) => {
+        setHoveredThreadTitle(thread?.title || null);
+      })
+      .catch(() => {
+        setHoveredThreadTitle(null);
+      });
+  }, [hoveredId, nodes]);
 
   useEffect(() => {
     if (rawNodes.length === 0) return;
@@ -450,6 +477,7 @@ export default function Graph2D({
     <div style={{ position: "relative", overflow: "hidden" }}>
       {/* 툴팁 */}
       {hoveredId != null &&
+        hoveredThreadTitle != null &&
         (() => {
           const n = nodeById(hoveredId);
           if (!n) return null;
@@ -458,22 +486,14 @@ export default function Graph2D({
 
           return (
             <div
+              id={n.origId}
+              className="absolute -translate-x-1/2 -translate-y-full py-0.5 px-1.5 text-[10px] bg-sidebar-button-hover text-primary rounded pointer-events-none whitespace-nowrap z-10"
               style={{
-                position: "absolute",
                 left,
                 top,
-                transform: "translate(-50%, -100%)",
-                padding: "2px 6px",
-                fontSize: 10,
-                background: "rgba(0,0,0,0.7)",
-                color: "white",
-                borderRadius: 4,
-                pointerEvents: "none",
-                whiteSpace: "nowrap",
-                zIndex: 10,
               }}
             >
-              {n.origId}
+              {hoveredThreadTitle}
             </div>
           );
         })()}
@@ -508,8 +528,8 @@ export default function Graph2D({
                 cx={circle.centerX}
                 cy={circle.centerY}
                 r={circle.radius}
-                fill="#f5f5f5"
-                stroke="#e0e0e0"
+                fill="var(--color-cluster-default)"
+                stroke="var(--color-edge-default)"
                 strokeWidth={1}
                 style={{ pointerEvents: "none" }}
               />
@@ -525,7 +545,7 @@ export default function Graph2D({
               textAnchor="middle"
               fontSize={16}
               fontWeight={600}
-              fill="#888"
+              fill="var(--color-text-secondary)"
               style={{
                 cursor:
                   draggingClusterId === circle.clusterId ? "grabbing" : "grab",
@@ -552,7 +572,7 @@ export default function Graph2D({
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="#e0e0e0"
+                stroke="var(--color-edge-default)"
                 strokeWidth={0.5}
                 strokeOpacity={0.7}
               />
@@ -571,7 +591,7 @@ export default function Graph2D({
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="#c7c7c7"
+                stroke="var(--color-edge-default)"
                 strokeWidth={0.5}
               />
             );
@@ -589,7 +609,7 @@ export default function Graph2D({
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="#ff4d4f"
+                stroke="var(--color-primary)"
                 strokeWidth={1.5}
               />
             );
@@ -604,10 +624,10 @@ export default function Graph2D({
             const radius = isHovered ? baseRadius + 2 : baseRadius;
 
             const fill = isFocused
-              ? "#ff4d4f"
+              ? "var(--color-node-focus)"
               : isHovered
-                ? "#EF7233"
-                : "#767676";
+                ? "var(--color-node-focus)"
+                : "var(--color-node-default)";
 
             return (
               <circle
@@ -616,7 +636,7 @@ export default function Graph2D({
                 cy={n.y}
                 r={radius}
                 fill={fill}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer shadow-[0_2px_20px_#BADAFF]"
                 onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
                 onMouseEnter={() => setHoveredId(n.id)}
                 onMouseLeave={() => setHoveredId(null)}
