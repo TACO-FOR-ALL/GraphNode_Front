@@ -1,4 +1,4 @@
-import { db } from "@/db/chat.db";
+import { db } from "@/db/graphnode.db";
 import { api } from "@/apiClient";
 import type { OutboxOp } from "@/types/Outbox";
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 
-export default function Chat() {
+export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
   const [isTyping, setIsTyping] = useState(false);
   const { threadId } = useParams<{ threadId?: string }>();
   const { isExpanded } = useSidebarExpandStore();
@@ -20,7 +20,11 @@ export default function Chat() {
         transition: "width 0.5s ease",
       }}
     >
-      <ChatWindow threadId={threadId || undefined} isTyping={isTyping} />
+      <ChatWindow
+        threadId={threadId || undefined}
+        isTyping={isTyping}
+        avatarUrl={avatarUrl}
+      />
       <ChatSendBox setIsTyping={setIsTyping} />
     </div>
   );

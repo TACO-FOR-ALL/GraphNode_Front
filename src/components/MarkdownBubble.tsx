@@ -1,7 +1,7 @@
 import React from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import "highlight.js/styles/github-dark.css";
+import "highlight.js/styles/github.css";
 import hljs from "highlight.js";
 
 type CodePropsLike = React.ComponentPropsWithoutRef<"code"> & {
@@ -93,7 +93,7 @@ const components: Components = {
   pre: ({ children, ...rest }) => {
     return (
       <pre
-        className="rounded-lg overflow-auto my-4 p-4 bg-gray-900 text-gray-100 border border-gray-700 font-mono text-sm leading-relaxed"
+        className="rounded-lg overflow-auto my-4 p-4 bg-gray-200 text-gray-100 border border-gray-700 font-mono text-sm leading-relaxed"
         {...rest}
       >
         {children}

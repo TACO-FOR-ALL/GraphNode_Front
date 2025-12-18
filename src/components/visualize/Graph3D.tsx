@@ -1,115 +1,514 @@
-import { GraphData } from "@/types/GraphData";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
-export default function Graph3D({ data }: { data: GraphData }) {
+import {
+  forceSimulation,
+  forceManyBody,
+  forceLink,
+  forceCollide,
+} from "d3-force-3d";
+import { GraphSnapshotDto } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
+
+type SimNode = {
+  id: string;
+  clusterId: string;
+  x: number;
+  y: number;
+  z: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
+};
+
+type SimLink = {
+  source: SimNode | string;
+  target: SimNode | string;
+};
+
+type ClusterInfo = {
+  center: THREE.Vector3;
+  radius: number;
+  nodeIds: string[];
+  color: number;
+  intraEdgeCount: number;
+};
+
+type SimCluster = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
+};
+
+export default function Graph3D({ data }: { data: GraphSnapshotDto }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null); // hover 이벤트 시 node id 표시
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const scene = new THREE.Scene(); // 3D 객체들을 담는 컨테이너
+    if (!canvasRef.current) return;
 
-    // 사용자 시점 카메라
+    // 1. Scene Setup
+    const scene = new THREE.Scene();
+    // scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0xffffff);
     const camera = new THREE.PerspectiveCamera(
-      75, // fov: 시야각
-      window.innerWidth / window.innerHeight, // 화면 종횡비
-      0.1, // near: 가까운 평면
-      1000 // far: 먼 평면
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      5000
     );
-    camera.position.z = 10; // 카메라 초기 위치
+    camera.position.set(0, 0, 200);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
-      canvas: canvasRef.current!, // 렌더링 결과를 그릴 캔버스
+      canvas: canvasRef.current,
     });
-    renderer.setSize(window.innerWidth, window.innerHeight); // pixel 해상도 조절
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // HiDPI 환경 성능,품질 조절
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
-    // 사용자 시점 카메라 제어
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // 부드러운 움직임 (관성 비슷한 효과)
-    controls.enableZoom = true; // 줌 인/아웃 가능
-    controls.zoomSpeed = 1.2;
-    controls.minDistance = 3; // 줌 인/아웃 최소 거리
-    controls.maxDistance = 50; // 줌 인/아웃 최대 거리
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 1000;
 
-    const nodeMap: Record<string, THREE.Mesh> = {};
-    const nodeMeshes: THREE.Object3D[] = [];
+    // 2. Configuration
+    const clusterColors: Record<string, number> = {
+      cluster_1: 0x4aa8c0, // Blue
+      cluster_2: 0xe74c3c, // Red
+      cluster_3: 0x2ecc71, // Green
+      cluster_4: 0xf39c12, // Orange
+      cluster_5: 0x9b59b6, // Purple
+    };
+    const defaultNodeColor = 0x767676;
+    const focusColor = 0xff4d4f;
+    const hoverColor = 0xffcc00;
+    // const intraEdgeColor = 0xb3b3b3;  //for dark background
+    // const interEdgeColor = 0xffffff; // White
+    const intraEdgeColor = 0x999999; // Darkened for white background
+    const interEdgeColor = 0x333333; // Changed from white to dark gray
 
-    // 노드 생성
-    data.nodes.forEach((node) => {
-      // Mesh = Geometry(물체의 모양) + Material(색상, 반사, 질감, 투명도, 광원 효과 등)
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 16, 16), // SphereGeometry(radius, widthSegments, heightSegments) 구체 그외 다양한 기하(Geometry) 클래스가 있음 => segment는 모델의 정밀도 (높을수록 더 완성도 높은 3D 모델)
-        new THREE.MeshBasicMaterial({ color: 0x4aa8c0 }) // 단색 메터리얼 (조명 무시)
-      );
-      sphere.position.set(
-        // 노드 위치
-        Math.random() * 6 - 3,
-        Math.random() * 6 - 3,
-        Math.random() * 6 - 3
-      );
-      sphere.userData.id = node.id;
+    // 3. Process Clusters
+    const clusters = new Map<string, ClusterInfo>();
+
+    data.nodes.forEach((n) => {
+      const cid = (n.clusterId ?? "default") as string;
+      if (!clusters.has(cid)) {
+        clusters.set(cid, {
+          center: new THREE.Vector3(0, 0, 0),
+          radius: 0,
+          nodeIds: [],
+          intraEdgeCount: 0,
+          color: clusterColors[cid] || defaultNodeColor,
+        });
+      }
+      clusters.get(cid)!.nodeIds.push(String(n.id));
+    });
+
+    // Count intra-cluster edges
+    const nodeToClusterMap = new Map<string, string>();
+    data.nodes.forEach((n) => {
+      nodeToClusterMap.set(String(n.id), (n.clusterId ?? "default") as string);
+    });
+
+    data.edges.forEach((edge) => {
+      const sourceCid = nodeToClusterMap.get(String(edge.source));
+      const targetCid = nodeToClusterMap.get(String(edge.target));
+      if (sourceCid && sourceCid === targetCid) {
+        clusters.get(sourceCid)!.intraEdgeCount++;
+      }
+    });
+
+    const clusterIds = Array.from(clusters.keys());
+
+    clusterIds.forEach((cid, idx) => {
+      const info = clusters.get(cid)!;
+      // By removing the deterministic layout calculation,
+      // all clusters will start at their default position (0,0,0).
+      // The cluster simulation will then push them apart organically
+      // based on repulsion and attraction forces.
+
+      // --- CRITICAL FIX 1: DENSITY NORMALIZATION ---
+      // Use Cubic Root (Math.cbrt) instead of Sqrt.
+      // This ensures 3D volume scales proportionally to node count.
+      // This makes small clusters feel as "dense" as the big blue one.
+      const nodeCount = info.nodeIds.length;
+      const edgeCount = info.intraEdgeCount;
+      const baseRadius = 5; // Minimum size for tiny clusters
+      const nodeVolumeFactor = 8.0;
+      const edgeVolumeFactor = 0.8; // Edges have less impact
+
+      // Radius ~ CubeRoot(N). This keeps constant density.
+      const nodeRadius = Math.pow(nodeCount, 1 / 3) * nodeVolumeFactor;
+      const edgeRadius = Math.pow(edgeCount, 1 / 3) * edgeVolumeFactor;
+      info.radius = baseRadius + nodeRadius + edgeRadius;
+    });
+
+    // --- NEW: Calculate Inter-Cluster Edge Counts ---
+    const interClusterEdgeCounts: Record<string, Record<string, number>> = {};
+    clusterIds.forEach((id1) => {
+      interClusterEdgeCounts[id1] = {}; // Initialize inner object for id1
+      clusterIds.forEach((id2) => {
+        interClusterEdgeCounts[id1][id2] = 0; // Then set value for each id2
+      });
+    });
+
+    const simClusters: SimCluster[] = [];
+    // Calculate edge count per node for sizing
+    const nodeEdgeCounts = new Map<string, number>();
+    data.nodes.forEach((n) => nodeEdgeCounts.set(String(n.id), 0));
+    data.edges.forEach((edge) => {
+      const sourceId = String(edge.source);
+      const targetId = String(edge.target);
+      nodeEdgeCounts.set(sourceId, (nodeEdgeCounts.get(sourceId) ?? 0) + 1);
+      nodeEdgeCounts.set(targetId, (nodeEdgeCounts.get(targetId) ?? 0) + 1);
+    });
+
+    const maxEdgeCount = Math.max(...Array.from(nodeEdgeCounts.values()), 1);
+    const MIN_NODE_RADIUS = 0.6;
+    const MAX_NODE_RADIUS = 0.9;
+
+    const getNodeRadius = (nodeId: string) => {
+      const count = nodeEdgeCounts.get(nodeId) ?? 0;
+      const scale = Math.sqrt(count / maxEdgeCount); // Use sqrt for less extreme scaling
+      return MIN_NODE_RADIUS + (MAX_NODE_RADIUS - MIN_NODE_RADIUS) * scale;
+    };
+
+    // 4. Create Visuals
+
+    const nodeMeshes: THREE.Mesh[] = [];
+    const simNodes: SimNode[] = [];
+    const nodeEntryMap: Record<
+      string,
+      { sim: SimNode; mesh: THREE.Mesh; clusterId: string }
+    > = {};
+
+    // -- A. Cluster Boundary Spheres
+    clusterIds.forEach((cid) => {
+      const info = clusters.get(cid)!;
+      simClusters.push({
+        id: cid,
+        x: info.center.x,
+        y: info.center.y,
+        z: info.center.z,
+        radius: info.radius,
+      });
+
+      const geometry = new THREE.SphereGeometry(info.radius, 48, 48);
+      const material = new THREE.MeshBasicMaterial({
+        color: info.color,
+        transparent: true,
+        opacity: 0.02,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.copy(info.center);
+      sphere.userData = { isClusterSphere: true, clusterId: cid }; // Tag for cluster sim
       scene.add(sphere);
-      nodeMap[node.id] = sphere;
-      nodeMeshes.push(sphere);
+
+      const edges = new THREE.EdgesGeometry(geometry);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: info.color,
+        transparent: true,
+        opacity: 0.15,
+      });
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      wireframe.position.copy(info.center);
+      wireframe.userData = { isClusterSphere: true, clusterId: cid }; // Tag for cluster sim
+      scene.add(wireframe);
     });
 
-    // 엣지(링크) 생성
-    const edges: {
-      geometry: THREE.BufferGeometry;
-      link: { source: string; target: string };
-    }[] = [];
-    data.links.forEach((link) => {
-      const material = new THREE.LineBasicMaterial({ color: 0xaaaaaa }); // 단색 선 메터리얼
-      // setFromPoints(THREE.Vector3[]): 두 노드의 현재 위치를 넘겨서 선분을 정의 (THREE.Vecctor3는  47번 라인 확인)
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        nodeMap[link.source].position,
-        nodeMap[link.target].position,
+    // -- B. Nodes (Start exactly at center)
+    // Starting them at center prevents them from getting stuck outside initially
+    data.nodes.forEach((node) => {
+      const id = String(node.id);
+      const cid = (node.clusterId ?? "default") as string;
+      const cluster = clusters.get(cid)!;
+
+      // Initialize randomly inside
+      const r = Math.cbrt(Math.random()) * (cluster.radius * 0.5);
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+
+      const x = cluster.center.x + r * Math.sin(phi) * Math.cos(theta);
+      const y = cluster.center.y + r * Math.sin(phi) * Math.sin(theta);
+      const z = cluster.center.z + r * Math.cos(phi);
+
+      const sim: SimNode = { id, clusterId: cid, x, y, z };
+      simNodes.push(sim);
+
+      const color = cluster.color;
+      const radius = getNodeRadius(id);
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 12, 12),
+        new THREE.MeshBasicMaterial({ color })
+      );
+      mesh.position.set(x, y, z);
+      mesh.userData = { id, clusterId: cid };
+
+      scene.add(mesh);
+      nodeMeshes.push(mesh);
+      nodeEntryMap[id] = { sim, mesh, clusterId: cid };
+    });
+
+    // -- C. Edges
+    const simLinks: SimLink[] = data.edges.map((e) => ({
+      source: String(e.source),
+      target: String(e.target),
+    }));
+
+    type EdgeObj = {
+      line: THREE.Line;
+      sourceId: string;
+      targetId: string;
+      isIntra: boolean;
+    };
+    const edgeObjs: EdgeObj[] = [];
+
+    data.edges.forEach((edge) => {
+      const sId = String(edge.source);
+      const tId = String(edge.target);
+      const sNode = nodeEntryMap[sId];
+      const tNode = nodeEntryMap[tId];
+      if (!sNode || !tNode) return;
+
+      const isIntra = sNode.clusterId === tNode.clusterId; // This is correct here
+
+      const mat = new THREE.LineBasicMaterial({
+        color: isIntra ? intraEdgeColor : interEdgeColor,
+        transparent: true,
+        opacity: isIntra ? 0.2 : 0.05,
+      });
+
+      const geom = new THREE.BufferGeometry().setFromPoints([
+        sNode.mesh.position,
+        tNode.mesh.position,
       ]);
-      const line = new THREE.Line(geometry, material);
+
+      const line = new THREE.Line(geom, mat);
       scene.add(line);
-      edges.push({ geometry, link });
+      edgeObjs.push({ line, sourceId: sId, targetId: tId, isIntra });
     });
 
-    // 물리 연산 (노드 간 거리 계산 및 조정)
-    function applyForces() {
-      data.nodes.forEach((a) => {
-        data.nodes.forEach((b) => {
-          if (a === b) return;
-          const posA = nodeMap[a.id].position;
-          const posB = nodeMap[b.id].position;
-          const diff = posA.clone().sub(posB); // A - B 백터
-          const dist = Math.max(diff.length(), 0.2); // 노드 간 거리 (최소 0.2)
-          const repel = 0.01 / dist;
-          diff.normalize().multiplyScalar(repel); // normalize(): 백터의 방향만 유지하고 크기를 1로 만듦, multiplyScalar()로 반발력 계수만큼 스케일
-          posA.add(diff); // A 노드를 반발력 방향으로 이동
-          posB.sub(diff); // B 노드를 A 노드의 반대 방향으로 같은 거리만큼 이동
+    // Calculate inter-cluster edge counts (moved here, after nodeEntryMap is populated)
+    data.edges.forEach((edge) => {
+      const sourceId = String(edge.source);
+      const targetId = String(edge.target);
+      const sourceCid = nodeEntryMap[sourceId]?.clusterId;
+      const targetCid = nodeEntryMap[targetId]?.clusterId;
+      if (sourceCid && targetCid && sourceCid !== targetCid) {
+        interClusterEdgeCounts[sourceCid][targetCid] =
+          (interClusterEdgeCounts[sourceCid][targetCid] || 0) + 1;
+      }
+    });
+
+    // 5. Physics Forces
+
+    // --- CRITICAL FIX 2: STRONGER LOCAL GRAVITY ---
+    // This force now scales with distance. The further you are from center, the harder the pull.
+    const clusterGravityForce = (alpha: number) => {
+      simNodes.forEach((n) => {
+        const cluster = clusters.get(n.clusterId);
+        if (!cluster) return;
+
+        // Linear pull towards center
+        // Strong enough to counteract local repulsion, but weak enough to allow spread
+        const k = 0.3 * alpha; // Increased from 0.2 to 0.3 for a stronger pull
+
+        n.vx = (n.vx ?? 0) + (cluster.center.x - n.x) * k;
+        n.vy = (n.vy ?? 0) + (cluster.center.y - n.y) * k;
+        n.vz = (n.vz ?? 0) + (cluster.center.z - n.z) * k;
+      });
+    };
+
+    // --- CRITICAL FIX 3: CONTAINMENT WALL ---
+    const clusterContainmentForce = (alpha: number) => {
+      simNodes.forEach((n) => {
+        const cluster = clusters.get(n.clusterId);
+        if (!cluster) return;
+
+        const dx = n.x - cluster.center.x;
+        const dy = n.y - cluster.center.y;
+        const dz = n.z - cluster.center.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+
+        // Soft boundary starts at 85% of radius
+        const limit = cluster.radius * 0.85;
+
+        if (dist > limit) {
+          // If outside limit, push back
+          const strength = 0.5 * alpha;
+          const overlap = dist - limit;
+
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const uz = dz / dist;
+
+          n.vx = (n.vx ?? 0) - ux * overlap * strength;
+          n.vy = (n.vy ?? 0) - uy * overlap * strength;
+          n.vz = (n.vz ?? 0) - uz * overlap * strength;
+        }
+      });
+    };
+
+    // 6. Simulation
+    const simulation = forceSimulation(simNodes as any)
+      // --- CRITICAL FIX 4: DISTANCE MAX ---
+      // This is the most important change.
+      // We set distanceMax to roughly the max diameter of a cluster (e.g., 60).
+      // This prevents the Blue Cluster from repelling the Red Cluster nodes.
+      // They will ignore each other physics-wise.
+      .force("charge", forceManyBody().strength(-8).distanceMax(50))
+
+      .force("collide", forceCollide().radius(0.6).iterations(1))
+      .force(
+        "link",
+        forceLink(simLinks as any)
+          .id((d: any) => d.id)
+          .distance(
+            (l: any) => (l.source.clusterId === l.target.clusterId ? 5 : 50) // Inter-cluster link distance
+          )
+          .strength((l: any) => {
+            const source = l.source as SimNode;
+            const target = l.target as SimNode;
+            // Weaker strength for inter-cluster links
+            return source.clusterId === target.clusterId ? 0.15 : 0.08;
+          })
+      )
+      .force("clusterGravity", clusterGravityForce)
+      .force("clusterContainment", clusterContainmentForce)
+      .alpha(1)
+      .restart();
+
+    // --- NEW: Cluster Repulsion Simulation ---
+    const interClusterAttractionForce = (alpha: number) => {
+      simClusters.forEach((cluster1) => {
+        simClusters.forEach((cluster2) => {
+          if (cluster1.id === cluster2.id) return;
+          const edgeCount =
+            interClusterEdgeCounts[cluster1.id][cluster2.id] || 0;
+          if (edgeCount > 0) {
+            const dx = cluster2.x - cluster1.x;
+            const dy = cluster2.y - cluster1.y;
+            const dz = cluster2.z - cluster1.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9; // Use 1e-9 to prevent division by zero
+            const strength = 0.04 * edgeCount * alpha; // Significantly increased strength (from 0.001 to 0.1)
+            cluster1.vx = (cluster1.vx ?? 0) + (dx / dist) * strength;
+            cluster1.vy = (cluster1.vy ?? 0) + (dy / dist) * strength;
+            cluster1.vz = (cluster1.vz ?? 0) + (dz / dist) * strength;
+          }
         });
       });
+    };
 
-      data.links.forEach((link) => {
-        const a = nodeMap[link.source].position;
-        const b = nodeMap[link.target].position;
-        const mid = a.clone().add(b).multiplyScalar(0.5); // 두 노드의 중점 계산
-        a.lerp(mid, 0.05); // 현재 좌표가 a고, target이 mid, amount가 0.05: 즉 a는 원래 자리에서 중간점 쪽으로 5프로만큼 이동
-        b.lerp(mid, 0.05);
+    // --- NEW: Global Centering Force for Clusters ---
+    // This force gently pulls all clusters towards the center of the scene,
+    // preventing unconnected clusters from drifting too far away.
+    const globalClusterCenteringForce = (alpha: number) => {
+      const k = 0.005 * alpha; // A very gentle pull towards the origin (0,0,0)
+      simClusters.forEach((c) => {
+        c.vx = (c.vx ?? 0) - c.x * k;
+        c.vy = (c.vy ?? 0) - c.y * k;
+        c.vz = (c.vz ?? 0) - c.z * k;
+      });
+    };
+
+    const clusterSim = forceSimulation(simClusters as any)
+      .force(
+        "charge",
+        forceManyBody()
+          .strength(-1) // Reduced repulsion to allow attraction to be more effective
+          .distanceMax(500)
+      )
+      .force("interClusterAttraction", interClusterAttractionForce)
+      .force("globalCentering", globalClusterCenteringForce)
+      .force(
+        "collide",
+        forceCollide()
+          .radius((c: any) => c.radius * 1.2) // Use radius + 20% padding
+          .strength(0.8)
+      )
+      .alpha(0.5)
+      .restart();
+
+    // 7. Animation
+    clusterSim.on("tick", () => {
+      simClusters.forEach((sc) => {
+        clusters.get(sc.id)!.center.set(sc.x, sc.y, sc.z);
+      });
+    });
+    simulation.on("tick", () => {
+      simNodes.forEach((n) => {
+        const entry = nodeEntryMap[n.id];
+        if (entry) {
+          entry.mesh.position.set(n.x, n.y, n.z);
+        }
       });
 
-      // 수정된 노드 위치를 반영해서, 노드들을 연결하는 선의 기하도(BufferGeometry) 업데이트
-      edges.forEach((edge) => {
-        edge.geometry.setFromPoints([
-          nodeMap[edge.link.source].position,
-          nodeMap[edge.link.target].position,
-        ]);
-        edge.geometry.attributes.position.needsUpdate = true; // 기하도의 위치 정보 업데이트
+      // Update cluster sphere positions from the cluster simulation
+      scene.children.forEach((child) => {
+        if (child.userData.isClusterSphere) {
+          const cid = child.userData.clusterId;
+          const clusterInfo = clusters.get(cid);
+          if (clusterInfo) child.position.copy(clusterInfo.center);
+        }
       });
-    }
 
-    const raycaster = new THREE.Raycaster(); // 레이캐스터: 카메라 시점에서 마우스 위치를 통해 3D 객체를 찾는 도구
-    const mouse = new THREE.Vector2(); // 마우스 위치를 저장하는 벡터
-    let hovered: THREE.Mesh | null = null; // 마우스 오버 시 표시되는 노드
+      edgeObjs.forEach((e) => {
+        const a = nodeEntryMap[e.sourceId].mesh.position;
+        const b = nodeEntryMap[e.targetId].mesh.position;
+        e.line.geometry.setFromPoints([a, b]);
+        (e.line.geometry.attributes.position as any).needsUpdate = true;
+      });
+    });
+
+    // 8. Interaction
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hovered: THREE.Mesh | null = null;
+    let focusedNodeId: string | null = null;
+
+    const resetNodeColors = () => {
+      nodeMeshes.forEach((mesh) => {
+        const id = mesh.userData.id;
+        const cid = mesh.userData.clusterId;
+        let c = clusters.get(cid)?.color ?? defaultNodeColor;
+
+        if (focusedNodeId) {
+          if (id === focusedNodeId) c = focusColor;
+          // When a node is focused, other nodes now retain their original color
+          // instead of turning gray, so the else statement is removed.
+        }
+        (mesh.material as THREE.MeshBasicMaterial).color.setHex(c);
+      });
+    };
+    resetNodeColors();
+
+    const resetEdgeStyles = () => {
+      edgeObjs.forEach((edge) => {
+        const mat = edge.line.material as THREE.LineBasicMaterial;
+        const isConnected =
+          focusedNodeId &&
+          (edge.sourceId === focusedNodeId || edge.targetId === focusedNodeId);
+
+        mat.color.setHex(
+          isConnected
+            ? focusColor
+            : edge.isIntra
+              ? intraEdgeColor
+              : interEdgeColor
+        );
+        mat.opacity = isConnected ? 0.8 : edge.isIntra ? 0.3 : 0.03;
+      });
+    };
+    resetEdgeStyles();
 
     const onMove = (e: MouseEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -119,7 +518,7 @@ export default function Graph3D({ data }: { data: GraphData }) {
       const isects = raycaster.intersectObjects(nodeMeshes, false);
 
       if (hovered && (!isects.length || isects[0].object !== hovered)) {
-        (hovered.material as THREE.MeshBasicMaterial).color.set(0x4aa8c0);
+        if (!focusedNodeId) resetNodeColors();
         hovered = null;
         if (tooltipRef.current) tooltipRef.current.style.opacity = "0";
       }
@@ -127,16 +526,37 @@ export default function Graph3D({ data }: { data: GraphData }) {
       if (isects.length) {
         const obj = isects[0].object as THREE.Mesh;
         hovered = obj;
-        (obj.material as THREE.MeshBasicMaterial).color.set(0xffcc00);
+        if (!focusedNodeId)
+          (obj.material as THREE.MeshBasicMaterial).color.setHex(hoverColor);
+
         if (tooltipRef.current) {
-          tooltipRef.current.textContent = obj.userData.id ?? "";
+          tooltipRef.current.textContent = obj.userData.id;
           tooltipRef.current.style.left = `${e.clientX + 10}px`;
           tooltipRef.current.style.top = `${e.clientY + 10}px`;
           tooltipRef.current.style.opacity = "1";
         }
       }
     };
+
+    const onClick = (e: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const isects = raycaster.intersectObjects(nodeMeshes, false);
+
+      if (isects.length > 0) {
+        const id = isects[0].object.userData.id;
+        focusedNodeId = focusedNodeId === id ? null : id;
+      } else {
+        focusedNodeId = null;
+      }
+      resetNodeColors();
+      resetEdgeStyles();
+    };
+
     renderer.domElement.addEventListener("mousemove", onMove);
+    renderer.domElement.addEventListener("click", onClick);
 
     const onResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -148,56 +568,18 @@ export default function Graph3D({ data }: { data: GraphData }) {
     let raf = 0;
     const animate = () => {
       raf = requestAnimationFrame(animate);
-      applyForces();
       controls.update();
       renderer.render(scene, camera);
     };
     animate();
-
-    const onClick = (e: MouseEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      const mouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      raycaster.setFromCamera(mouse, camera);
-      const isects = raycaster.intersectObjects(nodeMeshes, false);
-      if (!isects.length) return;
-      const mesh = isects[0].object as THREE.Mesh;
-      focusOn(mesh.position, 6);
-    };
-    renderer.domElement.addEventListener("click", onClick);
-
-    function focusOn(targetPos: THREE.Vector3, distance = 8, ms = 600) {
-      const startCam = camera.position.clone();
-      const startTarget = controls.target.clone();
-
-      const endTarget = targetPos.clone();
-      const dir = camera.position.clone().sub(controls.target).normalize();
-      const endCam = endTarget.clone().add(dir.multiplyScalar(distance));
-
-      let t0 = 0;
-      const animateFocus = (ts: number) => {
-        if (!t0) t0 = ts;
-        const p = Math.min(1, (ts - t0) / ms);
-        const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
-        const cam = startCam.clone().lerp(endCam, ease);
-        const tgt = startTarget.clone().lerp(endTarget, ease);
-
-        camera.position.copy(cam);
-        controls.target.copy(tgt);
-        controls.update();
-
-        if (p < 1) requestAnimationFrame(animateFocus);
-      };
-      requestAnimationFrame(animateFocus);
-    }
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("mousemove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
+      simulation.stop();
+      clusterSim.stop();
       renderer.dispose();
       scene.clear();
     };
@@ -211,14 +593,13 @@ export default function Graph3D({ data }: { data: GraphData }) {
         style={{
           position: "fixed",
           pointerEvents: "none",
-          padding: "4px 8px",
-          background: "rgba(0,0,0,0.7)",
+          padding: "6px 10px",
+          background: "rgba(0,0,0,0.8)",
           color: "#fff",
-          borderRadius: 6,
+          borderRadius: 4,
           fontSize: 12,
-          transform: "translate(-50%,-130%)",
           opacity: 0,
-          transition: "opacity 120ms",
+          transition: "opacity 0.2s",
           zIndex: 10,
         }}
       />

@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import MarkdownBubble from "./MarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import type { ChatMessage } from "../types/Chat";
-import profile from "@/assets/icons/logo.svg";
+import { useTranslation } from "react-i18next";
+import logo from "@/assets/icons/logo.svg";
 
 const PAGE = 10;
 
 export default function ChatWindow({
+  avatarUrl,
   threadId,
   isTyping,
 }: {
   threadId?: string;
   isTyping: boolean;
+  avatarUrl: string | null;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -27,14 +30,7 @@ export default function ChatWindow({
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
 
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const me = await window.keytarAPI.getMe();
-      setAvatarUrl(me?.profile?.avatarUrl ?? null);
-    })();
-  }, []);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (threadId) {
@@ -100,14 +96,12 @@ export default function ChatWindow({
   if (!threadId) {
     return (
       <div className="p-4 flex items-center justify-center h-full">
-        <p className="text-gray-500">
-          Please select a chat on the left or start a new chat
-        </p>
+        <p className="text-gray-500">{t("chat.selectChat")}</p>
       </div>
     );
   }
   if (!thread) {
-    return <div className="p-4">스레드를 찾을 수 없어요</div>;
+    return <div className="p-4">{t("chat.noChat")}</div>;
   }
 
   return (
@@ -139,24 +133,22 @@ export default function ChatWindow({
           >
             {isUser ? (
               <div
-                className="flex items-start gap-3"
+                className="flex items-start gap-3 ml-20"
                 style={{ maxWidth: userMaxWidth }}
               >
                 <img
-                  src={avatarUrl ?? profile}
+                  src={avatarUrl ?? logo}
                   alt="Profile"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
                   className="w-6 h-6 rounded-full flex-shrink-0"
                   style={{ marginTop: 0 }}
                 />
-                <div className="flex-1 text-text-chat-bubble">
-                  <MarkdownBubble text={m.content} />
-                </div>
+                <div className="flex-1 text-text-chat-bubble">{m.content}</div>
               </div>
             ) : (
               <div
-                className="rounded-2xl text-text-chat-bubble"
+                className="rounded-2xl text-text-chat-bubble flex items-start gap-3"
                 style={{
                   maxWidth: assistantMaxWidth,
                   backgroundColor: "transparent",
@@ -166,7 +158,17 @@ export default function ChatWindow({
                   boxShadow: "0 2px 4px 0 rgba(25, 33, 61, 0.08)",
                 }}
               >
-                <MarkdownBubble text={m.content} />
+                <img
+                  src={logo}
+                  alt="Profile"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  className="w-6 h-6 rounded-full flex-shrink-0"
+                  style={{ marginTop: 0 }}
+                />
+                <div className="flex flex-col min-w-0 overflow-hidden">
+                  <MarkdownBubble text={m.content} />
+                </div>
               </div>
             )}
           </div>
