@@ -14,6 +14,8 @@ import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 import { FaTrash } from "react-icons/fa";
 import { IoChevronDown, IoChevronForward } from "react-icons/io5";
 
+import NoteIcon from "@/assets/icons/note.svg";
+import NoteActiveIcon from "@/assets/icons/note_active_primary.svg";
 import FolderPlusIconActive from "@/assets/icons/folderplus_active.svg";
 
 export default function SideExpandBarNote({
@@ -215,10 +217,15 @@ export default function SideExpandBarNote({
     <div className="px-3">
       {/* 새 노트 혹 폴더 생성*/}
       <div
-        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/note")}
       >
-        <FaPlus className="w-4 h-4" />
+        <img src={NoteIcon} alt="note" className="w-4 h-4 group-hover:hidden" />
+        <img
+          src={NoteActiveIcon}
+          alt="note active"
+          className="w-4 h-4 hidden group-hover:block"
+        />
         <p className="text-[14px] font-normal font-noto-sans-kr">New Note</p>
       </div>
       {/* 루트 토글 헤더 */}

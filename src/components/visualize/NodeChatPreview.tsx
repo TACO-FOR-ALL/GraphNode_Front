@@ -147,7 +147,7 @@ export default function NodeChatPreview({
 
   return (
     <div
-      className={`absolute bottom-14 right-9 z-[100] bg-white pb-4 rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
+      className={`absolute bottom-6 right-8 z-[100] bg-white rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden transition-all duration-300 ease-out ${
         isExpanding
           ? "w-screen h-screen bottom-0 right-0 rounded-none p-0"
           : "w-96 h-[520px] p-4"
@@ -175,7 +175,7 @@ export default function NodeChatPreview({
 
       {/* 확장 시 중앙 정렬된 컨텐츠 */}
       <div
-        className={`flex-1 transition-all duration-300 ease-out ${
+        className={`flex-1 min-h-0 flex flex-col transition-all duration-300 ease-out ${
           isExpanding ? "pt-16" : ""
         }`}
         style={
@@ -190,10 +190,8 @@ export default function NodeChatPreview({
       >
         <div
           ref={wrapRef}
-          className="overflow-y-auto py-4"
+          className="flex-1 min-h-0 overflow-y-auto pt-4"
           style={{
-            height: isExpanding ? "100%" : "480px",
-            paddingBottom: isExpanding ? "200px" : "20px",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
           }}
@@ -204,7 +202,6 @@ export default function NodeChatPreview({
           }
         `}</style>
           <div ref={topSentinelRef} />
-
           {visible.map((m, index) => {
             const isUser = m.role === "user";
 
@@ -217,7 +214,7 @@ export default function NodeChatPreview({
               >
                 {isUser ? (
                   <div
-                    className={`flex items-start gap-2 ${isExpanding ? "ml-20" : "ml-8"}`}
+                    className={`flex items-start gap-2 ${isExpanding ? "ml-20" : "ml-8"} min-w-0`}
                     style={{ maxWidth: isExpanding ? userMaxWidth : "80%" }}
                   >
                     <img
@@ -228,7 +225,12 @@ export default function NodeChatPreview({
                       className={`rounded-full flex-shrink-0 ${isExpanding ? "w-6 h-6" : "w-5 h-5"}`}
                     />
                     <div
-                      className={`text-text-chat-bubble ${isExpanding ? "" : "text-[12px]"}`}
+                      className={`text-text-chat-bubble ${isExpanding ? "" : "text-[12px]"} break-words overflow-wrap-anywhere min-w-0`}
+                      style={{
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                        overflowX: "hidden",
+                      }}
                     >
                       {m.content}
                     </div>
@@ -250,7 +252,7 @@ export default function NodeChatPreview({
                       alt="Profile"
                       crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
-                      className={`rounded-full flex-shrink-0 ${isExpanding ? "w-6 h-6" : "w-5 h-5"}`}
+                      className={`flex-shrink-0 ${isExpanding ? "w-6 h-6" : "w-5 h-5"}`}
                     />
                     <div
                       className={`flex flex-col min-w-0 overflow-hidden ${isExpanding ? "" : "text-[12px]"}`}
@@ -262,6 +264,7 @@ export default function NodeChatPreview({
               </div>
             );
           })}
+          <div aria-hidden="true" className="h-4" />
         </div>
       </div>
     </div>

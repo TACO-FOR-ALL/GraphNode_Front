@@ -1,7 +1,4 @@
-import {
-  TbLayoutSidebarLeftExpand,
-  TbLayoutSidebarRightExpand,
-} from "react-icons/tb";
+import SideExpandPanelIcon from "@/assets/icons/panel.svg";
 
 export default function ToggleSidebarExpand({
   isExpanded,
@@ -12,17 +9,12 @@ export default function ToggleSidebarExpand({
 }) {
   return (
     <div className="flex px-3 py-4">
-      {isExpanded ? (
-        <TbLayoutSidebarRightExpand
-          onClick={() => setIsExpanded(false)}
-          className="text-text-secondary text-[16px] ml-auto"
-        />
-      ) : (
-        <TbLayoutSidebarLeftExpand
-          onClick={() => setIsExpanded(true)}
-          className="text-text-secondary text-[16px] ml-auto"
-        />
-      )}
+      <img
+        onClick={() => setIsExpanded(!isExpanded)}
+        src={SideExpandPanelIcon}
+        alt="side expand panel"
+        className="w-4 h-4 ml-auto"
+      />
     </div>
   );
 }
