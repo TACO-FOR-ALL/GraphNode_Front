@@ -11,15 +11,15 @@ export default function SideExpandBarChat({
   const navigate = useNavigate();
 
   return (
-    <div className="px-3">
+    <div className="px-3 flex flex-col h-full">
       <div
-        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary bg-white border-[0.6px] border-solid rounded-[6px] border-sidebar-button-border hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/chat")}
       >
-        <FaPlus className="text-[16px]" />
+        <FaPlus className="w-4 h-4" />
         <p className="text-[14px] font-normal font-noto-sans-kr">New Chat</p>
       </div>
-      <div className="flex flex-col gap-[6px] overflow-y-scroll">
+      <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-7">
         {data &&
           data.map((item) => {
             const isSelected = selectedId === item.id;

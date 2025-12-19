@@ -20,9 +20,11 @@ export default function ChatBox() {
       // 새 스레드 생성
       const created = await threadRepo.create("loading…", []);
 
+      const id = uuid();
+
       // 첫 메시지 추가
       const userMsg = {
-        id: uuid(),
+        id: id,
         role: "user" as const,
         content: text,
         ts: Date.now(),
@@ -31,7 +33,7 @@ export default function ChatBox() {
 
       // Chat 페이지로 이동 (자동 전송 플래그와 함께)
       navigate(`/chat/${created.id}`, {
-        state: { autoSend: true, initialMessage: text },
+        state: { autoSend: true, initialMessage: text, id: id },
       });
     } catch (error) {
       console.error("Failed to create chat:", error);

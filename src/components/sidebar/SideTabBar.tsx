@@ -69,14 +69,14 @@ export default function SideTabBar({
       />
       {showSidebarExpanded && (
         <div
-          className={`bg-sidebar-expanded-background duration-500 transition-all ${isExpanded ? "w-[259px]" : "w-[40px]"} flex flex-col`}
+          className={`bg-sidebar-expanded-background duration-500 transition-all ${isExpanded ? "w-[259px]" : "w-[40px]"} flex flex-col h-full`}
         >
           <ToggleSidebarExpand
             isExpanded={isExpanded}
             setIsExpanded={setIsExpanded}
           />
           {isExpanded && (
-            <div>
+            <div className="flex flex-col h-full">
               {path.includes("/note") && (
                 <SideExpandBarNote
                   path={path}

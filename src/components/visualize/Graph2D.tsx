@@ -6,6 +6,11 @@ import {
 } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
 import React, { useEffect, useRef, useState } from "react";
 import NodeChatPreview from "./NodeChatPreview";
+import {
+  PositionedEdge,
+  PositionedNode,
+  ClusterCircle,
+} from "@/types/GraphData";
 
 type SimNode = d3Force.SimulationNodeDatum &
   GraphNodeDto & {
@@ -15,24 +20,6 @@ type SimNode = d3Force.SimulationNodeDatum &
     vy?: number;
     edgeCount: number;
   };
-
-type PositionedNode = GraphNodeDto & {
-  x: number;
-  y: number;
-  edgeCount: number;
-};
-
-type PositionedEdge = GraphEdgeDto & {
-  isIntraCluster: boolean;
-};
-
-type ClusterCircle = {
-  clusterId: string;
-  clusterName: string;
-  centerX: number;
-  centerY: number;
-  radius: number;
-};
 
 function classifyEdges(
   nodes: GraphNodeDto[],
@@ -145,7 +132,6 @@ function layoutWithBoundedForce(
 
     const chargeStrength = -20 - Math.sqrt(n) * 3 - density * 2;
     const collideRadius = 12 + Math.min(10, density * 1.5);
-    const radialRadius = clusterRadius * 0.3;
     const boundaryRadius = clusterRadius * 0.9;
 
     const simulation = d3Force
@@ -231,6 +217,12 @@ type GraphProps = {
   width: number;
   height: number;
   avatarUrl: string | null;
+  onClustersReady?: (
+    clusters: ClusterCircle[],
+    nodes: PositionedNode[],
+    edges: PositionedEdge[]
+  ) => void;
+  zoomToClusterId?: string | null;
 };
 
 export default function Graph2D({
@@ -239,6 +231,8 @@ export default function Graph2D({
   width,
   height,
   avatarUrl,
+  onClustersReady,
+  zoomToClusterId,
 }: GraphProps) {
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
@@ -266,6 +260,7 @@ export default function Graph2D({
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const isAnimatingRef = useRef(false);
 
   // 엣지 분류
   const normalIntraEdges = edges.filter((e) => {
@@ -314,6 +309,13 @@ export default function Graph2D({
       });
   }, [hoveredId, nodes]);
 
+  const onClustersReadyRef = useRef(onClustersReady);
+
+  // onClustersReady ref를 최신으로 유지
+  useEffect(() => {
+    onClustersReadyRef.current = onClustersReady;
+  }, [onClustersReady]);
+
   useEffect(() => {
     if (rawNodes.length === 0) return;
 
@@ -329,7 +331,71 @@ export default function Graph2D({
 
     const max = Math.max(...nodes.map((n) => n.edgeCount), 1);
     setMaxEdgeCount(max);
-  }, [rawNodes, rawEdges, width, height]);
+
+    // 클러스터 정보와 노드 위치, 엣지를 부모 컴포넌트에 전달 (ref를 통해 호출하여 무한 루프 방지)
+    if (onClustersReadyRef.current) {
+      onClustersReadyRef.current(circles, nodes, edges);
+    }
+  }, [rawNodes, rawEdges, width, height]); // onClustersReady를 의존성 배열에서 제거
+
+  // 클러스터로 줌인 (애니메이션)
+  useEffect(() => {
+    if (!zoomToClusterId || circles.length === 0 || isAnimatingRef.current)
+      return;
+
+    const circle = circles.find((c) => c.clusterId === zoomToClusterId);
+    if (!circle || !svgRef.current) return;
+
+    isAnimatingRef.current = true;
+
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // 목표 스케일과 오프셋 계산
+    const targetScale = Math.min(3, Math.max(1.5, 200 / circle.radius));
+    const targetOffsetX = centerX - circle.centerX * targetScale;
+    const targetOffsetY = centerY - circle.centerY * targetScale;
+
+    // 시작 값 저장
+    const startScale = scale;
+    const startOffsetX = offset.x;
+    const startOffsetY = offset.y;
+
+    // 애니메이션 파라미터
+    const duration = 800; // 800ms
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // easing 함수 (ease-in-out)
+      const easeInOut =
+        progress < 0.5
+          ? 2 * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // 현재 값 계산
+      const newScale = startScale + (targetScale - startScale) * easeInOut;
+      const newOffsetX =
+        startOffsetX + (targetOffsetX - startOffsetX) * easeInOut;
+      const newOffsetY =
+        startOffsetY + (targetOffsetY - startOffsetY) * easeInOut;
+
+      setScale(newScale);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        isAnimatingRef.current = false;
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [zoomToClusterId, circles, scale, offset]);
 
   const nodeById = (id: number) => nodes.find((n) => n.id === id);
 

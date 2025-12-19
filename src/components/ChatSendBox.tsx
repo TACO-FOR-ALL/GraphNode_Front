@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import OpenAI from "openai";
 import { FaArrowRight } from "react-icons/fa6";
 import { IoIosArrowDown } from "react-icons/io";
 import uuid from "../utils/uuid";
 import threadRepo from "../managers/threadRepo";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ChatMessageRequest } from "@/types/Chat";
 import {
   OPENAI_MODEL,
   OPENAI_MODEL_DEFAULT,
   OpenAIModel,
 } from "@/constants/OPENAI_MODEL";
 import AutoResizeTextarea from "./AutoResizeTextArea";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { api } from "@/apiClient";
 
@@ -35,31 +33,6 @@ export default function ChatSendBox({
   const processedLocationKeyRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
 
-  // OpenAI 클라이언트 캐시 (키 로드 후 1회 생성)
-  const clientRef = useRef<OpenAI | null>(null);
-
-  const {
-    data: key,
-    isLoading: keyLoading,
-    error: keyError,
-  } = useQuery<string | null>({
-    queryKey: ["openaiKey"],
-    queryFn: () => window.keytarAPI.getAPIKey("openai"),
-    staleTime: 5 * 60 * 1000, // 캐시 유지 시간
-    retry: 1, // 오류 발생 시 재시도 횟수
-  });
-
-  const clientReady = !keyLoading && !keyError && key !== null;
-
-  useEffect(() => {
-    if (key && !clientRef.current) {
-      clientRef.current = new OpenAI({
-        apiKey: key,
-        dangerouslyAllowBrowser: true,
-      });
-    }
-  }, [key]);
-
   // threadId가 변경되면 리셋
   useEffect(() => {
     autoSendRef.current = false;
@@ -68,67 +41,41 @@ export default function ChatSendBox({
 
   const handleSendMessage = async (
     messageText: string,
-    targetThreadId: string
+    targetThreadId: string,
+    id: string
   ) => {
-    if (!messageText || sending || !clientReady || sendingRef.current) return;
+    if (!messageText || sending || sendingRef.current) return;
 
     // 중복 실행 방지
     sendingRef.current = true;
     setSending(true);
 
-    // 1) 유저 메시지는 이미 추가되어 있으므로 스레드 가져오기
-    const th = await threadRepo.getThreadById(targetThreadId);
-    if (!th) {
-      setSending(false);
-      return;
-    }
-
     // 2) UI 타이핑 표시
     setIsTyping(true);
 
     try {
-      // 3) 최근 N개 이력만 전송
-      const history = (th.messages ?? [])
-        .slice(-HISTORY_LIMIT)
-        .map((m) => ({ role: m.role, content: m.content }));
-
-      // 4) OpenAI 호출
-      const resp = await window.openaiAPI.request(
-        key!,
-        false,
-        model,
-        history as ChatMessageRequest[]
-      );
-
-      console.log("백엔드 데이터 호출");
-      const result = await api.conversations.createMessage(targetThreadId, {
-        role: "user",
-        content: messageText,
+      const result = await api.ai.chat(targetThreadId, {
+        model: "openai",
+        id: id,
+        chatContent: messageText,
       });
-      console.log(result);
 
-      const assistantText = resp.ok
-        ? (resp.data.choices?.[0]?.message?.content ??
-          "⚠️ 응답을 파싱할 수 없어요.")
-        : `❌ API 오류: ${resp.error || "unknown_error"}`;
+      // @ts-ignore
+      const messages = result.data.messages;
+      // @ts-ignore
+      const title = result.data.title ?? null;
 
-      // 5) 새 스레드면 제목 추론 후 갱신
-      if (th.title === "loading…" || !th.title) {
-        const result = await window.openaiAPI.requestGenerateThreadTitle(
-          key!,
-          messageText,
-          {
-            timeoutMs: 10000,
-          }
-        );
-        const title = result.ok
-          ? result.data
-          : messageText.slice(0, 15) + (messageText.length > 15 ? "…" : "");
+      const assistantText = result.isSuccess
+        ? (messages[1]?.content ?? "⚠️ 응답을 파싱할 수 없어요.")
+        : `❌ API 오류: ${result.error || "unknown_error"}`;
+
+      if (title) {
         await threadRepo.updateThreadTitleById(targetThreadId, title);
         queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
       }
 
-      // 6) 어시스턴트 메시지 저장
+      // 6) 어시스턴트 메시지 저장 및 기존 대화 업데이트
+      await threadRepo;
       await threadRepo.addMessageToThreadById(targetThreadId, {
         id: uuid(),
         role: "assistant",
@@ -152,7 +99,7 @@ export default function ChatSendBox({
   // 자동 전송 로직 (Home에서 ChatBox로부터 전달된 경우)
   useEffect(() => {
     // 이미 처리했거나 전송 중이면 리턴
-    if (autoSendRef.current || sending || !threadId || !clientReady) {
+    if (autoSendRef.current || sending || !threadId) {
       return;
     }
 
@@ -160,6 +107,7 @@ export default function ChatSendBox({
     const state = location.state as {
       autoSend?: boolean;
       initialMessage?: string;
+      id?: string;
     } | null;
 
     // state가 없거나 autoSend가 아니면 리턴
@@ -177,24 +125,27 @@ export default function ChatSendBox({
 
     // 메시지 저장 (navigate 전에)
     const messageText = state.initialMessage;
-
+    const id = state.id;
     // location.state 초기화 (다음 렌더링에서 다시 실행되지 않도록)
     // navigate는 비동기이므로 먼저 실행
     navigate(location.pathname, { replace: true, state: {} });
 
+    if (!id) {
+      return; // TODO: 에러 처리
+    }
     // 자동으로 메시지 전송 (비동기로 실행)
-    handleSendMessage(messageText, threadId).catch((err) => {
+    handleSendMessage(messageText, threadId, id).catch((err) => {
       console.error("Auto send failed:", err);
       // 에러 발생 시 ref 리셋하여 재시도 가능하게
       autoSendRef.current = false;
       processedLocationKeyRef.current = null;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, clientReady, sending, location.key]);
+  }, [threadId, sending, location.key]);
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || sending || !clientReady) return;
+    if (!text || sending) return;
     setSending(true);
 
     // 1) 스레드 준비 (없으면 새로 만들고 URL 업데이트)
@@ -205,9 +156,11 @@ export default function ChatSendBox({
       navigate(`/chat/${tid}`, { replace: true });
     }
 
+    const id = uuid();
+
     // 2) 유저 메시지 즉시 저장
     const userMsg = {
-      id: uuid(),
+      id: id,
       role: "user" as const,
       content: text,
       ts: Date.now(),
@@ -216,7 +169,7 @@ export default function ChatSendBox({
     setInput("");
 
     // 3) 메시지 전송 로직 실행
-    await handleSendMessage(text, tid!);
+    await handleSendMessage(text, tid!, id);
   };
 
   const width = isExpanded ? "744px" : "916px";
@@ -238,12 +191,12 @@ export default function ChatSendBox({
         onChange={setInput}
         placeholder="How can I help you?"
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && clientReady && input.trim()) {
+          if (e.key === "Enter" && !e.shiftKey && input.trim()) {
             e.preventDefault();
             handleSend();
           }
         }}
-        disabled={sending || !clientReady}
+        disabled={sending}
       />
       <div className="flex items-center justify-between w-full">
         <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
@@ -253,11 +206,9 @@ export default function ChatSendBox({
           <IoIosArrowDown className="text-[16px] text-chatbox-active" />
         </div>
         <div
-          onClick={() =>
-            input.trim().length > 0 && clientReady && !sending && handleSend()
-          }
+          onClick={() => input.trim().length > 0 && !sending && handleSend()}
           className={`w-[28px] h-[28px] text-white p-[6px] text-[16px] rounded-[8px] mr-3 flex items-center justify-center ${
-            input.trim().length > 0 && clientReady && !sending
+            input.trim().length > 0 && !sending
               ? "bg-chatbox-active cursor-pointer"
               : "bg-text-placeholder cursor-not-allowed"
           }`}
