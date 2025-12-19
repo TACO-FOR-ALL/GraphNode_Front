@@ -8,10 +8,13 @@ import { folderRepo } from "@/managers/folderRepo";
 import { noteRepo } from "@/managers/noteRepo";
 import NewFolderField from "../NewFolderField";
 import { buildFolderTree } from "@/utils/buildFolderTree";
-import CreateNewNoteOrFolder from "../CreateNewNoteOrFolder";
+import { FaPlus } from "react-icons/fa6";
 import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 import { FaTrash } from "react-icons/fa";
+import { IoChevronDown, IoChevronForward } from "react-icons/io5";
+
+import FolderPlusIconActive from "@/assets/icons/folderplus_active.svg";
 
 export default function SideExpandBarNote({
   path,
@@ -38,6 +41,7 @@ export default function SideExpandBarNote({
   const [newFolderName, setNewFolderName] = useState("");
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [isRootExpanded, setIsRootExpanded] = useState<boolean>(true);
   const isCreatingFolderRef = useRef(false);
   const queryClient = useQueryClient();
 
@@ -210,9 +214,43 @@ export default function SideExpandBarNote({
   return (
     <div className="px-3">
       {/* 새 노트 혹 폴더 생성*/}
-      <CreateNewNoteOrFolder
-        handleStartCreateFolder={handleStartCreateFolder}
-      />
+      <div
+        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] hover:bg-sidebar-button-hover transition-colors duration-300"
+        onClick={() => navigate("/note")}
+      >
+        <FaPlus className="w-4 h-4" />
+        <p className="text-[14px] font-normal font-noto-sans-kr">New Note</p>
+      </div>
+      {/* 루트 토글 헤더 */}
+      {buildTree &&
+        (buildTree.rootFolders.length > 0 ||
+          buildTree.rootNotes.length > 0) && (
+          <div className="flex items-center justify-between px-[6px] py-[2px] rounded-[6px] transition-colors duration-300 text-text-secondary group hover:text-primary hover:bg-sidebar-button-hover cursor-pointer mb-[6px]">
+            <div
+              onClick={() => setIsRootExpanded(!isRootExpanded)}
+              className="flex items-center gap-1 cursor-pointer"
+            >
+              <span className="text-[12px] font-medium font-noto-sans-kr">
+                Workspace
+              </span>
+              {isRootExpanded ? (
+                <IoChevronDown className="text-[12px]" />
+              ) : (
+                <IoChevronForward className="text-[12px]" />
+              )}
+            </div>
+            <div
+              onClick={() => handleStartCreateFolder(null)} // 무조건 ROOT에 생성
+              className="gap-1 p-[1px] hover:bg-[rgba(var(--color-sidebar-folder-plus-hover),0.2)] rounded-[4px] hidden group-hover:block cursor-pointer"
+            >
+              <img
+                src={FolderPlusIconActive}
+                alt="folder plus"
+                className="w-4 h-4"
+              />
+            </div>
+          </div>
+        )}
       {/* 루트에 폴더 생성 UI */}
       {creatingFolderParentId === "ROOT" && (
         <NewFolderField
@@ -256,7 +294,7 @@ export default function SideExpandBarNote({
           }
         }}
       >
-        {buildTree && (
+        {buildTree && isRootExpanded && (
           <>
             {buildTree.rootFolders.map((folder) => (
               <FolderItem
