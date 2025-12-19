@@ -38,6 +38,7 @@
     },
     "afterSign": "scripts/notarize.cjs",
     "win": {
+      "icon": "build/icon.ico",
       "target": "nsis"
     }
   },
