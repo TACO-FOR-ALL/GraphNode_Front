@@ -19,7 +19,7 @@ export default function SideExpandBarChat({
         <FaPlus className="w-4 h-4" />
         <p className="text-[14px] font-normal font-noto-sans-kr">New Chat</p>
       </div>
-      <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-7">
+      <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-20">
         {data &&
           data.map((item) => {
             const isSelected = selectedId === item.id;
