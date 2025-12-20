@@ -163,7 +163,7 @@ export default function ChatWindow({
                   alt="Profile"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
-                  className="w-6 h-6 rounded-full flex-shrink-0"
+                  className="w-6 h-6 flex-shrink-0"
                   style={{ marginTop: 0 }}
                 />
                 <div className="flex flex-col min-w-0 overflow-hidden">

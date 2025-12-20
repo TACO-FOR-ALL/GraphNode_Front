@@ -7,14 +7,14 @@ export default function AgentToolTipButton({
 }) {
   return (
     <div
-      className="absolute bottom-9 right-9 z-50 group"
+      className="absolute bottom-10 right-8 z-50 group"
       onClick={() => setIsOpen(true)}
     >
-      <div className="w-16 h-16 cursor-pointer flex items-center justify-center bg-white rounded-full shadow-[0_2px_20px_0_#badaff] hover:rotate-360 transition-all duration-500 relative">
+      <div className="w-10 h-10 cursor-pointer flex items-center justify-center bg-white rounded-full shadow-[0_2px_20px_0_#badaff] hover:rotate-360 transition-all duration-500 relative">
         <img
           src={logo}
           alt="logo"
-          className="w-6 h-6 group-hover:scale-125 transition-all duration-300"
+          className="w-5 h-5 group-hover:scale-125 transition-all duration-300"
         />
       </div>
       <div className="absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50">
