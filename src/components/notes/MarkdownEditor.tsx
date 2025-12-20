@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
 import { useAgentToolBoxStore } from "@/store/useAgentToolBoxStore";
 import { useNoteGenerationStore } from "@/store/useNoteGenerationStore";
+import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 
 const lowlight = createLowlight(common);
 
@@ -296,8 +297,12 @@ export default ({ noteId }: { noteId: string | null }) => {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [currentNoteId]);
 
+  const { isExpanded } = useSidebarExpandStore();
+
   return (
-    <div className="markdown-parser-demo bg-white border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative">
+    <div
+      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-white border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
+    >
       {/* 기존 저장 상태 UI (우측 상단) 그대로 */}
       {saveStatus && (
         <div className="absolute top-1 right-2 flex items-center gap-2 p-2 justify-center">
