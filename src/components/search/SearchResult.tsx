@@ -1,6 +1,8 @@
 import { ChatThread } from "@/types/Chat";
 import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
+import { useMemo, useCallback } from "react";
+import SearchResultItem from "./SearchResultItem";
 
 type SearchResultData = ChatThread[] | Note[] | undefined;
 
@@ -19,25 +21,22 @@ export default function SearchResult({
 }) {
   const navigate = useNavigate();
 
-  const highlightText = (text: string, query: string) => {
-    if (!query || query.length === 0) return text;
-
-    const regex = new RegExp(
-      `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+  // searchQuery가 변경될 때만 정규식 재생성
+  const searchRegex = useMemo(() => {
+    if (!searchQuery || searchQuery.length === 0) return null;
+    return new RegExp(
+      `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
       "gi"
     );
-    const parts = text.split(regex);
+  }, [searchQuery]);
 
-    return parts.map((part, index) =>
-      regex.test(part) ? (
-        <span key={index} className="text-primary">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
+  const onItemClick = useCallback(
+    (item: ChatThread | Note) => {
+      navigate(`/${type}/${item.id}`);
+      setOpenSearch(false);
+    },
+    [navigate, type, setOpenSearch]
+  );
 
   return (
     <div>
@@ -46,26 +45,13 @@ export default function SearchResult({
       </p>
       {data && data.length > 0 ? (
         data.map((item) => (
-          <div
-            onClick={() => {
-              navigate(`/${type}/${item.id}`);
-              setOpenSearch(false);
-            }}
+          <SearchResultItem
             key={item.id}
-            className="w-full group cursor-pointer flex flex-col items-start gap-2.5 hover:bg-search-item-hover rounded-[10px] p-3"
-          >
-            <p className="font-noto-sans-kr font-medium text-[14px]">
-              {highlightText(item.title, searchQuery)}
-            </p>
-            <p className="text-[12px] text-text-secondary line-clamp-1 group-hover:line-clamp-2">
-              {highlightText(
-                type === "chat"
-                  ? (item as ChatThread).messages[0].content
-                  : (item as Note).content,
-                searchQuery
-              )}
-            </p>
-          </div>
+            type={type}
+            item={item}
+            onItemClick={onItemClick}
+            searchRegex={searchRegex}
+          />
         ))
       ) : (
         <div className="w-full flex items-center justify-center py-1">
