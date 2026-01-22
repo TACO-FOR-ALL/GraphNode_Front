@@ -6,11 +6,10 @@ import LogoIcon from "@/assets/icons/logo.svg";
 import { Me } from "@/types/Me";
 
 export default function Login() {
-  const [checkSession, setCheckSession] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const popupIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const popupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleCloseWindow = () => window.windowAPI.close();
   const handleMinimizeWindow = () => window.windowAPI.minimize();
@@ -19,30 +18,25 @@ export default function Login() {
   // 세션 상태로 로그인 여부 확인
   useEffect(() => {
     (async () => {
-      try {
-        const result = await api.me.get();
+      const result = await api.me.get();
 
-        if (result.isSuccess) {
-          setHasSession(true);
-          await window.keytarAPI.setMe(result.data as Me);
-          window.electron?.send("auth-success"); // 렌더러에서 메인으로 단방향 이벤트 발신
-          return; // 세션 있을 시 로그인 UI 안 보기
-        } else {
-          setCheckSession(false);
-          setHasSession(false);
-          window.electron?.send("auth-show-login");
-          return;
-        }
-      } catch (err: any) {
-        console.warn("getMe failed on startup:", err);
-        if (err.status === 401) {
-          window.electron?.send("auth-show-login");
-          return;
-        }
-        setError("로그인 상태 확인 중 오류가 발생했습니다.");
-      } finally {
-        setCheckSession(false);
+      if (result.isSuccess) {
+        setHasSession(true);
+        await window.keytarAPI.setMe(result.data as Me);
+        window.electron?.send("auth-success");
+        return;
       }
+
+      const sc = result.error.statusCode;
+
+      if (sc === 401) {
+        setHasSession(false);
+        window.electron?.send("auth-show-login");
+        return;
+      }
+
+      setHasSession(false);
+      setError("t.login.error.server");
     })();
   }, []);
 
@@ -68,18 +62,17 @@ export default function Login() {
             if (me.isSuccess) {
               setHasSession(true);
               await window.keytarAPI.setMe(me.data as Me);
-              setCheckSession(false);
               window.electron?.send("auth-success");
             } else {
               setError(
-                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요."
+                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
               );
             }
           } catch (err: any) {
             console.error("getMe failed after oauth:", err);
             if (err.status === 401) {
               setError(
-                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요."
+                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
               );
             } else {
               setError("로그인 후 사용자 정보를 불러오지 못했습니다.");
@@ -121,7 +114,7 @@ export default function Login() {
       const popup = window.open(
         url,
         `${provider}-oauth`,
-        `width=${width},height=${height},left=${left},top=${top}`
+        `width=${width},height=${height},left=${left},top=${top}`,
       );
 
       if (!popup) {
@@ -146,10 +139,6 @@ export default function Login() {
       setError("Google 로그인 시작에 실패했습니다.");
     }
   };
-
-  if (checkSession) {
-    return null;
-  }
 
   if (!hasSession) {
     return (
