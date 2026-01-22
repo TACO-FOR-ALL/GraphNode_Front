@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { IoClose, IoSearch } from "react-icons/io5";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { noteRepo } from "@/managers/noteRepo";
