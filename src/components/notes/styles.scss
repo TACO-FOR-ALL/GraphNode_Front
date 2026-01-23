@@ -12,6 +12,13 @@
   overflow: auto;
   background: #ffffff;
 
+  /* 스크롤바 숨기기 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
   /* Ensure ProseMirror container is properly styled */
   .ProseMirror {
     outline: none;
@@ -150,10 +157,8 @@
     font-style: italic;
   }
 
-  /* Code blocks */
+  /* Code blocks - 동적 테마 CSS가 적용되도록 기본 스타일만 설정 */
   pre {
-    background: #1e293b;
-    color: #e2e8f0;
     border-radius: 0.5rem;
     padding: 1rem;
     margin: 1em 0;
@@ -162,90 +167,11 @@
 
     code {
       background: transparent;
-      color: inherit;
       padding: 0;
       border-radius: 0;
       font-size: 0.9em;
       display: block;
       width: 100%;
-
-      /* highlight.js 스타일 지원 */
-      .hljs-comment,
-      .hljs-quote {
-        color: #6a9955;
-        font-style: italic;
-      }
-
-      .hljs-keyword,
-      .hljs-selector-tag,
-      .hljs-subst {
-        color: #569cd6;
-      }
-
-      .hljs-number,
-      .hljs-literal,
-      .hljs-variable,
-      .hljs-template-variable,
-      .hljs-tag .hljs-attr {
-        color: #b5cea8;
-      }
-
-      .hljs-string,
-      .hljs-doctag {
-        color: #ce9178;
-      }
-
-      .hljs-title,
-      .hljs-section,
-      .hljs-selector-id {
-        color: #dcdcaa;
-      }
-
-      .hljs-type,
-      .hljs-class .hljs-title {
-        color: #4ec9b0;
-      }
-
-      .hljs-tag,
-      .hljs-name,
-      .hljs-attribute {
-        color: #569cd6;
-      }
-
-      .hljs-regexp,
-      .hljs-link {
-        color: #d16969;
-      }
-
-      .hljs-symbol,
-      .hljs-bullet {
-        color: #d7ba7d;
-      }
-
-      .hljs-built_in,
-      .hljs-builtin-name {
-        color: #4ec9b0;
-      }
-
-      .hljs-meta {
-        color: #808080;
-      }
-
-      .hljs-deletion {
-        background: #fdd;
-      }
-
-      .hljs-addition {
-        background: #dfd;
-      }
-
-      .hljs-emphasis {
-        font-style: italic;
-      }
-
-      .hljs-strong {
-        font-weight: bold;
-      }
     }
   }
 
@@ -302,19 +228,34 @@
   ul[data-type="taskList"] {
     list-style: none;
     padding: 0;
+    margin: 0.5em 0;
 
     li {
       display: flex;
       align-items: flex-start;
+      margin: 0.25em 0;
 
       > label {
         flex: 0 0 auto;
         margin-right: 0.5rem;
         user-select: none;
+        display: flex;
+        align-items: center;
+        height: 1.6em; // 텍스트 line-height에 맞춤
       }
 
       > div {
         flex: 1 1 auto;
+
+        > p {
+          margin: 0;
+        }
+
+        // 중첩된 TaskList
+        > ul[data-type="taskList"] {
+          margin: 0.25em 0;
+          padding-left: 1.5em;
+        }
       }
     }
   }

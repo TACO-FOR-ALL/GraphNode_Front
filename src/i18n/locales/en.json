@@ -29,6 +29,26 @@
   },
   "settings": {
     "title": "Settings",
+    "appearance": {
+      "editor": {
+        "title": "Code Theme",
+        "subTitle": "Adjust the code theme of the interface for better visibility"
+      },
+      "theme": {
+        "title": "Theme",
+        "subTitle": "Adjust the app theme of the interface for better visibility.",
+        "system": "System",
+        "dark": "Dark Mode",
+        "light": "Light Mode"
+      },
+      "advanced": {
+        "title": "Advanced",
+        "developer": "Developer Mode",
+        "developerDescription": "Developer Mode exposes menu items helpful for people writing apps using the ",
+        "hardward": "Hardware Acceleration",
+        "hardwareDescription": "Uses your GPU to make GraphNode smoother. Turn this off if you are experiencing visual problems."
+      }
+    },
     "language": {
       "title": "Select a Language",
       "subtitle": "Choose the language you want GraphNode to display.",

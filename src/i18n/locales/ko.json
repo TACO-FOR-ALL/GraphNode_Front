@@ -29,6 +29,26 @@
   },
   "settings": {
     "title": "설정",
+    "appearance": {
+      "theme": {
+        "title": "테마",
+        "subTitle": "더 나은 가시성을 위해 앱 테마를 변경해보세요.",
+        "system": "시스템",
+        "dark": "다크 모드",
+        "light": "라이트 모드"
+      },
+      "editor": {
+        "title": "코드 블록 테마",
+        "subTitle": "더 나은 가시성을 위해 인터페이스의 코드 테마를 선택해보세요."
+      },
+      "advanced": {
+        "title": "고급",
+        "developer": "개발자 모드",
+        "developerDescription": "커스텀 플러그인을 제작하는 분들에게 도움을 주는 컨텍스트 메뉴를 표시합니다. ",
+        "hardware": "하드위에 가속",
+        "hardwareDescription": "GPU를 사용하여 GraphNode를 더 원활하게 실행합니다. 시각적 문제가 발생하는 경우 이 기능을 끄세요."
+      }
+    },
     "language": {
       "title": "언어 선택하기",
       "subtitle": "GraphNode에 표시할 언어를 선택하세요.",
