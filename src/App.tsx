@@ -14,6 +14,7 @@ import { Me } from "./types/Me";
 import Note from "./routes/Note";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
+import { useThemeStore } from "./store/useThemeStore";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
 function MainLayout() {
   const [openSearch, setOpenSearch] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
+  const { theme } = useThemeStore();
 
   useEffect(() => {
     // 최초 실행 시 기본 노트 추가
@@ -61,6 +63,21 @@ function MainLayout() {
     };
   }, []);
 
+  // GET APP THEME
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else if (theme === "light") {
+      root.classList.remove("dark");
+    } else {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", isDark);
+    }
+  }, [theme]);
+
+  // GET USER INFO
   useEffect(() => {
     (async () => {
       const me = await window.keytarAPI.getMe();
