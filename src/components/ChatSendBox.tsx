@@ -42,7 +42,7 @@ export default function ChatSendBox({
   const handleSendMessage = async (
     messageText: string,
     targetThreadId: string,
-    id: string
+    id: string,
   ) => {
     if (!messageText || sending || sendingRef.current) return;
 
@@ -176,15 +176,7 @@ export default function ChatSendBox({
 
   return (
     <div
-      className="flex absolute bottom-8 left-0 right-0 flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff]"
-      style={{
-        width,
-        left: "50%",
-        transform: "translateX(-50%)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        backgroundColor: "rgba(255, 255, 255, 0.5)",
-      }}
+      className={`flex w-[${width}] absolute bottom-8 left-0 right-0 flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md`}
     >
       <AutoResizeTextarea
         value={input}

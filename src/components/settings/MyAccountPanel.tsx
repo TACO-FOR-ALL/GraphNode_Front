@@ -39,7 +39,7 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
           />
         </div>
         <div className="flex flex-col items-start justify-center gap-1">
-          <p className="text-[28px] font-medium">
+          <p className="text-[28px] font-medium text-text-primary">
             {userInfo.profile.displayName}
           </p>
           <p className="text-[20px] text-text-secondary font-medium">

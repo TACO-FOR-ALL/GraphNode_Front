@@ -42,7 +42,7 @@ const components: Components = {
     if (inline) {
       return (
         <code
-          className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-sm"
+          className="px-1.5 py-0.5 rounded bg-code-bg text-code-text font-mono text-sm"
           {...rest}
         >
           {code}
@@ -93,7 +93,7 @@ const components: Components = {
   pre: ({ children, ...rest }) => {
     return (
       <pre
-        className="rounded-lg overflow-auto my-4 p-4 bg-gray-200 text-gray-100 border border-gray-700 font-mono text-sm leading-relaxed"
+        className="rounded-lg overflow-auto my-4 p-4 bg-bg-tertiary text-text-primary border border-base-border font-mono text-sm leading-relaxed"
         {...rest}
       >
         {children}

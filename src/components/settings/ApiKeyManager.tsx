@@ -38,9 +38,9 @@ export default function ApiKeyManager({
       <div className="flex items-center justify-center gap-[18px] flex-shrink-0">
         <img src={logo} alt={title} className="w-[30px] h-[30px]" />
         <div className="flex flex-col items-start justify-center gap-[10px]">
-          <p className="text-[16px] font-medium">{title}</p>
+          <p className="text-[16px] font-medium text-text-primary">{title}</p>
           {isVerified ? (
-            <div className="border border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] text-[6px]">
+            <div className="border border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] text-[6px] text-text-primary">
               <p className="translate-y-[2px]">{"● ".repeat(49)}</p>
             </div>
           ) : (
@@ -49,7 +49,7 @@ export default function ApiKeyManager({
               value={apiKey}
               placeholder={`Enter your ${title} API key`}
               onChange={(e) => setApiKey(e.target.value)}
-              className="border border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] focus:outline-none placeholder:text-text-placeholder placeholder:opacity-50 placeholder:text-[12px] text-[20px] appearance-none"
+              className="border border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] focus:outline-none placeholder:text-text-placeholder placeholder:opacity-50 placeholder:text-[12px] text-[20px] appearance-none bg-bg-primary text-text-primary"
             />
           )}
         </div>

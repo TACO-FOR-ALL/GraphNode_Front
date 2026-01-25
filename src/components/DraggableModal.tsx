@@ -69,7 +69,7 @@ export default function DraggableModal({
     >
       <div
         ref={modalRef}
-        className="flex flex-col w-[750px] h-[480px] shadow-[0_2px_20px_0_#badaff] rounded-2xl border-[1px] border-solid border-[rgba(var(--color-border-quaternary),0.08)] bg-[rgba(255,255,255,0.2)] backdrop-blur-[12px] overflow-hidden"
+        className="flex flex-col w-[750px] h-[480px] shadow-[0_2px_20px_0_#badaff] rounded-2xl border-[1px] border-solid border-[rgba(var(--color-border-quaternary),0.08)] bg-bg-primary/90 backdrop-blur-[12px] overflow-hidden"
         onMouseDown={handleHeaderMouseDown}
         onClick={(e) => e.stopPropagation()}
       >

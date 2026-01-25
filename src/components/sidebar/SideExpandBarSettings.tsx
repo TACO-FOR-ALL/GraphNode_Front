@@ -1,18 +1,13 @@
-import MyAccountIcon from "@/assets/icons/account.svg";
-import MyAccountIconActive from "@/assets/icons/account_active.svg";
-import DataPrivacyIcon from "@/assets/icons/data.svg";
-import DataPrivacyIconActive from "@/assets/icons/data_active.svg";
 import { useSidebarSettingsStore } from "@/store/useSidebarSettingsStore";
 import SettingsCategory from "@/types/SettingsCategory";
 import { useTranslation } from "react-i18next";
-import AppearanceIcon from "@/assets/icons/appearance.svg";
-import AppearanceIconActive from "@/assets/icons/appearance_active.svg";
-import NotificationIcon from "@/assets/icons/notification.svg";
-import NotificationIconActive from "@/assets/icons/notification_active.svg";
-import KeybindsIcon from "@/assets/icons/keybinds.svg";
-import KeybindsIconActive from "@/assets/icons/keybinds_active.svg";
-import LanguageTimeIcon from "@/assets/icons/language.svg";
-import LanguageTimeIconActive from "@/assets/icons/language_active.svg";
+import { IoPersonSharp } from "react-icons/io5";
+import { MdPrivacyTip } from "react-icons/md";
+import { IoMdColorPalette } from "react-icons/io";
+import { IoIosNotifications } from "react-icons/io";
+import { FaKeyboard } from "react-icons/fa";
+import { IoLanguageOutline } from "react-icons/io5";
+import { IconType } from "react-icons/lib";
 
 export default function SideExpandBarSettings() {
   const { t } = useTranslation();
@@ -21,36 +16,30 @@ export default function SideExpandBarSettings() {
   const USER_SETTINGS = [
     {
       id: "my-account",
-      icon: MyAccountIcon,
-      iconActive: MyAccountIconActive,
+      icon: IoPersonSharp,
     },
     {
       id: "data-privacy",
-      icon: DataPrivacyIcon,
-      iconActive: DataPrivacyIconActive,
+      icon: MdPrivacyTip,
     },
   ];
 
   const APP_SETTINGS = [
     {
       id: "appearance",
-      icon: AppearanceIcon,
-      iconActive: AppearanceIconActive,
+      icon: IoMdColorPalette,
     },
     {
       id: "notification",
-      icon: NotificationIcon,
-      iconActive: NotificationIconActive,
+      icon: IoIosNotifications,
     },
     {
       id: "keybinds",
-      icon: KeybindsIcon,
-      iconActive: KeybindsIconActive,
+      icon: FaKeyboard,
     },
     {
       id: "language-time",
-      icon: LanguageTimeIcon,
-      iconActive: LanguageTimeIconActive,
+      icon: IoLanguageOutline,
     },
   ];
 
@@ -66,7 +55,6 @@ export default function SideExpandBarSettings() {
               key={setting.id}
               text={t(`settings.userSettings.${setting.id}`)}
               icon={setting.icon}
-              iconActive={setting.iconActive}
               onClick={() =>
                 setSelectedCategory({ id: setting.id } as SettingsCategory)
               }
@@ -83,7 +71,6 @@ export default function SideExpandBarSettings() {
               key={setting.id}
               text={t(`settings.appSettings.${setting.id}`)}
               icon={setting.icon}
-              iconActive={setting.iconActive}
               onClick={() =>
                 setSelectedCategory({ id: setting.id } as SettingsCategory)
               }
@@ -106,15 +93,13 @@ function SettingsCategoryText({ text }: { text: string }) {
 
 function SettingsCategoryButton({
   text,
-  icon,
-  iconActive,
+  icon: Icon,
   onClick,
   isSelected,
 }: {
   id: string;
   text: string;
-  icon: string;
-  iconActive: string;
+  icon: IconType;
   onClick: () => void;
   isSelected: boolean;
 }) {
@@ -123,18 +108,9 @@ function SettingsCategoryButton({
       className={`group rounded-[7px] cursor-pointer w-[235px] pl-[6px] py-[5.5px] flex items-center justify-start gap-[6px] transition-colors duration-300 ${isSelected ? "bg-sidebar-button-hover text-primary" : "bg-transparent text-black"} hover:bg-sidebar-button-hover hover:text-primary`}
       onClick={onClick}
     >
-      <img
-        src={icon}
-        alt={text}
-        className={`${isSelected ? "hidden" : "block group-hover:hidden"}`}
-      />
-      <img
-        src={iconActive}
-        alt={text}
-        className={`${isSelected ? "block" : "hidden group-hover:block"}`}
-      />
+      <Icon />
       <p
-        className={`text-[14px] font-normal font-noto-sans-kr ${isSelected ? "text-primary" : "text-black"} group-hover:text-primary transition-colors duration-300`}
+        className={`text-[14px] font-normal font-noto-sans-kr ${isSelected ? "text-primary" : "text-text-primary"} group-hover:text-primary transition-colors duration-300`}
       >
         {text}
       </p>

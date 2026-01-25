@@ -50,6 +50,9 @@ export default ({ noteId }: { noteId: string | null }) => {
     const oldStyle = document.getElementById("hljs-editor-style");
     if (oldStyle) oldStyle.remove();
 
+    const oldOverride = document.getElementById("hljs-override-style");
+    if (oldOverride) oldOverride.remove();
+
     let cssPath = `/hljs-styles/${currentHighlight}.css`;
     if (currentHighlight.startsWith("base16-")) {
       const themeName = currentHighlight.replace("base16-", "");
@@ -66,12 +69,22 @@ export default ({ noteId }: { noteId: string | null }) => {
         style.id = "hljs-editor-style";
         style.textContent = css;
         document.head.appendChild(style);
+
+        // 테마 로드 후 기본 텍스트 색상 오버라이드
+        const overrideStyle = document.createElement("style");
+        overrideStyle.id = "hljs-override-style";
+        overrideStyle.textContent = `
+          .hljs { color: var(--color-codeblock-text) !important; }
+        `;
+        document.head.appendChild(overrideStyle);
       })
       .catch((err) => console.warn("Failed to load highlight theme:", err));
 
     return () => {
       const style = document.getElementById("hljs-editor-style");
       if (style) style.remove();
+      const override = document.getElementById("hljs-override-style");
+      if (override) override.remove();
     };
   }, [currentHighlight]);
 
@@ -335,7 +348,7 @@ export default ({ noteId }: { noteId: string | null }) => {
 
   return (
     <div
-      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-white border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
+      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
     >
       {/* 기존 저장 상태 UI (우측 상단) 그대로 */}
       {saveStatus && (

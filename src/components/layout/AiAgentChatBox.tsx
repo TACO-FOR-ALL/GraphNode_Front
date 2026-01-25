@@ -387,12 +387,12 @@ export default function AiAgentChatBox({
   });
 
   return (
-    <div className="absolute bottom-9 right-9 z-50 w-96 h-[520px] bg-white rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden p-4">
+    <div className="absolute bottom-9 right-9 z-50 w-96 h-[520px] bg-bg-primary rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden p-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center justify-center gap-2">
           <img src={logo} alt="logo" className="w-3 h-3" />
-          <span className="text-[12px] font-medium">GraphNode AI Agent</span>
+          <span className="text-[12px] font-medium text-text-primary">GraphNode AI Agent</span>
         </div>
         <IoIosClose
           onClick={() => setIsOpen(false)}
@@ -407,10 +407,10 @@ export default function AiAgentChatBox({
       >
         {messages.length === 0 ? (
           <>
-            <p className="text-[30px] font-medium mb-1">
+            <p className="text-[30px] font-medium mb-1 text-text-primary">
               {t("aiAgentChatBox.title")}
             </p>
-            <p className="text-[20px] font-medium mb-3">
+            <p className="text-[20px] font-medium mb-3 text-text-primary">
               {t("aiAgentChatBox.subtitle")}
             </p>
             <div
@@ -427,8 +427,8 @@ export default function AiAgentChatBox({
               }}
               className="w-full mb-2 flex items-center justify-start gap-2 px-[10px] py-2 rounded-full group hover:bg-sidebar-button-hover cursor-pointer"
             >
-              <RiFileInfoFill className="w-4 h-4 group-hover:text-primary" />
-              <p className="text-[14px] font-medium group-hover:text-primary">
+              <RiFileInfoFill className="w-4 h-4 text-text-primary group-hover:text-primary" />
+              <p className="text-[14px] font-medium text-text-primary group-hover:text-primary">
                 {t("aiAgentChatBox.summary")}
               </p>
             </div>
@@ -446,13 +446,13 @@ export default function AiAgentChatBox({
               }}
               className="w-full flex items-center justify-start gap-2 px-[10px] py-2 rounded-full group hover:bg-sidebar-button-hover cursor-pointer"
             >
-              <FaPen className="w-3 h-3 group-hover:text-primary" />
-              <p className="text-[14px] font-medium group-hover:text-primary">
+              <FaPen className="w-3 h-3 text-text-primary group-hover:text-primary" />
+              <p className="text-[14px] font-medium text-text-primary group-hover:text-primary">
                 {t("aiAgentChatBox.note")}
               </p>
             </div>
             {alertMessage && selectedSources.length === 0 && (
-              <div className="mt-2 px-3 py-2 bg-red-50 text-red-600 text-[12px] rounded-lg">
+              <div className="mt-2 px-3 py-2 bg-frame-bar-red/10 text-frame-bar-red text-[12px] rounded-lg">
                 {alertMessage}
               </div>
             )}
@@ -482,7 +482,7 @@ export default function AiAgentChatBox({
                     className={`max-w-[80%] px-3 py-2 rounded-xl text-[13px] ${
                       msg.role === "user"
                         ? "bg-primary text-white rounded-br-none"
-                        : "bg-gray-100 text-gray-800 rounded-bl-none"
+                        : "bg-bg-tertiary text-text-primary rounded-bl-none"
                     }`}
                   >
                     {msg.role === "system" && msg.status === "progress" && (
@@ -509,7 +509,7 @@ export default function AiAgentChatBox({
               className={`flex items-center gap-1 text-[10px] px-2 py-[4px] pb-[5px] border-[1px] text-text-secondary border-text-placeholder rounded-full ${
                 isProcessing
                   ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-gray-50"
+                  : "hover:bg-bg-tertiary"
               }`}
             >
               @
@@ -517,9 +517,9 @@ export default function AiAgentChatBox({
 
             {/* 드롭다운 메뉴 */}
             {showSourceDropdown && (
-              <div className="absolute bottom-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 w-48 max-h-64 overflow-hidden flex flex-col">
+              <div className="absolute bottom-full left-0 mt-1 bg-bg-primary border border-base-border rounded shadow-lg z-10 w-48 max-h-64 overflow-hidden flex flex-col">
                 <div className="flex-1 overflow-y-auto">
-                  <div className="p-2 border-b">
+                  <div className="p-2 border-b border-base-border">
                     <p className="text-xs font-semibold text-text-secondary mb-1">
                       Chat
                     </p>
@@ -531,13 +531,13 @@ export default function AiAgentChatBox({
                             onClick={() =>
                               addSource("chat", thread.id, thread.title)
                             }
-                            className="w-full text-left px-2 py-1 text-xs hover:bg-gray-100 rounded"
+                            className="w-full text-left px-2 py-1 text-xs hover:bg-bg-tertiary rounded text-text-primary"
                           >
                             {thread.title}
                           </button>
                         ))
                       ) : (
-                        <p className="text-xs text-gray-400 px-2">
+                        <p className="text-xs text-text-tertiary px-2">
                           채팅이 없습니다
                         </p>
                       )}
@@ -555,13 +555,13 @@ export default function AiAgentChatBox({
                             onClick={() =>
                               addSource("note", note.id, note.title)
                             }
-                            className="w-full text-left px-2 py-1 text-xs hover:bg-gray-100 rounded"
+                            className="w-full text-left px-2 py-1 text-xs hover:bg-bg-tertiary rounded text-text-primary"
                           >
                             {note.title}
                           </button>
                         ))
                       ) : (
-                        <p className="text-xs text-gray-400 px-2">
+                        <p className="text-xs text-text-tertiary px-2">
                           노트가 없습니다
                         </p>
                       )}
@@ -610,7 +610,7 @@ export default function AiAgentChatBox({
           </div>
           <div
             onClick={() => !isProcessing && input.trim() && handleSend()}
-            className={`w-5 h-5 flex items-center justify-center rounded-full text-white cursor-pointer ${input.length === 0 || isProcessing ? "bg-gray-300" : "bg-primary"}`}
+            className={`w-5 h-5 flex items-center justify-center rounded-full text-white cursor-pointer ${input.length === 0 || isProcessing ? "bg-text-placeholder" : "bg-primary"}`}
           >
             {isProcessing ? (
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />

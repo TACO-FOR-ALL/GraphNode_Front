@@ -35,7 +35,7 @@ export default function SearchResultItem({
       }}
       className="w-full group cursor-pointer flex flex-col items-start gap-2.5 hover:bg-search-item-hover rounded-[10px] p-3"
     >
-      <p className="font-noto-sans-kr font-medium text-[14px]">
+      <p className="font-noto-sans-kr font-medium text-[14px] text-text-primary">
         {highlightText(item.title)}
       </p>
       <p className="text-[12px] text-text-secondary line-clamp-1 group-hover:line-clamp-2">

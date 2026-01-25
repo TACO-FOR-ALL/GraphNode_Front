@@ -45,7 +45,7 @@
         "title": "Advanced",
         "developer": "Developer Mode",
         "developerDescription": "Developer Mode exposes menu items helpful for people writing apps using the ",
-        "hardward": "Hardware Acceleration",
+        "hardware": "Hardware Acceleration",
         "hardwareDescription": "Uses your GPU to make GraphNode smoother. Turn this off if you are experiencing visual problems."
       }
     },

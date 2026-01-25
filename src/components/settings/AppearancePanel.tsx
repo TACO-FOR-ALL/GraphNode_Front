@@ -570,7 +570,7 @@ export default function AppearancePanel() {
               className={`w-5 h-5 rounded-full transition-all duration-200 flex items-center justify-center
                 ${
                   theme === themeOption.key
-                    ? "border-2 border-primary bg-white"
+                    ? "border-2 border-primary bg-bg-primary"
                     : "border border-text-tertiary bg-transparent"
                 }`}
             >
@@ -578,7 +578,7 @@ export default function AppearancePanel() {
                 <div className="w-2.5 h-2.5 rounded-full bg-primary" />
               )}
             </div>
-            <span className="text-[14px]">{t(themeOption.value)}</span>
+            <span className="text-[14px] text-text-primary">{t(themeOption.value)}</span>
           </label>
         ))}
       </div>
@@ -600,7 +600,7 @@ export default function AppearancePanel() {
           )}
         </button>
         {isOpen && (
-          <div className="absolute top-full left-0 mt-2 w-full border border-solid border-text-tertiary rounded-sm bg-background-primary shadow-lg z-10 bg-white h-60 overflow-y-scroll">
+          <div className="absolute top-full left-0 mt-2 w-full border border-solid border-text-tertiary rounded-sm shadow-lg z-10 bg-bg-primary h-60 overflow-y-scroll">
             {highlights.map((highlight) => (
               <button
                 key={highlight}

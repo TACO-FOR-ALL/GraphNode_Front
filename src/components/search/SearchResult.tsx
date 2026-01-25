@@ -55,7 +55,7 @@ export default function SearchResult({
         ))
       ) : (
         <div className="w-full flex items-center justify-center py-1">
-          <p className="text-[14px] font-medium">{`No ${title} found`}</p>
+          <p className="text-[14px] font-medium text-text-secondary">{`No ${title} found`}</p>
         </div>
       )}
     </div>
