@@ -119,7 +119,7 @@ export default function AutoResizeTextarea({
         wordBreak: "break-word",
         marginBottom: marginBottom,
       }}
-      className={`w-full text-[14px] placeholder:text-text-placeholder font-noto-sans-kr focus:outline-none focus:ring-0 custom-scrollbar mr-3 pl-1`}
+      className={`w-full text-[14px] placeholder:text-text-placeholder font-noto-sans-kr focus:outline-none focus:ring-0 custom-scrollbar mr-3 pl-1 bg-transparent text-text-primary`}
     />
   );
 }

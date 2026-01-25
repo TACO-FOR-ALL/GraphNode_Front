@@ -24,7 +24,7 @@ export default function Home({ username }: { username: string }) {
   }, []);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center bg-bg-primary min-h-full">
       <HomeTitle username={username} />
       <ChatBox />
       <RecentNotes />

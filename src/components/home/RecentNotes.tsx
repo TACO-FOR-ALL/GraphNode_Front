@@ -16,7 +16,7 @@ export default function RecentNotes() {
   });
 
   return (
-    <div className="mt-[150px] w-[744px] flex flex-col items-center max-h-[calc(100vh-600px)] overflow-y-auto scroll-hidden">
+    <div className="mt-[150px] w-[744px] flex flex-col items-center max-h-[calc(100vh-600px)] overflow-y-auto scroll-hidden text-text-primary">
       <p className="mb-6 font-noto-sans-kr font-medium text-[28px]">
         Recent Notes
       </p>

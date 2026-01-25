@@ -20,6 +20,7 @@ declare global {
     };
     systemAPI: {
       getLocale: () => Promise<string>;
+      openExternal: (url: string) => Promise<void>;
     };
     openaiAPI: {
       checkAPIKeyValid: (apiKey: string) => Promise<Result<true>>;

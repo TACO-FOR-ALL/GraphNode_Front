@@ -1,7 +1,12 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #2b89f8;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-text-primary: #1f2937;
   --color-text-secondary: #6b7280;
   --color-text-tertiary: #999999;
   --color-text-chat-bubble: #666f8d;
@@ -30,7 +35,78 @@
   --color-edge-default: #d6d6d6;
   --color-cluster-default: #f5f5f5;
   --color-sidebar-folder-plus-hover: 54, 191, 250;
-  --color-cluster-focus:;
+  --color-chat-bubble-border: #f0f2f5;
+  --color-code-bg: #f1f5f9;
+  --color-code-text: #e11d48;
+  --color-codeblock-text: #1f2937;
+  --color-blockquote-border: #e5e7eb;
+  --color-table-header-bg: #f9fafb;
+  --color-table-border: #d1d5db;
+  --color-scrollbar-thumb: #d4d4d4;
+  --color-scrollbar-thumb-hover: #9ca3af;
+  --font-family-noto-sans-kr:
+    "NotoSansKR", system-ui, -apple-system, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.dark {
+  /* 프라이머리/액티브/선택/호버 색상은 동일합니다 */
+  --color-primary: #2b89f8;
+  --color-sidebar-tab-selected: #7ab5fb;
+  --color-chatbox-active: #2b89f8;
+  --color-chatbox-active-rgb: 43, 137, 248;
+  --color-sidebar-button-hover: #1e3a5f;
+  --color-sidebar-folder-plus-hover: 54, 191, 250;
+  --color-search-item-hover: #2a2a2e;
+  --color-node-focus: #badaff;
+  --color-frame-bar-red: #ff605c;
+  --color-frame-bar-yellow: #ffbd44;
+  --color-frame-bar-green: #00ca4e;
+
+  /* 기본 배경/텍스트 */
+  --color-bg-primary: #0a0a0b;
+  --color-bg-secondary: #141416;
+  --color-text-primary: #f4f4f5;
+
+  /* 텍스트 색상 (다크 배경에 맞게) */
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-chat-bubble: #d4d4d8;
+  --color-text-placeholder: #52525b;
+
+  /* 배경 색상 */
+  --color-frame-bar-background: #1c1c1e;
+  --color-sidebar-background: #141416;
+  --color-sidebar-expanded-background: #1c1c1e;
+  --color-notebox-background: #0f0f10;
+  --color-notebox-add-rgb: 180, 180, 180;
+  --color-bg-tertiary: #1c1c1e;
+  --color-cluster-default: #1f1f23;
+
+  /* 테두리 색상 */
+  --color-note-editor-border: #2a2a2e;
+  --color-chatbox-border-rgb: 58, 58, 60;
+  --color-sidebar-button-border: #3a3a3c;
+  --color-border-quaternary: 58, 58, 60;
+  --color-base-border: #2a2a2e;
+  --color-chat-bubble-border: #27272a;
+
+  /* 그래프 노드/엣지 */
+  --color-node-default: #52525b;
+  --color-edge-default: #3f3f46;
+
+  /* 스크롤바 */
+  --color-scrollbar-thumb: #3f3f46;
+  --color-scrollbar-thumb-hover: #0b0b85;
+
+  /* 코드/마크다운 관련 */
+  --color-code-bg: #1e1e22;
+  --color-code-text: #f472b6;
+  --color-codeblock-text: #e4e4e7;
+  --color-blockquote-border: #3f3f46;
+  --color-table-header-bg: #1c1c1e;
+  --color-table-border: #3f3f46;
+
   --font-family-noto-sans-kr:
     "NotoSansKR", system-ui, -apple-system, "Apple SD Gothic Neo",
     "Malgun Gothic", "Segoe UI", Roboto, Arial, sans-serif;
@@ -123,6 +199,8 @@ body,
     Roboto,
     Arial,
     sans-serif;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
 button {
   padding: 8px 14px;
@@ -148,19 +226,19 @@ button {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
+  background: var(--color-scrollbar-thumb);
   border-radius: 4px;
   width: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--color-scrollbar-thumb-hover);
 }
 
 /* Firefox scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
 }
 
 /* Hide scrollbar */

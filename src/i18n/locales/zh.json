@@ -28,6 +28,26 @@
     "loading": "正在构建图结构…"
   },
   "settings": {
+    "appearance": {
+      "editor": {
+        "title": "代码主题",
+        "subTitle": "调整界面的代码主题，以获得更好的可见性。"
+      },
+      "theme": {
+        "title": "主题",
+        "subTitle": "调整界面的应用主题，以获得更好的可见性。",
+        "system": "跟随系统",
+        "dark": "深色模式",
+        "light": "浅色模式"
+      },
+      "advanced": {
+        "title": "高级设置",
+        "developer": "开发者模式",
+        "developerDescription": "开发者模式提供了语境菜单，为 APP 开发者提供使用",
+        "hardware": "硬件加速",
+        "hardwareDescription": "使用 GPU 让 GraphNode 更流畅。 如果您遇到视觉问题，请关闭此功能。"
+      }
+    },
     "title": "设置",
     "language": {
       "title": "选择一种语言",
@@ -57,7 +77,7 @@
     "logout": "登出",
     "dropJsonZone": {
       "title": "拖拽 & 上传 JSON 文件",
-      "description": "将 <b className=\"font-semibold\">conversation.json</b> 文件拖拽到这里",
+      "description": "将 conversation.json 文件拖拽到这里",
       "maxSize": "只能上传一个文件 (最大 512MB 推荐)",
       "uploading": "上传中 (读取)… {progress}%",
       "parsing": "解析中 (解析)…",
@@ -69,6 +89,13 @@
         "readFailed": "文件读取失败",
         "parseFailed": "JSON 解析失败",
         "processingFailed": "处理中失败"
+      }
+    },
+    "dropMdZone": {
+      "title": "拖拽 & 上传 MARKDOWN 文件",
+      "errorMessage": {
+        "notMd": "只能上传 MARKDOWN 文件 (.md)",
+        "exceptOther": "部分文件因不是 MD 格式而被排除。"
       }
     }
   }

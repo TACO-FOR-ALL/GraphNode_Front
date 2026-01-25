@@ -39,7 +39,7 @@ export default function SearchModal({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent outline-none border-none text-[14px] placeholder:text-text-secondary"
+            className="w-full bg-transparent outline-none border-none text-[14px] placeholder:text-text-secondary text-text-primary"
             type="text"
             placeholder="Search for chats and notes..."
           />

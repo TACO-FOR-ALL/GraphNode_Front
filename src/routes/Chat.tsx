@@ -13,7 +13,7 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
 
   return (
     <div
-      className="relative h-full pt-16"
+      className="relative h-full pt-16 bg-bg-primary"
       style={{
         width,
         margin: "0 auto",

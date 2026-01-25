@@ -10,7 +10,7 @@ export default function AgentToolTipButton({
       className="absolute bottom-10 right-8 z-50 group"
       onClick={() => setIsOpen(true)}
     >
-      <div className="w-10 h-10 cursor-pointer flex items-center justify-center bg-white rounded-full shadow-[0_2px_20px_0_#badaff] hover:rotate-360 transition-all duration-500 relative">
+      <div className="w-10 h-10 cursor-pointer flex items-center justify-center bg-bg-primary rounded-full shadow-[0_2px_20px_0_#badaff] hover:rotate-360 transition-all duration-500 relative">
         <img
           src={logo}
           alt="logo"
@@ -19,12 +19,7 @@ export default function AgentToolTipButton({
       </div>
       <div className="absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 whitespace-nowrap z-50">
         <div
-          className="flex flex-col py-2 px-4 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff]"
-          style={{
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            backgroundColor: "rgba(255, 255, 255, 0.5)",
-          }}
+          className="flex flex-col py-2 px-4 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md"
         >
           <span className="text-sm font-noto-sans-kr text-text-secondary">
             Hi! I'm GraphNode AI

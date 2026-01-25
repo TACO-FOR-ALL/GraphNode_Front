@@ -2,6 +2,7 @@ import "./styles.scss";
 import "katex/dist/katex.min.css";
 
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { useCurrentHightlightStore } from "@/store/useCurrentHighlight";
 
 import {
   Details,
@@ -18,14 +19,12 @@ import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { common, createLowlight } from "lowlight";
 import { noteRepo } from "@/managers/noteRepo";
 import { CustomReactNode } from "./CustomReactComponent";
 import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
-import { useAgentToolBoxStore } from "@/store/useAgentToolBoxStore";
-import { useNoteGenerationStore } from "@/store/useNoteGenerationStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 
 const lowlight = createLowlight(common);
@@ -37,8 +36,6 @@ export default ({ noteId }: { noteId: string | null }) => {
   const queryClient = useQueryClient();
   const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | null>(null);
   const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { setIsOpen, setResponse } = useAgentToolBoxStore();
-  const { phase } = useNoteGenerationStore();
 
   const latestMarkdownRef = useRef<string>("");
   const isFlushingRef = useRef(false);
@@ -46,13 +43,63 @@ export default ({ noteId }: { noteId: string | null }) => {
   const lastEditedNoteIdRef = useRef<string | null>(null);
   const isDirtyRef = useRef(false);
 
+  const { currentHighlight } = useCurrentHightlightStore();
+
+  // 하이라이트 테마 CSS 로드
+  useEffect(() => {
+    const oldStyle = document.getElementById("hljs-editor-style");
+    if (oldStyle) oldStyle.remove();
+
+    const oldOverride = document.getElementById("hljs-override-style");
+    if (oldOverride) oldOverride.remove();
+
+    let cssPath = `/hljs-styles/${currentHighlight}.css`;
+    if (currentHighlight.startsWith("base16-")) {
+      const themeName = currentHighlight.replace("base16-", "");
+      cssPath = `/hljs-styles/base16/${themeName}.css`;
+    }
+
+    fetch(cssPath)
+      .then((res) => {
+        if (!res.ok) throw new Error("CSS not found");
+        return res.text();
+      })
+      .then((css) => {
+        const style = document.createElement("style");
+        style.id = "hljs-editor-style";
+        style.textContent = css;
+        document.head.appendChild(style);
+
+        // 테마 로드 후 기본 텍스트 색상 오버라이드
+        const overrideStyle = document.createElement("style");
+        overrideStyle.id = "hljs-override-style";
+        overrideStyle.textContent = `
+          .hljs { color: var(--color-codeblock-text) !important; }
+        `;
+        document.head.appendChild(overrideStyle);
+      })
+      .catch((err) => console.warn("Failed to load highlight theme:", err));
+
+    return () => {
+      const style = document.getElementById("hljs-editor-style");
+      if (style) style.remove();
+      const override = document.getElementById("hljs-override-style");
+      if (override) override.remove();
+    };
+  }, [currentHighlight]);
+
   // Tiptap Editor 인스턴스 설정
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
       }),
-      CodeBlockLowlight.configure({ lowlight: lowlight }),
+      CodeBlockLowlight.configure({
+        lowlight: lowlight,
+        HTMLAttributes: {
+          class: "hljs",
+        },
+      }),
       Details,
       DetailsSummary,
       DetailsContent,
@@ -86,7 +133,7 @@ export default ({ noteId }: { noteId: string | null }) => {
               "Christina Applegate",
             ]
               .filter((item) =>
-                item.toLowerCase().startsWith(query.toLowerCase())
+                item.toLowerCase().startsWith(query.toLowerCase()),
               )
               .slice(0, 5);
           },
@@ -301,7 +348,7 @@ export default ({ noteId }: { noteId: string | null }) => {
 
   return (
     <div
-      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-white border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
+      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
     >
       {/* 기존 저장 상태 UI (우측 상단) 그대로 */}
       {saveStatus && (

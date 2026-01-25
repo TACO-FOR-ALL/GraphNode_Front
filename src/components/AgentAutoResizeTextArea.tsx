@@ -105,7 +105,7 @@ export default function AgentAutoResizeTextarea({
         whiteSpace: "pre-wrap",
         wordBreak: "break-word",
       }}
-      className={`w-full text-[14px] placeholder:text-text-placeholder font-noto-sans-kr focus:outline-none focus:ring-0 custom-scrollbar p-1`}
+      className={`w-full text-[14px] placeholder:text-text-placeholder font-noto-sans-kr focus:outline-none focus:ring-0 custom-scrollbar p-1 bg-transparent text-text-primary`}
     />
   );
 }

@@ -86,7 +86,7 @@ export default function ChatWindow({
           el.scrollTop += newHeight - prevHeight;
         });
       },
-      { root: el, threshold: 0.01 }
+      { root: el, threshold: 0.01 },
     );
 
     io.observe(sentinel);
@@ -127,8 +127,7 @@ export default function ChatWindow({
         return (
           <div
             key={m.id}
-            className={`flex ${isUser ? "justify-end" : "justify-start"} items-start`}
-            style={{ marginBottom: "40px" }}
+            className={`flex ${isUser ? "justify-end" : "justify-start"} items-start mb-10`}
             title={new Date(m.ts).toLocaleString()}
           >
             {isUser ? (
@@ -141,22 +140,14 @@ export default function ChatWindow({
                   alt="Profile"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
-                  className="w-6 h-6 rounded-full flex-shrink-0"
-                  style={{ marginTop: 0 }}
+                  className="w-6 h-6 rounded-full flex-shrink-0 mt-0"
                 />
                 <div className="flex-1 text-text-chat-bubble">{m.content}</div>
               </div>
             ) : (
               <div
-                className="rounded-2xl text-text-chat-bubble flex items-start gap-3"
-                style={{
-                  maxWidth: assistantMaxWidth,
-                  backgroundColor: "transparent",
-                  border: "1px solid #F0F2F5",
-                  padding: "24px",
-                  borderRadius: "16px",
-                  boxShadow: "0 2px 4px 0 rgba(25, 33, 61, 0.08)",
-                }}
+                className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)]"
+                style={{ maxWidth: assistantMaxWidth }}
               >
                 <img
                   src={logo}

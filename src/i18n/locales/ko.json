@@ -29,6 +29,26 @@
   },
   "settings": {
     "title": "설정",
+    "appearance": {
+      "theme": {
+        "title": "테마",
+        "subTitle": "더 나은 가시성을 위해 앱 테마를 변경해보세요.",
+        "system": "시스템",
+        "dark": "다크 모드",
+        "light": "라이트 모드"
+      },
+      "editor": {
+        "title": "코드 블록 테마",
+        "subTitle": "더 나은 가시성을 위해 인터페이스의 코드 테마를 선택해보세요."
+      },
+      "advanced": {
+        "title": "고급",
+        "developer": "개발자 모드",
+        "developerDescription": "커스텀 플러그인을 제작하는 분들에게 도움을 주는 컨텍스트 메뉴를 표시합니다. ",
+        "hardware": "하드위에 가속",
+        "hardwareDescription": "GPU를 사용하여 GraphNode를 더 원활하게 실행합니다. 시각적 문제가 발생하는 경우 이 기능을 끄세요."
+      }
+    },
     "language": {
       "title": "언어 선택하기",
       "subtitle": "GraphNode에 표시할 언어를 선택하세요.",
@@ -57,7 +77,7 @@
     "logout": "로그아웃",
     "dropJsonZone": {
       "title": "드래그 & 드롭으로 JSON 파일 업로드하기",
-      "description": "여기로 <b className=\"font-semibold\">conversation.json</b> 파일을 끌어다 놓으세요",
+      "description": "여기로 conversation.json 파일을 끌어다 놓으세요",
       "maxSize": "파일 하나만 드랍 (최대 512MB 권장)",
       "uploading": "업로드(읽는 중)… {progress}%",
       "parsing": "분석(파싱) 중…",
@@ -65,10 +85,17 @@
       "error": "오류 발생",
       "fileName": "파일명",
       "errorMessage": {
-        "notJson": "JSON 파일만 업로드 가능해요 (.json)",
+        "notJson": "JSON 파일만 업로드 해주세요 (.json)",
         "readFailed": "파일 읽기 실패",
         "parseFailed": "JSON 파싱 실패",
         "processingFailed": "처리 중 오류"
+      }
+    },
+    "dropMdZone": {
+      "title": "드래그 & 드롭으로 마크다운 파일 업로드하기",
+      "errorMessage": {
+        "notMd": "마크다운 파일만 업로드 해주세요 (.md)",
+        "exceptOther": "일부 파일은 MD 형식이 아니라서 제외되었습니다."
       }
     }
   }

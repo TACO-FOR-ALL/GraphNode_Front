@@ -29,6 +29,26 @@
   },
   "settings": {
     "title": "Settings",
+    "appearance": {
+      "editor": {
+        "title": "Code Theme",
+        "subTitle": "Adjust the code theme of the interface for better visibility"
+      },
+      "theme": {
+        "title": "Theme",
+        "subTitle": "Adjust the app theme of the interface for better visibility.",
+        "system": "System",
+        "dark": "Dark Mode",
+        "light": "Light Mode"
+      },
+      "advanced": {
+        "title": "Advanced",
+        "developer": "Developer Mode",
+        "developerDescription": "Developer Mode exposes menu items helpful for people writing apps using the ",
+        "hardware": "Hardware Acceleration",
+        "hardwareDescription": "Uses your GPU to make GraphNode smoother. Turn this off if you are experiencing visual problems."
+      }
+    },
     "language": {
       "title": "Select a Language",
       "subtitle": "Choose the language you want GraphNode to display.",
@@ -57,7 +77,7 @@
     "logout": "Logout",
     "dropJsonZone": {
       "title": "Drag & Drop JSON File Upload",
-      "description": "Drop your <b className=\"font-semibold\">conversation.json</b> file here",
+      "description": "Drop your conversation.json file here",
       "maxSize": "Only one file can be dropped (maximum 512MB recommended)",
       "uploading": "Uploading (reading)… {progress}%",
       "parsing": "Parsing (parsing)…",
@@ -69,6 +89,13 @@
         "readFailed": "File read failed",
         "parseFailed": "JSON parsing failed",
         "processingFailed": "Processing failed"
+      }
+    },
+    "dropMdZone": {
+      "title": "Drag & Drop MARKDOWN File Upload",
+      "errorMessage": {
+        "notMd": "Only Markdown files can be uploaded (.md)",
+        "exceptOther": "Some files were excluded because they are not in MD format."
       }
     }
   }

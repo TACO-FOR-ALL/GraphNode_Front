@@ -3,11 +3,13 @@ import DropJsonZone from "../DropJsonZone";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import { api } from "@/apiClient";
 import { noteRepo } from "@/managers/noteRepo";
+import DropMdZone from "../DropMdZone";
 
 export default function DataPrivacyPanel() {
   return (
     <SettingsPanelLayout>
       <DropJsonZone />
+      <DropMdZone />
       <button
         onClick={async () => {
           // transaction으로 작업 묶어야함

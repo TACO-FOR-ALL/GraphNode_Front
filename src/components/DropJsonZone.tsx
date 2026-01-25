@@ -40,7 +40,7 @@ export default function DropJsonZone() {
       const text = await readJsonWithProgress(
         file as any,
         (p: number) => setProgress(p),
-        t
+        t,
       );
 
       // 3) 파싱(UX를 위해 미세 딜레이 유지)
@@ -67,7 +67,7 @@ export default function DropJsonZone() {
         })),
       }));
 
-      // 6) 로컬 저장 (TODO: 저장 실패 로직 추가 필요)
+      // 6) 로컬 및 서버 저장 (TODO: 저장 실패 로직 추가 필요)
       if (normalized.length) {
         threadRepo.upsertMany(normalized);
         await api.conversations.bulkCreate({
@@ -128,7 +128,7 @@ export default function DropJsonZone() {
       // 첫 파일만
       importJson(files[0]);
     },
-    [importJson, reset]
+    [importJson, reset],
   );
 
   return (
