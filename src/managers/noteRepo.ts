@@ -3,6 +3,7 @@ import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
+import sortChat from "@/utils/sortNote";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -41,7 +42,7 @@ export const noteRepo = {
   async getNoteByQuery(query: string): Promise<Note[]> {
     return await db.notes
       .filter((note) =>
-        note.content.toLowerCase().includes(query.toLowerCase())
+        note.content.toLowerCase().includes(query.toLowerCase()),
       )
       .toArray();
   },
@@ -71,7 +72,7 @@ export const noteRepo = {
 
   async moveNoteToFolder(
     noteId: string,
-    folderId: string | null
+    folderId: string | null,
   ): Promise<Note | null> {
     const note = await this.getNoteById(noteId);
     if (!note) return null;
@@ -210,5 +211,14 @@ Nested content is also supported!
 `;
 
     return await this.create(defaultContent);
+  },
+
+  async upsertMany(newOnes: Note[]): Promise<void> {
+    const sorted = sortChat(newOnes);
+    await db.notes.bulkPut(sorted);
+  },
+
+  async clearAll(): Promise<void> {
+    await db.notes.clear();
   },
 };

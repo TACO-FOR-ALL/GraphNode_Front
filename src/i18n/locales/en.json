@@ -77,7 +77,7 @@
     "logout": "Logout",
     "dropJsonZone": {
       "title": "Drag & Drop JSON File Upload",
-      "description": "Drop your <b className=\"font-semibold\">conversation.json</b> file here",
+      "description": "Drop your conversation.json file here",
       "maxSize": "Only one file can be dropped (maximum 512MB recommended)",
       "uploading": "Uploading (reading)… {progress}%",
       "parsing": "Parsing (parsing)…",
@@ -89,6 +89,13 @@
         "readFailed": "File read failed",
         "parseFailed": "JSON parsing failed",
         "processingFailed": "Processing failed"
+      }
+    },
+    "dropMdZone": {
+      "title": "Drag & Drop MARKDOWN File Upload",
+      "errorMessage": {
+        "notMd": "Only Markdown files can be uploaded (.md)",
+        "exceptOther": "Some files were excluded because they are not in MD format."
       }
     }
   }

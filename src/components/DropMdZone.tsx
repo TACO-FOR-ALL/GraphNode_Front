@@ -1,87 +1,59 @@
-import React, { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import threadRepo from "../managers/threadRepo";
-import { parseConversations } from "../utils/parseConversations";
-import { toMarkdownFromUnknown } from "../utils/toMarkdown";
-import { ChatMessage } from "../types/Chat";
 import type { Status } from "../types/FileUploadStatus";
-import readJsonWithProgress from "@/utils/readJsonWithProgress";
+import { readMdContent } from "@/utils/readMdContent";
+import { contentTracing } from "electron";
+import { Note } from "@/types/Note";
+import uuid from "@/utils/uuid";
+import { noteRepo } from "@/managers/noteRepo";
 import { api } from "@/apiClient";
 
-export default function DropJsonZone() {
+export default function DropMdZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
   const [isOver, setIsOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
-  const latestProgress = useRef(0);
-  latestProgress.current = progress;
 
   const {
-    mutate: importJson,
+    mutate: importMds,
     isPending,
     isSuccess,
     isError,
     error,
     reset,
-  } = useMutation<void, Error, File>({
-    // 리턴 값이 있다면 void 대신 리턴 값 타입 사용 + return data
-    mutationKey: ["import-conversations"],
-    mutationFn: async (file) => {
-      // 1) 확장자 체크
-      if (!file.name?.toLowerCase().endsWith(".json")) {
-        throw new Error(t("settings.dropJsonZone.errorMessage.notJson"));
-      }
-      setProgress(0);
+  } = useMutation<void, Error, File[]>({
+    mutationKey: ["import-markdowns"],
+    mutationFn: async (files) => {
+      const results = [];
 
-      // 2) 읽기
-      const text = await readJsonWithProgress(
-        file as any,
-        (p: number) => setProgress(p),
-        t,
-      );
-
-      // 3) 파싱(UX를 위해 미세 딜레이 유지)
-      setIsParsing(true);
-      await new Promise((r) => setTimeout(r, 50));
-      const data = JSON.parse(text);
-
-      // 4) 변환
-      const threads = await parseConversations(data);
-      if (!threads?.length) {
-        // 비정상/빈 데이터 경고이지만 실패로 보진 않음
-        console.warn("🟡 parsed threads = 0, JSON shape might differ");
+      for (const file of files) {
+        try {
+          const textContent = await readMdContent(file);
+          const date = new Date(file.lastModified);
+          results.push({
+            id: uuid(),
+            title: file.name.replace(/\.[^/.]+$/, ""),
+            content: textContent,
+            folderId: null,
+            createdAt: date,
+            updatedAt: date,
+          } as Note);
+        } catch (e) {
+          // TODO: 오류처리
+          console.error(`Failed to read file ${file.name}`, e);
+        }
       }
 
-      // 5) content 강제 정규화
-      const normalized = (threads || []).map((th) => ({
-        ...th,
-        messages: th.messages.map((m: ChatMessage) => ({
-          ...m,
-          content:
-            typeof m.content === "string"
-              ? m.content
-              : toMarkdownFromUnknown(m.content),
-        })),
-      }));
-
-      // 6) 로컬 및 서버 저장 (TODO: 저장 실패 로직 추가 필요)
-      if (normalized.length) {
-        threadRepo.upsertMany(normalized);
-        await api.conversations.bulkCreate({
-          conversations: normalized.map((n) => ({
-            id: n.id,
-            title: n.title,
-            messages: n.messages,
-          })),
-        });
-      }
+      // 로컬 및 서버 저장 (TODO: 저장 실패 로직 추가 필요)
+      noteRepo.upsertMany(results);
+      // await api.note
     },
 
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["chatThreads"] });
+      qc.invalidateQueries({ queryKey: ["notes"] });
     },
 
     onError: (err) => {
@@ -113,7 +85,6 @@ export default function DropJsonZone() {
     e.stopPropagation();
     setIsOver(false);
   }, []);
-
   const onDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -122,19 +93,31 @@ export default function DropJsonZone() {
       setProgress(0);
       reset();
 
-      const files = Array.from(e.dataTransfer.files || []);
-      if (!files.length) return;
+      const rawFiles = Array.from(e.dataTransfer.files || []);
+      if (!rawFiles.length) return;
 
-      // 첫 파일만
-      importJson(files[0]);
+      const validFiles = rawFiles.filter((file) =>
+        file.name.toLowerCase().endsWith(".md"),
+      );
+
+      if (validFiles.length === 0) {
+        alert(t("settings.dropMdZone.errorMessage.notMd"));
+        return;
+      }
+
+      if (validFiles.length < rawFiles.length) {
+        alert(t("settings.dropMdZone.errorMessage.exceptOther"));
+      }
+
+      importMds(validFiles);
     },
-    [importJson, reset],
+    [importMds, reset],
   );
 
   return (
     <div className="max-w-[780px] mx-auto mt-10 mb-10 font-sans">
       <h2 className="text-2xl font-semibold mb-6">
-        {t("settings.dropJsonZone.title")}
+        {t("settings.dropMdZone.title")}
       </h2>
 
       <div
