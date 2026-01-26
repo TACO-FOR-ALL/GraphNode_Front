@@ -3,6 +3,7 @@ import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
 import { db } from "@/db/graphnode.db";
 import { useThreadsStore } from "@/store/useThreadStore";
+import { outboxRepo } from "./outboxRepo";
 
 export const threadRepo = {
   async create(
@@ -43,10 +44,15 @@ export const threadRepo = {
     if (!thread) return null;
 
     const updated = { ...thread, title, updatedAt: Date.now() };
-    await db.threads.put(updated);
 
-    // Zustand 상태 반영 (타이틀 변경)
-    useThreadsStore.getState().updateThreadInStore(updated);
+    await db.transaction("rw", db.threads, db.outbox, async () => {
+      await db.threads.put(updated);
+      await outboxRepo.enqueueThreadUpdateTitle(id, { title: title });
+
+      // Zustand 상태 반영 (타이틀 변경)
+      useThreadsStore.getState().updateThreadInStore(updated);
+    });
+
     return updated.id;
   },
 
@@ -67,12 +73,15 @@ export const threadRepo = {
   },
 
   async deleteThreadById(id: string): Promise<string | null> {
-    try {
+    const thread = await this.getThreadById(id);
+    if (!thread) return null;
+
+    await db.transaction("rw", db.threads, db.outbox, async () => {
       await db.threads.delete(id);
-      return id;
-    } catch (error) {
-      return null;
-    }
+      await outboxRepo.enqueueThreadDelete(id);
+    });
+
+    return id;
   },
 
   async upsertMany(newOnes: ChatThread[]): Promise<void> {

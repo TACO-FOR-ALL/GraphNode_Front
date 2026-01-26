@@ -371,6 +371,171 @@ describe("outboxRepo", () => {
     });
   });
 
+  describe("enqueueThreadUpdateTitle", () => {
+    test("새 thread.update op 생성", async () => {
+      await outboxRepo.enqueueThreadUpdateTitle("thread-1", {
+        title: "Updated Title",
+      });
+
+      expect(mockOutbox.size).toBe(1);
+      const op = Array.from(mockOutbox.values())[0];
+      expect(op.type).toBe("thread.update");
+      expect(op.entityId).toBe("thread-1");
+      expect(op.payload).toEqual({ title: "Updated Title" });
+    });
+
+    test("기존 pending thread.update가 있으면 덮어쓰기", async () => {
+      // 먼저 thread.update op 생성
+      const updateOp: OutboxOp = {
+        opId: "thread-update-op-1",
+        entityId: "thread-1",
+        type: "thread.update",
+        payload: { title: "First Title" },
+        status: "pending",
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      mockOutbox.set("thread-update-op-1", updateOp);
+
+      // where 모킹 업데이트
+      const { db } = require("@/db/graphnode.db");
+      db.outbox.where.mockImplementation((criteria: any) => {
+        if (typeof criteria === "object") {
+          return {
+            first: jest.fn(() => {
+              if (
+                criteria.entityId === "thread-1" &&
+                criteria.type === "thread.update" &&
+                criteria.status === "pending"
+              ) {
+                return Promise.resolve(updateOp);
+              }
+              return Promise.resolve(undefined);
+            }),
+          };
+        }
+        return {
+          equals: jest.fn(() => ({
+            toArray: jest.fn(() => Promise.resolve([])),
+          })),
+        };
+      });
+
+      // 두 번째 update
+      await outboxRepo.enqueueThreadUpdateTitle("thread-1", {
+        title: "Second Title",
+      });
+
+      // 하나의 op만 있어야 함
+      expect(mockOutbox.size).toBe(1);
+      const op = mockOutbox.get("thread-update-op-1");
+      expect(op!.payload.title).toBe("Second Title");
+    });
+  });
+
+  describe("enqueueThreadDelete", () => {
+    test("새 thread.delete op 생성", async () => {
+      await outboxRepo.enqueueThreadDelete("thread-1");
+
+      expect(mockOutbox.size).toBe(1);
+      const op = Array.from(mockOutbox.values())[0];
+      expect(op.type).toBe("thread.delete");
+      expect(op.entityId).toBe("thread-1");
+      expect(op.payload).toBeNull();
+    });
+
+    test("delete 시 기존 pending thread.update op 제거", async () => {
+      // pending thread.update 추가
+      const updateOp: OutboxOp = {
+        opId: "thread-update-op-1",
+        entityId: "thread-1",
+        type: "thread.update",
+        payload: { title: "Updated" },
+        status: "pending",
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      mockOutbox.set("thread-update-op-1", updateOp);
+
+      // where 모킹 업데이트
+      const { db } = require("@/db/graphnode.db");
+      db.outbox.where.mockImplementation((criteria: any) => {
+        if (typeof criteria === "string" && criteria === "entityId") {
+          return {
+            equals: jest.fn((value: string) => ({
+              toArray: jest.fn(() =>
+                Promise.resolve(
+                  Array.from(mockOutbox.values()).filter(
+                    (op) => op.entityId === value,
+                  ),
+                ),
+              ),
+            })),
+          };
+        }
+        return {
+          first: jest.fn(() => Promise.resolve(undefined)),
+          toArray: jest.fn(() => Promise.resolve([])),
+        };
+      });
+
+      // delete 호출
+      await outboxRepo.enqueueThreadDelete("thread-1");
+
+      // delete op만 남아야 함
+      expect(mockOutbox.size).toBe(1);
+      const remainingOp = Array.from(mockOutbox.values())[0];
+      expect(remainingOp.type).toBe("thread.delete");
+    });
+
+    test("processing 상태의 thread.update op는 제거하지 않음", async () => {
+      // processing 상태의 update
+      const processingOp: OutboxOp = {
+        opId: "processing-thread-op",
+        entityId: "thread-1",
+        type: "thread.update",
+        payload: { title: "Processing" },
+        status: "processing",
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      mockOutbox.set("processing-thread-op", processingOp);
+
+      // where 모킹 업데이트
+      const { db } = require("@/db/graphnode.db");
+      db.outbox.where.mockImplementation((criteria: any) => {
+        if (typeof criteria === "string" && criteria === "entityId") {
+          return {
+            equals: jest.fn((value: string) => ({
+              toArray: jest.fn(() =>
+                Promise.resolve(
+                  Array.from(mockOutbox.values()).filter(
+                    (op) => op.entityId === value,
+                  ),
+                ),
+              ),
+            })),
+          };
+        }
+        return {
+          first: jest.fn(() => Promise.resolve(undefined)),
+          toArray: jest.fn(() => Promise.resolve([])),
+        };
+      });
+
+      await outboxRepo.enqueueThreadDelete("thread-1");
+
+      // processing op는 유지, delete op 추가
+      expect(mockOutbox.size).toBe(2);
+    });
+  });
+
   describe("entityId 검증", () => {
     test("빈 entityId로 enqueue 시 에러", async () => {
       await expect(
@@ -381,6 +546,16 @@ describe("outboxRepo", () => {
           folderId: null,
         }),
       ).rejects.toThrow("entityId is required");
+    });
+
+    test("빈 entityId로 thread enqueue 시 에러", async () => {
+      await expect(
+        outboxRepo.enqueueThreadUpdateTitle("", { title: "Test" }),
+      ).rejects.toThrow("entityId is required");
+
+      await expect(outboxRepo.enqueueThreadDelete("")).rejects.toThrow(
+        "entityId is required",
+      );
     });
   });
 
