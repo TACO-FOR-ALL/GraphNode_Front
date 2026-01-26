@@ -13,6 +13,9 @@ import AutoResizeTextarea from "./AutoResizeTextArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { api } from "@/apiClient";
+import { MdAttachFile } from "react-icons/md";
+import FilePreviewList from "./FilePreviewList";
+import useFileAttachment from "@/hooks/useFileAttachment";
 
 const HISTORY_LIMIT = 5;
 
@@ -32,6 +35,15 @@ export default function ChatSendBox({
   const autoSendRef = useRef(false);
   const processedLocationKeyRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
+
+  const {
+    attachedFiles,
+    previewUrls,
+    fileInputRef,
+    handleButtonClick,
+    handleFileChange,
+    handleRemoveFile,
+  } = useFileAttachment();
 
   // threadId가 변경되면 리셋
   useEffect(() => {
@@ -107,6 +119,7 @@ export default function ChatSendBox({
     const state = location.state as {
       autoSend?: boolean;
       initialMessage?: string;
+      attachedFiles?: File[]; // TODO: FormData로 백엔드에게 넘기기
       id?: string;
     } | null;
 
@@ -178,6 +191,11 @@ export default function ChatSendBox({
     <div
       className={`flex w-[${width}] absolute bottom-8 left-0 right-0 flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md`}
     >
+      <FilePreviewList
+        files={attachedFiles}
+        previewUrls={previewUrls}
+        onRemove={handleRemoveFile}
+      />
       <AutoResizeTextarea
         value={input}
         onChange={setInput}
@@ -191,11 +209,26 @@ export default function ChatSendBox({
         disabled={sending}
       />
       <div className="flex items-center justify-between w-full">
-        <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
-          <p className="font-noto-sans-kr text-[12px] font-medium text-text-secondary">
-            <span className="text-chatbox-active">ChatGPT</span> 5.1 Instant
-          </p>
-          <IoIosArrowDown className="text-[16px] text-chatbox-active" />
+        <div className="flex gap-4 items-center">
+          <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
+            <p className="font-noto-sans-kr text-[12px] font-medium text-text-secondary">
+              <span className="text-chatbox-active">ChatGPT</span> 5.1 Instant
+            </p>
+            <IoIosArrowDown className="text-[16px] text-chatbox-active" />
+          </div>
+          <div
+            onClick={handleButtonClick}
+            className="text-text-secondary hover:text-primary items-center justify-center text-center text-[16px] hover:bg-sidebar-button-hover rounded-md p-1.5 border-1 border-gray-300 dark:border-gray-500 hover:border-0"
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <MdAttachFile />
+          </div>
         </div>
         <div
           onClick={() => input.trim().length > 0 && !sending && handleSend()}

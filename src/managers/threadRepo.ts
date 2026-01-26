@@ -1,13 +1,13 @@
+import sortItemByDate from "@/utils/sortItemByDate";
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
 import { db } from "@/db/graphnode.db";
-import sortThread from "../utils/sortThread";
 import { useThreadsStore } from "@/store/useThreadStore";
 
 export const threadRepo = {
   async create(
     title: string,
-    messages: ChatMessage[] = []
+    messages: ChatMessage[] = [],
   ): Promise<ChatThread> {
     const newThread: ChatThread = {
       id: uuid(),
@@ -32,8 +32,8 @@ export const threadRepo = {
     return await db.threads
       .filter((thread) =>
         thread.messages.some((message) =>
-          message.content.toLowerCase().includes(query.toLowerCase())
-        )
+          message.content.toLowerCase().includes(query.toLowerCase()),
+        ),
       )
       .toArray();
   },
@@ -76,7 +76,7 @@ export const threadRepo = {
   },
 
   async upsertMany(newOnes: ChatThread[]): Promise<void> {
-    const sorted = sortThread(newOnes);
+    const sorted = sortItemByDate(newOnes);
     await db.threads.bulkPut(sorted);
   },
 

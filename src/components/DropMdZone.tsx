@@ -32,14 +32,13 @@ export default function DropMdZone() {
       for (const file of files) {
         try {
           const textContent = await readMdContent(file);
-          const date = new Date(file.lastModified);
           results.push({
             id: uuid(),
             title: file.name.replace(/\.[^/.]+$/, ""),
             content: textContent,
             folderId: null,
-            createdAt: date,
-            updatedAt: date,
+            createdAt: file.lastModified,
+            updatedAt: file.lastModified,
           } as Note);
         } catch (e) {
           // TODO: 오류처리

@@ -5,11 +5,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import threadRepo from "@/managers/threadRepo";
 import uuid from "@/utils/uuid";
+import { MdAttachFile } from "react-icons/md";
+import FilePreviewList from "../FilePreviewList";
+import useFileAttachment from "@/hooks/useFileAttachment";
 
-export default function ChatBox() {
+export default function ChatSendBox() {
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+
+  const {
+    attachedFiles,
+    previewUrls,
+    fileInputRef,
+    handleButtonClick,
+    handleFileChange,
+    handleRemoveFile,
+  } = useFileAttachment();
 
   const handleSend = async () => {
     const text = input.trim();
@@ -33,7 +45,12 @@ export default function ChatBox() {
 
       // Chat 페이지로 이동 (자동 전송 플래그와 함께)
       navigate(`/chat/${created.id}`, {
-        state: { autoSend: true, initialMessage: text, id: id },
+        state: {
+          autoSend: true,
+          initialMessage: text,
+          id: id,
+          attachedFiles: attachedFiles,
+        },
       });
     } catch (error) {
       console.error("Failed to create chat:", error);
@@ -44,6 +61,11 @@ export default function ChatBox() {
 
   return (
     <div className="flex w-[744px] flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff]">
+      <FilePreviewList
+        files={attachedFiles}
+        previewUrls={previewUrls}
+        onRemove={handleRemoveFile}
+      />
       <AutoResizeTextarea
         value={input}
         onChange={setInput}
@@ -57,11 +79,26 @@ export default function ChatBox() {
         disabled={sending}
       />
       <div className="flex items-center justify-between w-full">
-        <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
-          <p className="font-noto-sans-kr text-[12px] font-medium text-text-secondary">
-            <span className="text-chatbox-active">ChatGPT</span> 5.1 Instant
-          </p>
-          <IoIosArrowDown className="text-[16px] text-chatbox-active" />
+        <div className="flex gap-4 items-center">
+          <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
+            <p className="font-noto-sans-kr text-[12px] font-medium text-text-secondary">
+              <span className="text-chatbox-active">ChatGPT</span> 5.1 Instant
+            </p>
+            <IoIosArrowDown className="text-[16px] text-chatbox-active" />
+          </div>
+          <div
+            onClick={handleButtonClick}
+            className="text-text-secondary hover:text-primary items-center justify-center text-center text-[16px] hover:bg-sidebar-button-hover rounded-md p-1.5 border-1 border-gray-300 dark:border-gray-500 hover:border-0"
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <MdAttachFile />
+          </div>
         </div>
         <div
           onClick={() => input.trim().length > 0 && !sending && handleSend()}

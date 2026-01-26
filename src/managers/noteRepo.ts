@@ -3,7 +3,7 @@ import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
-import sortChat from "@/utils/sortNote";
+import sortItemByDate from "@/utils/sortItemByDate";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -12,8 +12,8 @@ export const noteRepo = {
       title: extractTitleFromMarkdown(content),
       content,
       folderId,
-      updatedAt: new Date(Date.now()),
-      createdAt: new Date(Date.now()),
+      updatedAt: Date.now(),
+      createdAt: Date.now(),
     };
 
     // transaction 안에서 실행되는 DB 작업은 전부 성공 또는 전부 실패 (rw = read write, 접근할 테이블 목록 전부 명시)
@@ -52,7 +52,7 @@ export const noteRepo = {
     if (!note) return null;
 
     const title = extractTitleFromMarkdown(content);
-    const updatedAt = new Date();
+    const updatedAt = Date.now();
 
     await db.transaction("rw", db.notes, db.outbox, async () => {
       await db.notes.update(id, {
@@ -80,7 +80,7 @@ export const noteRepo = {
     await db.transaction("rw", db.notes, db.outbox, async () => {
       await db.notes.update(noteId, {
         folderId,
-        updatedAt: new Date(Date.now()),
+        updatedAt: Date.now(),
       });
 
       await outboxRepo.enqueueNoteMove(noteId, {
@@ -214,7 +214,7 @@ Nested content is also supported!
   },
 
   async upsertMany(newOnes: Note[]): Promise<void> {
-    const sorted = sortChat(newOnes);
+    const sorted = sortItemByDate(newOnes);
     await db.notes.bulkPut(sorted);
   },
 

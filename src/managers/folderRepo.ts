@@ -8,8 +8,8 @@ export const folderRepo = {
       id: uuid(),
       name,
       parentId,
-      createdAt: new Date(Date.now()),
-      updatedAt: new Date(Date.now()),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     await db.folders.put(newFolder);
@@ -36,14 +36,14 @@ export const folderRepo = {
 
   async updateFolderById(
     id: string,
-    updates: { name?: string; parentId?: string | null }
+    updates: { name?: string; parentId?: string | null },
   ): Promise<Folder | null> {
     const folder = await this.getFolderById(id);
     if (!folder) return null;
 
     await db.folders.update(id, {
       ...updates,
-      updatedAt: new Date(Date.now()),
+      updatedAt: Date.now(),
     });
 
     return await this.getFolderById(id);
