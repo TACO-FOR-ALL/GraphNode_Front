@@ -29,6 +29,17 @@
   },
   "settings": {
     "title": "Settings",
+    "my": {
+      "api": {
+        "title": "AI Provider API Key",
+        "subtitle": "Manage your AI provider API key safely."
+      },
+      "subscription": {
+        "title": "My Subscription",
+        "subtitle": "Manage your plan for GraphNode."
+      },
+      "logout": "Log out"
+    },
     "appearance": {
       "editor": {
         "title": "Code Theme",

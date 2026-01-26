@@ -108,9 +108,11 @@ function SettingsCategoryButton({
       className={`group rounded-[7px] cursor-pointer w-[235px] pl-[6px] py-[5.5px] flex items-center justify-start gap-[6px] transition-colors duration-300 ${isSelected ? "bg-sidebar-button-hover text-primary" : "bg-transparent text-black"} hover:bg-sidebar-button-hover hover:text-primary`}
       onClick={onClick}
     >
-      <Icon />
+      <Icon
+        className={`group-hover:text-primary ${isSelected ? "text-primary" : "text-text-secondary"}`}
+      />
       <p
-        className={`text-[14px] font-normal font-noto-sans-kr ${isSelected ? "text-primary" : "text-text-primary"} group-hover:text-primary transition-colors duration-300`}
+        className={`text-[14px] font-normal font-noto-sans-kr ${isSelected ? "text-primary" : "text-text-secondary"} group-hover:text-primary transition-colors duration-300`}
       >
         {text}
       </p>

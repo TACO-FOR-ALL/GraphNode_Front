@@ -1,4 +1,5 @@
 import { api } from "@/apiClient";
+import { AiProvider } from "@/types/AiProvider";
 import { useState } from "react";
 
 export default function ApiKeyManager({
@@ -8,7 +9,7 @@ export default function ApiKeyManager({
   isVerified,
   setIsVerified,
 }: {
-  id: "openai" | "deepseek";
+  id: AiProvider;
   logo: string;
   title: string;
   isVerified: boolean;
@@ -34,7 +35,7 @@ export default function ApiKeyManager({
   };
 
   return (
-    <div className="flex w-full justify-between items-center">
+    <div className="flex w-full justify-between items-center dark:bg-neutral-900 p-4 rounded-2xl border-base-border border-1">
       <div className="flex items-center justify-center gap-[18px] flex-shrink-0">
         <img src={logo} alt={title} className="w-[30px] h-[30px]" />
         <div className="flex flex-col items-start justify-center gap-[10px]">
@@ -49,7 +50,7 @@ export default function ApiKeyManager({
               value={apiKey}
               placeholder={`Enter your ${title} API key`}
               onChange={(e) => setApiKey(e.target.value)}
-              className="border border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] focus:outline-none placeholder:text-text-placeholder placeholder:opacity-50 placeholder:text-[12px] text-[20px] appearance-none bg-bg-primary text-text-primary"
+              className="border placeholder:translate-y-[-2px] border-solid border-text-tertiary rounded-sm px-2 py-1 h-6 w-[387px] focus:outline-none placeholder:text-text-placeholder placeholder:opacity-50 placeholder:text-[12px] text-[20px] appearance-none bg-bg-primary text-text-primary"
             />
           )}
         </div>
