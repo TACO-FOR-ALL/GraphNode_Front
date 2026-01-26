@@ -29,7 +29,7 @@ export default function RecentNotes() {
         </div>
         {notes?.map((note) => {
           const { title, content } = seperateTitleAndContentFromMarkdown(
-            note.content
+            note.content,
           );
           return (
             <div
@@ -45,7 +45,7 @@ export default function RecentNotes() {
               </p>
               <div className="flex mt-auto items-center justify-between text-text-tertiary">
                 <p className="font-noto-sans-kr text-[12px]">
-                  {note.createdAt.toLocaleDateString()}
+                  {new Date(note.createdAt).toLocaleDateString()}
                 </p>
                 <IoIosMore className="text-[16px]" />
               </div>

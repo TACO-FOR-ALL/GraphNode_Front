@@ -14,8 +14,8 @@ export async function pullNotesOnce() {
       title: n.title,
       content: n.content,
       folderId: n.folderId,
-      createdAt: new Date(n.createdAt),
-      updatedAt: new Date(n.updatedAt),
+      createdAt: new Date(n.createdAt).getTime(),
+      updatedAt: new Date(n.updatedAt).getTime(),
     }));
   } else {
     console.error(result.error);
@@ -33,7 +33,7 @@ export async function pullNotesOnce() {
     const locked = new Set(
       ops
         .filter((op) => op.status === "pending" || op.status === "processing")
-        .map((op) => op.entityId)
+        .map((op) => op.entityId),
     );
 
     const upserts = serverNotes.filter((n) => !locked.has(n.id));
@@ -42,10 +42,8 @@ export async function pullNotesOnce() {
     // 여기선 서버가 Date/ISO string 올 수도 있으니 방어적으로 처리
     const normalized = upserts.map((n) => ({
       ...n,
-      createdAt:
-        n.createdAt instanceof Date ? n.createdAt : new Date(n.createdAt),
-      updatedAt:
-        n.updatedAt instanceof Date ? n.updatedAt : new Date(n.updatedAt),
+      createdAt: new Date(n.createdAt).getTime(),
+      updatedAt: new Date(n.updatedAt).getTime(),
     }));
 
     await db.notes.bulkPut(normalized);
