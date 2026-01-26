@@ -60,6 +60,14 @@ async function processOp(op: OutboxOp) {
       case "note.delete":
         await api.note.deleteNote(op.entityId);
         break;
+
+      case "thread.update":
+        await api.conversations.update(op.entityId, op.payload);
+        break;
+
+      case "thread.delete":
+        await api.conversations.delete(op.entityId);
+        break;
     }
 
     // 작업 성공 후 outbox에서 제거

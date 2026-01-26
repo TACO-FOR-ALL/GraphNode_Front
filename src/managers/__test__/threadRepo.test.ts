@@ -3,6 +3,7 @@ import { ChatMessage } from "@/types/Chat";
 
 // DB 모킹
 const mockThreads = new Map<string, any>();
+const mockOutbox = new Map<string, any>();
 
 jest.mock("@/db/graphnode.db", () => ({
   db: {
@@ -43,6 +44,30 @@ jest.mock("@/db/graphnode.db", () => ({
         return Promise.resolve();
       }),
     },
+    outbox: {
+      put: jest.fn((op: any) => {
+        mockOutbox.set(op.opId, op);
+        return Promise.resolve(op.opId);
+      }),
+    },
+    transaction: jest.fn(async (...args: any[]) => {
+      const callback = args[args.length - 1];
+      if (typeof callback === "function") {
+        return await callback();
+      }
+    }),
+  },
+}));
+
+// outboxRepo 모킹
+const mockEnqueueThreadUpdateTitle = jest.fn();
+const mockEnqueueThreadDelete = jest.fn();
+
+jest.mock("../outboxRepo", () => ({
+  outboxRepo: {
+    enqueueThreadUpdateTitle: (...args: any[]) =>
+      mockEnqueueThreadUpdateTitle(...args),
+    enqueueThreadDelete: (...args: any[]) => mockEnqueueThreadDelete(...args),
   },
 }));
 
@@ -64,6 +89,9 @@ jest.mock("@/utils/uuid", () => ({
 describe("threadRepo", () => {
   beforeEach(() => {
     mockThreads.clear();
+    mockOutbox.clear();
+    mockEnqueueThreadUpdateTitle.mockClear();
+    mockEnqueueThreadDelete.mockClear();
     jest.clearAllMocks();
   });
 
@@ -223,6 +251,22 @@ describe("threadRepo", () => {
       expect(mockThreads.get("t1").title).toBe("Updated Title");
     });
 
+    test("제목 변경 시 outbox에 enqueue", async () => {
+      const thread = {
+        id: "t1",
+        title: "Original",
+        messages: [],
+        updatedAt: Date.now(),
+      };
+      mockThreads.set("t1", thread);
+
+      await threadRepo.updateThreadTitleById("t1", "Updated Title");
+
+      expect(mockEnqueueThreadUpdateTitle).toHaveBeenCalledWith("t1", {
+        title: "Updated Title",
+      });
+    });
+
     test("존재하지 않는 스레드 업데이트 → null", async () => {
       const result = await threadRepo.updateThreadTitleById(
         "non-existent",
@@ -230,6 +274,7 @@ describe("threadRepo", () => {
       );
 
       expect(result).toBeNull();
+      expect(mockEnqueueThreadUpdateTitle).not.toHaveBeenCalled();
     });
 
     test("업데이트 시 updatedAt 갱신", async () => {
@@ -308,13 +353,25 @@ describe("threadRepo", () => {
       expect(mockThreads.has("t1")).toBe(false);
     });
 
-    test("삭제 실패 시 null 반환", async () => {
-      const { db } = require("@/db/graphnode.db");
-      db.threads.delete.mockRejectedValueOnce(new Error("Delete failed"));
+    test("삭제 시 outbox에 enqueue", async () => {
+      const thread = {
+        id: "t1",
+        title: "Thread",
+        messages: [],
+        updatedAt: Date.now(),
+      };
+      mockThreads.set("t1", thread);
 
-      const result = await threadRepo.deleteThreadById("t1");
+      await threadRepo.deleteThreadById("t1");
+
+      expect(mockEnqueueThreadDelete).toHaveBeenCalledWith("t1");
+    });
+
+    test("존재하지 않는 스레드 삭제 → null", async () => {
+      const result = await threadRepo.deleteThreadById("non-existent");
 
       expect(result).toBeNull();
+      expect(mockEnqueueThreadDelete).not.toHaveBeenCalled();
     });
   });
 

@@ -8,7 +8,6 @@ import { folderRepo } from "@/managers/folderRepo";
 import { noteRepo } from "@/managers/noteRepo";
 import NewFolderField from "../NewFolderField";
 import { buildFolderTree } from "@/utils/buildFolderTree";
-import { FaPlus } from "react-icons/fa6";
 import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 import { FaTrash } from "react-icons/fa";
@@ -33,7 +32,7 @@ export default function SideExpandBarNote({
 
   // set을 사용하면 여러 폴더 확장 여부를 동시에 독립적으로 관리할 수 있으며, has()메서드로 O(1)의 시간복잡도로 확인 가능
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState("");
@@ -107,7 +106,7 @@ export default function SideExpandBarNote({
     e.stopPropagation();
     if (
       !confirm(
-        "Are you sure you want to delete this folder? All notes inside will be moved to the root."
+        "Are you sure you want to delete this folder? All notes inside will be moved to the root.",
       )
     )
       return;
@@ -152,7 +151,7 @@ export default function SideExpandBarNote({
   // 폴더 위로 드래그 오버
   const handleFolderDragOver = (
     folderId: string | null,
-    e: React.DragEvent
+    e: React.DragEvent,
   ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move"; // (드롭 대상 위에서, 이동 커서)
@@ -162,7 +161,7 @@ export default function SideExpandBarNote({
   // 폴더로 드롭
   const handleFolderDrop = async (
     folderId: string | null,
-    e: React.DragEvent
+    e: React.DragEvent,
   ) => {
     e.preventDefault();
     if (!draggedNoteId) return;

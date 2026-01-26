@@ -2,6 +2,7 @@ import { db } from "@/db/graphnode.db";
 import uuid from "@/utils/uuid";
 import type { OutboxOp, OutboxOpType } from "@/types/Outbox";
 import type {
+  ConversationUpdateDto,
   NoteCreateDto,
   NoteUpdateDto,
 } from "@taco_tsinghua/graphnode-sdk";
@@ -29,12 +30,22 @@ export const outboxRepo = {
   async enqueueNoteDelete(noteId: string) {
     await enqueueWithCoalesce("note.delete", noteId, null);
   },
+
+  async enqueueThreadUpdateTitle(
+    threadId: string,
+    payload: ConversationUpdateDto,
+  ) {
+    await enqueueWithCoalesce("thread.update", threadId, payload);
+  },
+  async enqueueThreadDelete(threadId: string) {
+    await enqueueWithCoalesce("thread.delete", threadId, null);
+  },
 };
 
 async function enqueueWithCoalesce(
   type: OutboxOpType,
   entityId: string,
-  payload: any
+  payload: any,
 ) {
   const now = Date.now();
 
@@ -54,8 +65,43 @@ async function enqueueWithCoalesce(
         await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
       }
       await db.outbox.put(
-        makeOp(entityId, "note.delete", { id: entityId }, now)
+        makeOp(entityId, "note.delete", { id: entityId }, now),
       );
+      return;
+    }
+
+    // (A-2) thread.delete: 관련 thread.update op 정리 후 delete만 남김
+    if (type === "thread.delete") {
+      const related = await db.outbox
+        .where("entityId")
+        .equals(entityId)
+        .toArray();
+      const pendingOnly = related.filter((r) => r.status === "pending");
+      if (pendingOnly.length) {
+        await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
+      }
+      await db.outbox.put(makeOp(entityId, "thread.delete", null, now));
+      return;
+    }
+
+    // (A-3) thread.update: threadId당 1개로 coalesce
+    if (type === "thread.update") {
+      const existing = await db.outbox
+        .where({ entityId, type: "thread.update" as const, status: "pending" as const })
+        .first();
+
+      if (existing) {
+        await db.outbox.update(existing.opId, {
+          payload,
+          status: "pending",
+          nextRetryAt: now,
+          updatedAt: now,
+          lastError: undefined,
+        });
+        return;
+      }
+
+      await db.outbox.put(makeOp(entityId, "thread.update", payload, now));
       return;
     }
 
@@ -72,7 +118,7 @@ async function enqueueWithCoalesce(
       const merged = mergeIntoCreatePayload(
         pendingCreate.payload as NoteCreateDto,
         type,
-        payload
+        payload,
       );
       await db.outbox.update(pendingCreate.opId, {
         payload: merged,
@@ -120,7 +166,7 @@ function makeOp(
   entityId: string,
   type: OutboxOpType,
   payload: any,
-  now: number
+  now: number,
 ): OutboxOp {
   return {
     opId: uuid(),
@@ -138,7 +184,7 @@ function makeOp(
 function mergeIntoCreatePayload(
   existing: NoteCreateDto,
   incomingType: OutboxOpType,
-  incomingPayload: any
+  incomingPayload: any,
 ): NoteCreateDto {
   if (incomingType === "note.update" || incomingType === "note.move") {
     const u = incomingPayload as NoteUpdateDto;
