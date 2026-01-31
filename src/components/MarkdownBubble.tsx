@@ -36,13 +36,16 @@ function safeStringify(children: React.ReactNode): string {
 
 const components: Components = {
   code: (props) => {
-    const { inline, className, children, ...rest } = props as CodePropsLike;
+    const { className, children, ...rest } = props as CodePropsLike;
     const code = safeStringify(children);
 
-    if (inline) {
+    // className이 없으면 인라인 코드 (react-markdown v9+에서 inline prop deprecated)
+    const isInline = !className;
+
+    if (isInline) {
       return (
         <code
-          className="px-1.5 py-0.5 rounded bg-code-bg text-code-text font-mono text-sm"
+          className="px-1.5 py-0.5 rounded-sm bg-code-bg text-code-text font-mono text-sm"
           {...rest}
         >
           {code}
@@ -67,7 +70,7 @@ const components: Components = {
       // 언어를 찾을 수 없거나 오류가 발생하면 자동 감지로 폴백
       console.warn(
         `언어 '${language}'를 찾을 수 없습니다. 자동 감지로 전환합니다.`,
-        error
+        error,
       );
       try {
         highlighted = hljs.highlightAuto(code).value;
@@ -75,7 +78,7 @@ const components: Components = {
         // 자동 감지도 실패하면 그냥 텍스트로 표시
         console.warn(
           "자동 언어 감지도 실패했습니다. 일반 텍스트로 표시합니다.",
-          autoError
+          autoError,
         );
         highlighted = hljs.highlight(code, { language: "plaintext" }).value;
       }
