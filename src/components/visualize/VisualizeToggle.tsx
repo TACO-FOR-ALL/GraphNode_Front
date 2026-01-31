@@ -1,5 +1,5 @@
 import { useState } from "react";
-import frontendGraphHys from "../../constants/frontend_graph_ky.json";
+import frontendGraphHys from "../../constants/graph_postprocessed.json";
 import Graph3D from "./Graph3D";
 import ClusterCircleGraph from "./Graph2D";
 
@@ -44,8 +44,12 @@ export default function VisualizeToggle() {
 
       {mode === "2d" ? (
         <ClusterCircleGraph
-          rawNodes={frontendGraphHys.nodes}
+          rawNodes={frontendGraphHys.nodes.map((node) => ({
+            ...node,
+            subcluster_id: null,
+          }))}
           rawEdges={frontendGraphHys.edges}
+          rawSubclusters={frontendGraphHys.subclusters}
           width={window.innerWidth}
           height={window.innerHeight}
         />
