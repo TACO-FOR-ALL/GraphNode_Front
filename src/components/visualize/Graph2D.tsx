@@ -81,7 +81,6 @@ function classifyEdges(
   edges: Edge[],
 ): {
   edges: PositionedEdge[];
-  nodeMap: Map<number, Node>;
   edgeCounts: Map<number, number>;
 } {
   const nodeMap = new Map<number, Node>();
@@ -103,7 +102,7 @@ function classifyEdges(
     return { ...e, isIntraCluster: !!isIntra };
   });
 
-  return { edges: positionedEdges, nodeMap, edgeCounts };
+  return { edges: positionedEdges, edgeCounts };
 }
 
 // 클러스터별로 서브클러스터 그룹화
@@ -248,7 +247,6 @@ function layoutWithBoundedForce(
   height: number,
 ): {
   nodes: PositionedNode[];
-  edges: PositionedEdge[];
   circles: ClusterCircle[];
 } {
   const { edges: classifiedEdges, edgeCounts } = classifyEdges(nodes, edges);
@@ -384,7 +382,6 @@ function layoutWithBoundedForce(
   // 클러스터별 원형 아웃라인 계산
   return {
     nodes: positionedNodes,
-    edges: classifiedEdges,
     circles,
   };
 }
@@ -419,6 +416,7 @@ export default function ClusterGraph({
   height,
 }: GraphProps) {
   const subclustersInput = rawSubclusters ?? EMPTY_SUBCLUSTERS;
+  const subclusters = subclustersInput;
   const [positionedNodes, setPositionedNodes] = useState<PositionedNode[]>([]);
   const [displayNodes, setDisplayNodes] = useState<DisplayNode[]>([]);
   const [displayEdges, setDisplayEdges] = useState<DisplayEdge[]>([]);
@@ -426,7 +424,6 @@ export default function ClusterGraph({
   const [maxEdgeCount, setMaxEdgeCount] = useState(0);
 
   // 서브클러스터 관련 상태
-  const [subclusters, setSubclusters] = useState<Subcluster[]>([]);
   const [collapsedSubclusters, setCollapsedSubclusters] = useState<Set<string>>(
     () => new Set(subclustersInput.map((sc) => sc.id)),
   );
@@ -447,6 +444,11 @@ export default function ClusterGraph({
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  const positionedNodeMap = useMemo(
+    () => new Map(positionedNodes.map((n) => [n.id, n])),
+    [positionedNodes],
+  );
 
   const displayNodeMap = useMemo(
     () => new Map(displayNodes.map((n) => [n.id, n])),
@@ -474,10 +476,7 @@ export default function ClusterGraph({
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const normalInterEdges = displayEdges.filter((e) => {
-    if (e.isIntraCluster) return false;
-    return true;
-  });
+  const normalInterEdges = displayEdges.filter((e) => !e.isIntraCluster);
 
   useEffect(() => {
     if (rawNodes.length === 0) return;
@@ -494,7 +493,6 @@ export default function ClusterGraph({
 
   // 서브클러스터 초기화 (초기에는 모두 접힌 상태)
   useEffect(() => {
-    setSubclusters(subclustersInput);
     setCollapsedSubclusters(new Set(subclustersInput.map((sc) => sc.id)));
   }, [subclustersInput]);
 
@@ -512,12 +510,6 @@ export default function ClusterGraph({
     const max = Math.max(...visibleNodes.map((n) => n.edgeCount ?? 0), 1);
     setMaxEdgeCount(max);
   }, [positionedNodes, rawEdges, subclusters, collapsedSubclusters]);
-
-  const positionedNodeById = (id: number) =>
-    positionedNodes.find((n) => n.id === id);
-
-  const displayNodeById = (id: string | number) =>
-    displayNodes.find((n) => n.id === id);
 
   const nodeToSubclusterMap = useMemo(
     () => createNodeToSubclusterMap(subclusters),
@@ -624,16 +616,7 @@ export default function ClusterGraph({
     });
   };
 
-  const handleMouseUp = () => {
-    setIsPanning(false);
-    panStart.current = null;
-    setDraggingNodeId(null);
-    setDraggingClusterId(null);
-    dragNodeOffset.current = null;
-    dragClusterOffset.current = null;
-  };
-
-  const handleMouseLeave = () => {
+  const resetInteraction = () => {
     setIsPanning(false);
     panStart.current = null;
     setDraggingNodeId(null);
@@ -649,7 +632,7 @@ export default function ClusterGraph({
     e.stopPropagation();
     if (node.isGroupNode || typeof node.id !== "number") return;
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-    const positionedNode = positionedNodeById(node.id);
+    const positionedNode = positionedNodeMap.get(node.id);
     if (!positionedNode) return;
 
     dragNodeOffset.current = {
@@ -722,7 +705,7 @@ export default function ClusterGraph({
       {/* 노드/그룹 툴팁 */}
       {hoveredId != null &&
         (() => {
-          const n = displayNodeById(hoveredId);
+          const n = displayNodeMap.get(hoveredId);
           if (!n) return null;
           const left = n.x * scale + offset.x;
           const top = n.y * scale + offset.y - 24;
@@ -776,8 +759,8 @@ export default function ClusterGraph({
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
+        onMouseUp={resetInteraction}
+        onMouseLeave={resetInteraction}
         onWheel={handleWheel}
       >
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
