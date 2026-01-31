@@ -1,16 +1,17 @@
 import threadRepo from "@/managers/threadRepo";
+import {
+  ClusterCircle,
+  PositionedEdge,
+  PositionedNode,
+  Subcluster,
+} from "@/types/GraphData";
 import * as d3Force from "d3-force";
 import {
   GraphEdgeDto,
   GraphNodeDto,
 } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import NodeChatPreview from "./NodeChatPreview";
-import {
-  PositionedEdge,
-  PositionedNode,
-  ClusterCircle,
-} from "@/types/GraphData";
 
 type SimNode = d3Force.SimulationNodeDatum &
   GraphNodeDto & {
@@ -21,12 +22,32 @@ type SimNode = d3Force.SimulationNodeDatum &
     edgeCount: number;
   };
 
+type DisplayNode = {
+  id: string | number;
+  isGroupNode?: boolean;
+  subcluster_id?: string | null;
+  x: number;
+  y: number;
+  size?: number;
+  color?: string;
+  label?: string;
+  edgeCount?: number;
+  cluster_name?: string;
+  orig_node?: PositionedNode;
+};
+
+type DisplayEdge = {
+  source: string | number;
+  target: string | number;
+  isIntraCluster: boolean;
+  id?: string;
+};
+
 function classifyEdges(
   nodes: GraphNodeDto[],
-  edges: GraphEdgeDto[]
+  edges: GraphEdgeDto[],
 ): {
   edges: PositionedEdge[];
-  nodeMap: Map<number, GraphNodeDto>;
   edgeCounts: Map<number, number>;
 } {
   const nodeMap = new Map<number, GraphNodeDto>();
@@ -48,14 +69,152 @@ function classifyEdges(
     return { ...e, isIntraCluster: !!isIntra };
   });
 
-  return { edges: positionedEdges, nodeMap, edgeCounts };
+  return { edges: positionedEdges, edgeCounts };
+}
+
+// 클러스터별로 서브클러스터 그룹화
+function groupSubclustersByCluster(
+  subclusters: Subcluster[],
+): Map<string, Subcluster[]> {
+  const subclustersByCluster = new Map<string, Subcluster[]>();
+  subclusters.forEach((sc) => {
+    const list = subclustersByCluster.get(sc.cluster_id) ?? [];
+    list.push(sc);
+    subclustersByCluster.set(sc.cluster_id, list);
+  });
+  return subclustersByCluster;
+}
+
+// 노드 -> 서브클러스터 매핑 생성
+function createNodeToSubclusterMap(
+  subclusters: Subcluster[],
+): Map<number, string> {
+  const nodeToSubcluster = new Map<number, string>();
+  subclusters.forEach((sc) => {
+    sc.node_ids.forEach((nodeId) => {
+      nodeToSubcluster.set(nodeId, sc.id);
+    });
+  });
+  return nodeToSubcluster;
+}
+
+function getVisibleGraph(
+  allNodes: PositionedNode[],
+  allEdges: GraphEdgeDto[],
+  subclusters: Subcluster[],
+  collapsedSet: Set<string>,
+): { visibleNodes: DisplayNode[]; visibleEdges: DisplayEdge[] } {
+  const nodeToSubcluster = createNodeToSubclusterMap(subclusters);
+  const scMap = new Map(subclusters.map((sc) => [sc.id, sc]));
+
+  const nodeMap = new Map<number, DisplayNode>();
+  const visibleNodes: DisplayNode[] = [];
+
+  // 그룹 노드 생성 (접힌 서브클러스터)
+  collapsedSet.forEach((scId) => {
+    const sc = scMap.get(scId);
+    if (!sc) return;
+
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    let clusterName: string | undefined;
+
+    const memberNodeIds = new Set(sc.node_ids);
+    allNodes.forEach((n) => {
+      if (!memberNodeIds.has(n.id)) return;
+      sumX += n.x;
+      sumY += n.y;
+      count += 1;
+      if (!clusterName) clusterName = n.clusterName;
+    });
+
+    const groupNodeId = `__group_${scId}`;
+    const groupNode: DisplayNode = {
+      id: groupNodeId,
+      isGroupNode: true,
+      subcluster_id: scId,
+      label: sc.top_keywords?.[0] || `Group ${scId}`,
+      x: count > 0 ? sumX / count : 0,
+      y: count > 0 ? sumY / count : 0,
+      size: sc.size,
+      color: "var(--color-node-default)",
+      edgeCount: 0,
+      cluster_name: clusterName,
+    };
+
+    visibleNodes.push(groupNode);
+    sc.node_ids.forEach((nodeId) => {
+      nodeMap.set(nodeId, groupNode);
+    });
+  });
+
+  // 일반 노드 처리
+  allNodes.forEach((node) => {
+    const subclusterId =
+      (node as GraphNodeDto & { subclusterId?: string | null }).subclusterId ??
+      nodeToSubcluster.get(node.id) ??
+      null;
+    if (subclusterId && collapsedSet.has(subclusterId)) return;
+
+    const displayNode: DisplayNode = {
+      id: node.id,
+      isGroupNode: false,
+      subcluster_id: subclusterId,
+      label: node.origId,
+      x: node.x,
+      y: node.y,
+      edgeCount: node.edgeCount,
+      cluster_name: node.clusterName,
+      orig_node: node,
+    };
+
+    visibleNodes.push(displayNode);
+    nodeMap.set(node.id, displayNode);
+  });
+
+  const visibleEdges: DisplayEdge[] = [];
+  const edgeKeys = new Set<string>();
+  const edgeCounts = new Map<string | number, number>();
+
+  allEdges.forEach((e) => {
+    const sNode = nodeMap.get(e.source);
+    const tNode = nodeMap.get(e.target);
+    if (!sNode || !tNode) return;
+    if (sNode.id === tNode.id) return;
+
+    const key = [String(sNode.id), String(tNode.id)].sort().join("-");
+    if (edgeKeys.has(key)) return;
+
+    edgeKeys.add(key);
+    visibleEdges.push({
+      source: sNode.id,
+      target: tNode.id,
+      isIntraCluster: !!(
+        sNode.cluster_name &&
+        tNode.cluster_name &&
+        sNode.cluster_name === tNode.cluster_name
+      ),
+      id: key,
+    });
+
+    edgeCounts.set(sNode.id, (edgeCounts.get(sNode.id) ?? 0) + 1);
+    edgeCounts.set(tNode.id, (edgeCounts.get(tNode.id) ?? 0) + 1);
+  });
+
+  const nodesWithEdgeCounts = visibleNodes.map((n) => ({
+    ...n,
+    edgeCount: edgeCounts.get(n.id) ?? n.edgeCount ?? 0,
+  }));
+
+  return { visibleNodes: nodesWithEdgeCounts, visibleEdges };
 }
 
 function layoutWithBoundedForce(
   nodes: GraphNodeDto[],
   edges: GraphEdgeDto[],
   width: number,
-  height: number
+  height: number,
 ): {
   nodes: PositionedNode[];
   edges: PositionedEdge[];
@@ -66,7 +225,7 @@ function layoutWithBoundedForce(
   // 클러스터별 노드 그룹화
   const clusterGroups = new Map<string, GraphNodeDto[]>();
   nodes.forEach((n) => {
-    // cluster_name을 기준으로 그룹화
+    // clusterName을 기준으로 그룹화
     const list = clusterGroups.get(n.clusterName) ?? [];
     list.push(n);
     clusterGroups.set(n.clusterName, list);
@@ -91,12 +250,12 @@ function layoutWithBoundedForce(
 
     const n = clusterNodes.length;
 
-    const tempNodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
+    const tempNodeMap = new Map(clusterNodes.map((node) => [node.id, node]));
     const intraClusterEdges = classifiedEdges.filter(
       (e) =>
         e.isIntraCluster &&
         tempNodeMap.has(e.source) &&
-        tempNodeMap.has(e.target)
+        tempNodeMap.has(e.target),
     );
     const edgeCount = intraClusterEdges.length;
 
@@ -121,7 +280,7 @@ function layoutWithBoundedForce(
       };
     });
 
-    const nodeMap = new Map(simNodes.map((n) => [n.id, n]));
+    const nodeMap = new Map(simNodes.map((node) => [node.id, node]));
 
     const simClusterEdges = intraClusterEdges.map((e) => ({
       source: nodeMap.get(e.source)!,
@@ -145,7 +304,7 @@ function layoutWithBoundedForce(
           .forceLink<SimNode, any>(simClusterEdges)
           .id((d: any) => d.id)
           .distance(20 + Math.min(15, density * 1.2))
-          .strength(0.5)
+          .strength(0.5),
       )
       .force("collision", d3Force.forceCollide(collideRadius).iterations(3))
       .stop();
@@ -214,34 +373,46 @@ function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
 type GraphProps = {
   rawNodes: GraphNodeDto[];
   rawEdges: GraphEdgeDto[];
+  rawSubclusters?: Subcluster[];
   width: number;
   height: number;
   avatarUrl: string | null;
   onClustersReady?: (
     clusters: ClusterCircle[],
     nodes: PositionedNode[],
-    edges: PositionedEdge[]
+    edges: PositionedEdge[],
   ) => void;
   zoomToClusterId?: string | null;
 };
 
+const EMPTY_SUBCLUSTERS: Subcluster[] = [];
+
 export default function Graph2D({
   rawNodes,
   rawEdges,
+  rawSubclusters,
   width,
   height,
   avatarUrl,
   onClustersReady,
   zoomToClusterId,
 }: GraphProps) {
-  const [nodes, setNodes] = useState<PositionedNode[]>([]);
-  const [edges, setEdges] = useState<PositionedEdge[]>([]);
+  const subclustersInput = rawSubclusters ?? EMPTY_SUBCLUSTERS;
+  const subclusters = subclustersInput;
+  const [positionedNodes, setPositionedNodes] = useState<PositionedNode[]>([]);
+  const [displayNodes, setDisplayNodes] = useState<DisplayNode[]>([]);
+  const [displayEdges, setDisplayEdges] = useState<DisplayEdge[]>([]);
   const [circles, setCircles] = useState<ClusterCircle[]>([]);
   const [maxEdgeCount, setMaxEdgeCount] = useState(0);
 
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  // 서브클러스터 관련 상태
+  const [collapsedSubclusters, setCollapsedSubclusters] = useState<Set<string>>(
+    () => new Set(subclustersInput.map((sc) => sc.id)),
+  );
+
+  const [hoveredId, setHoveredId] = useState<string | number | null>(null);
   const [hoveredThreadTitle, setHoveredThreadTitle] = useState<string | null>(
-    null
+    null,
   );
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -255,45 +426,54 @@ export default function Graph2D({
   const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const [draggingClusterId, setDraggingClusterId] = useState<string | null>(
-    null
+    null,
   );
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const isAnimatingRef = useRef(false);
 
+  const positionedNodeMap = useMemo(
+    () => new Map(positionedNodes.map((n) => [n.id, n])),
+    [positionedNodes],
+  );
+
+  const displayNodeMap = useMemo(
+    () => new Map(displayNodes.map((n) => [n.id, n])),
+    [displayNodes],
+  );
+
+  const focusActive = focusNodeId !== null && displayNodeMap.has(focusNodeId);
+
   // 엣지 분류
-  const normalIntraEdges = edges.filter((e) => {
+  const normalIntraEdges = displayEdges.filter((e) => {
     if (!e.isIntraCluster) return false;
-    if (!focusNodeId) return true;
+    if (!focusActive) return true;
     return e.source !== focusNodeId && e.target !== focusNodeId;
   });
 
-  const focusedIntraEdges = edges.filter((e) => {
-    if (!focusNodeId) return false;
+  const focusedIntraEdges = displayEdges.filter((e) => {
+    if (!focusActive) return false;
     if (!e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const focusedInterEdges = edges.filter((e) => {
-    if (!focusNodeId) return false;
+  const focusedInterEdges = displayEdges.filter((e) => {
+    if (!focusActive) return false;
     if (e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const normalInterEdges = edges.filter((e) => {
-    if (e.isIntraCluster) return false;
-    return true;
-  });
+  const normalInterEdges = displayEdges.filter((e) => !e.isIntraCluster);
 
   // hoveredId가 변경될 때 thread title 가져오기
   useEffect(() => {
-    if (hoveredId == null) {
+    if (hoveredId == null || typeof hoveredId !== "number") {
       setHoveredThreadTitle(null);
       return;
     }
 
-    const n = nodes.find((node) => node.id === hoveredId);
+    const n = positionedNodeMap.get(hoveredId);
     if (!n) {
       setHoveredThreadTitle(null);
       return;
@@ -307,7 +487,7 @@ export default function Graph2D({
       .catch(() => {
         setHoveredThreadTitle(null);
       });
-  }, [hoveredId, nodes]);
+  }, [hoveredId, positionedNodeMap]);
 
   const onClustersReadyRef = useRef(onClustersReady);
 
@@ -319,14 +499,12 @@ export default function Graph2D({
   useEffect(() => {
     if (rawNodes.length === 0) return;
 
-    const { nodes, edges, circles } = layoutWithBoundedForce(
-      rawNodes,
-      rawEdges,
-      width,
-      height
-    );
-    setNodes(nodes);
-    setEdges(edges);
+    const {
+      nodes,
+      edges: newEdges,
+      circles,
+    } = layoutWithBoundedForce(rawNodes, rawEdges, width, height);
+    setPositionedNodes(nodes);
     setCircles(circles);
 
     const max = Math.max(...nodes.map((n) => n.edgeCount), 1);
@@ -334,9 +512,39 @@ export default function Graph2D({
 
     // 클러스터 정보와 노드 위치, 엣지를 부모 컴포넌트에 전달 (ref를 통해 호출하여 무한 루프 방지)
     if (onClustersReadyRef.current) {
-      onClustersReadyRef.current(circles, nodes, edges);
+      onClustersReadyRef.current(circles, nodes, newEdges);
     }
-  }, [rawNodes, rawEdges, width, height]); // onClustersReady를 의존성 배열에서 제거
+  }, [rawNodes, rawEdges, width, height]);
+
+  // 서브클러스터 초기화 (초기에는 모두 접힌 상태)
+  useEffect(() => {
+    setCollapsedSubclusters(new Set(subclustersInput.map((sc) => sc.id)));
+  }, [subclustersInput]);
+
+  useEffect(() => {
+    if (positionedNodes.length === 0) return;
+    const { visibleNodes, visibleEdges } = getVisibleGraph(
+      positionedNodes,
+      rawEdges,
+      subclusters,
+      collapsedSubclusters,
+    );
+    setDisplayNodes(visibleNodes);
+    setDisplayEdges(visibleEdges);
+
+    const max = Math.max(...visibleNodes.map((n) => n.edgeCount ?? 0), 1);
+    setMaxEdgeCount(max);
+  }, [positionedNodes, rawEdges, subclusters, collapsedSubclusters]);
+
+  const nodeToSubclusterMap = useMemo(
+    () => createNodeToSubclusterMap(subclusters),
+    [subclusters],
+  );
+
+  const subclusterMap = useMemo(
+    () => new Map(subclusters.map((sc) => [sc.id, sc])),
+    [subclusters],
+  );
 
   // 클러스터로 줌인 (애니메이션)
   useEffect(() => {
@@ -397,8 +605,6 @@ export default function Graph2D({
     requestAnimationFrame(animate);
   }, [zoomToClusterId, circles, scale, offset]);
 
-  const nodeById = (id: number) => nodes.find((n) => n.id === id);
-
   const screenToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current!;
     const rect = svg.getBoundingClientRect();
@@ -447,7 +653,7 @@ export default function Graph2D({
       const newCenterY = worldY + dragClusterOffset.current.dy;
 
       const originalCircle = circles.find(
-        (c) => c.clusterId === draggingClusterId
+        (c) => c.clusterId === draggingClusterId,
       );
       if (!originalCircle) return;
 
@@ -458,16 +664,16 @@ export default function Graph2D({
         prev.map((c) =>
           c.clusterId === draggingClusterId
             ? { ...c, centerX: newCenterX, centerY: newCenterY }
-            : c
-        )
+            : c,
+        ),
       );
 
-      setNodes((prev) =>
+      setPositionedNodes((prev) =>
         prev.map((n) =>
           n.clusterName === draggingClusterId
             ? { ...n, x: n.x + dx, y: n.y + dy }
-            : n
-        )
+            : n,
+        ),
       );
 
       return;
@@ -479,10 +685,10 @@ export default function Graph2D({
       const newX = worldX + dragNodeOffset.current.dx;
       const newY = worldY + dragNodeOffset.current.dy;
 
-      setNodes((prev) =>
+      setPositionedNodes((prev) =>
         prev.map((n) =>
-          n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n
-        )
+          n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n,
+        ),
       );
       return;
     }
@@ -516,7 +722,7 @@ export default function Graph2D({
 
     // 드래그가 아니고 노드를 클릭한 경우에만 채팅 미리보기 표시
     if (!wasDragging && prevDraggingNodeId) {
-      const node = nodeById(prevDraggingNodeId);
+      const node = positionedNodeMap.get(prevDraggingNodeId);
       if (node) {
         setSelectedNodeId(node.origId);
       }
@@ -530,28 +736,30 @@ export default function Graph2D({
     setDraggingClusterId(null);
     dragNodeOffset.current = null;
     dragClusterOffset.current = null;
+    dragStartPos.current = null;
   };
 
   const handleNodeMouseDown = (
-    e: React.MouseEvent<SVGCircleElement>,
-    nodeId: number
+    e: React.MouseEvent<SVGElement>,
+    node: DisplayNode,
   ) => {
     e.stopPropagation();
+    if (node.isGroupNode || typeof node.id !== "number") return;
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-    const node = nodeById(nodeId);
-    if (!node) return;
+    const positionedNode = positionedNodeMap.get(node.id);
+    if (!positionedNode) return;
 
     dragNodeOffset.current = {
-      dx: node.x - worldX,
-      dy: node.y - worldY,
+      dx: positionedNode.x - worldX,
+      dy: positionedNode.y - worldY,
     };
     dragStartPos.current = { x: e.clientX, y: e.clientY };
-    setDraggingNodeId(nodeId);
+    setDraggingNodeId(node.id);
   };
 
   const handleClusterLabelMouseDown = (
     e: React.MouseEvent<SVGTextElement>,
-    clusterId: string
+    clusterId: string,
   ) => {
     e.stopPropagation();
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
@@ -565,27 +773,80 @@ export default function Graph2D({
     setDraggingClusterId(clusterId);
   };
 
+  // 서브클러스터 클릭 핸들러 - 접기/펴기 토글
+  const handleSubclusterClick = (subclusterId: string) => {
+    setCollapsedSubclusters((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(subclusterId)) {
+        newSet.delete(subclusterId); // 펴기
+      } else {
+        newSet.add(subclusterId); // 접기
+      }
+      return newSet;
+    });
+  };
+
+  // 노드 클릭 핸들러 - 서브클러스터에 속한 경우 서브클러스터 접기
+  const handleNodeClick = (e: React.MouseEvent, node: DisplayNode) => {
+    e.stopPropagation();
+
+    if (node.isGroupNode) {
+      if (node.subcluster_id) {
+        handleSubclusterClick(node.subcluster_id);
+      }
+      return;
+    }
+
+    if (typeof node.id === "number") {
+      const numericId = node.id;
+      setFocusNodeId((prev) => (prev === numericId ? null : numericId));
+    }
+
+    if (e.altKey) {
+      const subclusterId =
+        node.subcluster_id ?? nodeToSubclusterMap.get(node.id as number);
+      if (subclusterId) {
+        setCollapsedSubclusters((prev) => {
+          const next = new Set(prev);
+          next.add(subclusterId);
+          return next;
+        });
+      }
+    }
+  };
+
   return (
     <div style={{ position: "relative", overflow: "hidden" }}>
       {/* 툴팁 */}
       {hoveredId != null &&
-        hoveredThreadTitle != null &&
         (() => {
-          const n = nodeById(hoveredId);
+          const n = displayNodeMap.get(hoveredId);
           if (!n) return null;
           const left = n.x * scale + offset.x;
           const top = n.y * scale + offset.y - 24;
+          const sc =
+            n.isGroupNode && n.subcluster_id
+              ? subclusterMap.get(n.subcluster_id)
+              : null;
+
+          const label = n.isGroupNode
+            ? (n.label ?? String(n.id))
+            : (hoveredThreadTitle ?? n.label ?? String(n.id));
 
           return (
             <div
-              id={n.origId}
               className="absolute -translate-x-1/2 -translate-y-full py-0.5 px-1.5 text-[10px] bg-sidebar-button-hover text-primary rounded pointer-events-none whitespace-nowrap z-10"
               style={{
                 left,
                 top,
               }}
             >
-              {hoveredThreadTitle}
+              <div className="font-semibold">{label}</div>
+              {sc && (
+                <div className="text-[9px] opacity-80">
+                  Size: {sc.size} | Density: {sc.density.toFixed(2)}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -654,12 +915,12 @@ export default function Graph2D({
 
           {/* Inter-cluster 엣지 (일반) */}
           {normalInterEdges.map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = displayNodeMap.get(e.source);
+            const t = displayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`inter-normal-${idx}`}
+                key={e.id ?? `inter-normal-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
@@ -673,12 +934,12 @@ export default function Graph2D({
 
           {/* Intra-cluster 엣지 (일반) */}
           {normalIntraEdges.map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = displayNodeMap.get(e.source);
+            const t = displayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`intra-normal-${idx}`}
+                key={e.id ?? `intra-normal-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
@@ -691,12 +952,12 @@ export default function Graph2D({
 
           {/* 포커스된 노드의 엣지 */}
           {[...focusedIntraEdges, ...focusedInterEdges].map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = displayNodeMap.get(e.source);
+            const t = displayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`focus-${idx}`}
+                key={e.id ?? `focus-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
@@ -707,19 +968,59 @@ export default function Graph2D({
             );
           })}
 
-          {/* 노드 */}
-          {nodes.map((n) => {
+          {/* 노드 (그룹/일반 통합) */}
+          {displayNodes.map((n) => {
             const isHovered = hoveredId === n.id;
-            const isFocused = focusNodeId === n.id;
+            const isFocused =
+              !n.isGroupNode &&
+              typeof n.id === "number" &&
+              focusNodeId === n.id;
 
-            const baseRadius = getNodeRadius(n.edgeCount, maxEdgeCount);
+            if (n.isGroupNode) {
+              const baseRadius = 12;
+              const radius = Math.max(baseRadius, Math.sqrt(n.size ?? 0) * 2);
+              const displayRadius = isHovered ? radius + 2 : radius;
+              return (
+                <g
+                  key={n.id}
+                  transform={`translate(${n.x}, ${n.y})`}
+                  style={{ cursor: "pointer" }}
+                  onMouseDown={(e) => handleNodeMouseDown(e, n)}
+                  onMouseEnter={() => setHoveredId(n.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={(e) => handleNodeClick(e, n)}
+                >
+                  <circle
+                    r={displayRadius}
+                    fill={n.color ?? "var(--color-node-default)"}
+                    fillOpacity={0.8}
+                    stroke="var(--color-node-focus)"
+                    strokeWidth={2}
+                  />
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={10}
+                    fontWeight="bold"
+                    fill="white"
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {n.size}
+                  </text>
+                </g>
+              );
+            }
+
+            const baseRadius = getNodeRadius(n.edgeCount ?? 0, maxEdgeCount);
             const radius = isHovered ? baseRadius + 2 : baseRadius;
-
+            const hasSubcluster = !!n.subcluster_id;
             const fill = isFocused
               ? "var(--color-node-focus)"
               : isHovered
                 ? "var(--color-node-focus)"
-                : "var(--color-node-default)";
+                : hasSubcluster
+                  ? "var(--color-node-default)"
+                  : "var(--color-node-default)";
 
             return (
               <circle
@@ -729,13 +1030,10 @@ export default function Graph2D({
                 r={radius}
                 fill={fill}
                 className="cursor-pointer shadow-[0_2px_20px_#BADAFF]"
-                onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
+                onMouseDown={(e) => handleNodeMouseDown(e, n)}
                 onMouseEnter={() => setHoveredId(n.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFocusNodeId((prev) => (prev === n.id ? null : n.id));
-                }}
+                onClick={(e) => handleNodeClick(e, n)}
               />
             );
           })}
