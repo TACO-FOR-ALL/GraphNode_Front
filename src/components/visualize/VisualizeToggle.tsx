@@ -11,6 +11,7 @@ import {
   ClusterCircle,
   PositionedNode,
   PositionedEdge,
+  Subcluster,
 } from "@/types/GraphData";
 
 export default function VisualizeToggle({
@@ -28,6 +29,17 @@ export default function VisualizeToggle({
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+
+  const snapshotSubclusters = (nodeData as { subclusters?: Subcluster[] })
+    .subclusters;
+  const statsSubclusters = (
+    nodeData.stats?.metadata as { subclusters?: Subcluster[] } | undefined
+  )?.subclusters;
+  const fallbackStatsSubclusters = (
+    statisticData.metadata as { subclusters?: Subcluster[] } | undefined
+  )?.subclusters;
+  const rawSubclusters =
+    snapshotSubclusters ?? statsSubclusters ?? fallbackStatsSubclusters;
 
   const handleClustersReady = useCallback(
     (
@@ -222,6 +234,7 @@ export default function VisualizeToggle({
         <Graph2D
           rawNodes={nodeData.nodes}
           rawEdges={nodeData.edges}
+          rawSubclusters={rawSubclusters}
           width={window.innerWidth}
           height={window.innerHeight}
           avatarUrl={avatarUrl}
