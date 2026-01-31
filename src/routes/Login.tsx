@@ -18,8 +18,21 @@ export default function Login() {
   // 세션 상태로 로그인 여부 확인
   useEffect(() => {
     (async () => {
-      // TODO: 백엔드 연결 후 제거
+      // DEV 모드: 자동 로그인 후 세션 확인
       if (import.meta.env.DEV) {
+        try {
+          // 백엔드에 개발 로그인 요청 (JWT 쿠키 받기)
+          const baseUrl = (globalThis as any).__GRAPHNODE_BASE_URL__ || 'http://localhost:3000';
+          await fetch(`${baseUrl}/dev/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ userId: '123' })
+          });
+        } catch (err) {
+          console.error('[DEV] Auto-login failed:', err);
+        }
+
         setHasSession(true);
         await window.keytarAPI.setMe({
           userId: "123",
