@@ -4,15 +4,31 @@ import uuid from "../utils/uuid";
 import { db } from "@/db/graphnode.db";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { outboxRepo } from "./outboxRepo";
+import { api } from "@/apiClient";
 
 export const threadRepo = {
   async create(
     title: string,
     messages: ChatMessage[] = [],
   ): Promise<ChatThread> {
-    const newThread: ChatThread = {
-      id: uuid(),
+    const id = uuid();
+    const serverPayload = {
+      id,
       title,
+      messages: messages.map((m) => ({
+        id: m.id || uuid(),
+        role: m.role,
+        content: m.content,
+      })),
+    };
+    const result = await api.conversations.create(serverPayload);
+    if (!result.isSuccess) {
+      throw new Error(result.error.message || "Failed to create conversation");
+    }
+
+    const newThread: ChatThread = {
+      id: result.data.id,
+      title: result.data.title,
       messages,
       updatedAt: Date.now(),
     };
