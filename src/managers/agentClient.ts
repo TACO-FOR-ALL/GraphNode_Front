@@ -1,6 +1,7 @@
 import { api } from "@/apiClient";
+// 로컬 개발시 SDK base URL 호환
 
-const API_BASE = "https://taco4graphnode.online";
+const API_BASE = import.meta.env.VITE_AGENT_BASE_URL;
 
 export type Mode = "chat" | "summary" | "note";
 

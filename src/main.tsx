@@ -6,6 +6,9 @@ import { initI18n } from "./i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { startSyncLoop } from "./managers/startSyncLoop";
 
+// 로컬 개발시 SDK base URL 호환
+(globalThis as any).__GRAPHNODE_BASE_URL__ = import.meta.env.VITE_GRAPHNODE_BASE_URL;
+
 startSyncLoop();
 
 const queryClient = new QueryClient();

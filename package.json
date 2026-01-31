@@ -6,6 +6,8 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode devlocal",
+    "dev:remote": "vite --mode remote",
     "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
