@@ -1,5 +1,6 @@
 import SettingsPanelLayout from "./SettingsPanelLayout";
-import { FaPen, FaSignOutAlt, FaCheck } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa";
+import { IoCamera, IoLogOut, IoMail } from "react-icons/io5";
 import { Me } from "@/types/Me";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import ApiKeyManager from "./ApiKeyManager";
@@ -92,68 +93,100 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
     })();
   }, []);
 
+  const handleLogout = async () => {
+    await api.me.logout();
+    window.electron?.send("auth-logout");
+  };
+
   return (
     <SettingsPanelLayout>
-      <div className="flex items-start justify-start gap-4">
-        <div className="flex items-start justify-start w-[80px] h-[80px] rounded-full overflow-hidden group cursor-pointer">
-          <div className="hidden group-hover:flex absolute w-[80px] h-[80px] items-center justify-center bg-black/50 z-10 rounded-full">
-            <FaPen className="text-white text-[16px]" />
+      {/* Profile Section */}
+      <div className="w-full p-6 bg-bg-secondary rounded-2xl">
+        <div className="flex items-center gap-5">
+          {/* Avatar */}
+          <div className="relative group">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-bg-tertiary">
+              <img
+                src={userInfo.profile.avatarUrl}
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                alt="avatar"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <button className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-200 cursor-pointer">
+              <IoCamera className="text-white text-xl" />
+            </button>
           </div>
-          <img
-            src={userInfo.profile.avatarUrl}
-            crossOrigin="anonymous"
-            referrerPolicy="no-referrer"
-            alt="avatar"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex flex-col items-start justify-center gap-1">
-          <p className="text-[28px] font-medium text-text-primary">
-            {userInfo.profile.displayName}
-          </p>
-          <p className="text-[20px] text-text-secondary font-medium">
-            {userInfo.profile.email}
-          </p>
+
+          {/* User Info */}
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold text-text-primary mb-1">
+              {userInfo.profile.displayName}
+            </h2>
+            <div className="flex items-center gap-4 text-sm text-text-secondary">
+              <div className="flex items-center gap-1.5">
+                <IoMail className="text-base" />
+                <span>{userInfo.profile.email}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Plan Badge */}
+          <div className="px-4 py-2 bg-primary/10 dark:bg-primary/20 rounded-xl">
+            <p className="text-xs text-text-secondary mb-0.5">Current Plan</p>
+            <p className="text-sm font-semibold text-primary capitalize">
+              {currentPlan}
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* API Keys Section */}
       <div className="flex flex-col items-start justify-start gap-4 w-full">
         <SettingCategoryTitle
           title={t("settings.my.api.title")}
           subtitle={t("settings.my.api.subtitle")}
         />
-        <ApiKeyManager
-          id="openai"
-          logo={OpenAI}
-          title="OpenAI"
-          isVerified={openaiApiKey}
-          setIsVerified={setOpenaiApiKey}
-        />
-        <ApiKeyManager
-          id="gemini"
-          logo={Gemini}
-          title="Gemini"
-          isVerified={openaiApiKey}
-          setIsVerified={setOpenaiApiKey}
-        />
-        <ApiKeyManager
-          id="claude"
-          logo={Claude}
-          title="Claude"
-          isVerified={openaiApiKey}
-          setIsVerified={setOpenaiApiKey}
-        />
-        <ApiKeyManager
-          id="deepseek"
-          logo={DeepSeek}
-          title="DeepSeek"
-          isVerified={deepseekApiKey}
-          setIsVerified={setDeepseekApiKey}
+        <div className="flex flex-col gap-3 w-full">
+          <ApiKeyManager
+            id="openai"
+            logo={OpenAI}
+            title="OpenAI"
+            isVerified={openaiApiKey}
+            setIsVerified={setOpenaiApiKey}
+          />
+          <ApiKeyManager
+            id="gemini"
+            logo={Gemini}
+            title="Gemini"
+            isVerified={geminiApiKey}
+            setIsVerified={setGeminiApiKey}
+          />
+          <ApiKeyManager
+            id="claude"
+            logo={Claude}
+            title="Claude"
+            isVerified={claudeApiKey}
+            setIsVerified={setClaudeApiKey}
+          />
+          <ApiKeyManager
+            id="deepseek"
+            logo={DeepSeek}
+            title="DeepSeek"
+            isVerified={deepseekApiKey}
+            setIsVerified={setDeepseekApiKey}
+          />
+        </div>
+      </div>
+
+      {/* Subscription Section */}
+      <div className="w-full">
+        <SettingCategoryTitle
+          title={t("settings.my.subscription.title")}
+          subtitle={t("settings.my.subscription.subtitle")}
         />
       </div>
-      <SettingCategoryTitle
-        title={t("settings.my.subscription.title")}
-        subtitle={t("settings.my.subscription.subtitle")}
-      />
       <div className="flex gap-4 w-full">
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
@@ -268,16 +301,23 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
           );
         })}
       </div>
-      <button
-        onClick={async () => {
-          await api.me.logout();
-          window.electron?.send("auth-logout");
-        }}
-        className="flex items-center justify-center gap-2 cursor-pointer"
-      >
-        <FaSignOutAlt className="text-[20px] text-frame-bar-red" />
-        <p className="text-[14px] text-frame-bar-red">{t("logout")}</p>
-      </button>
+
+      {/* Logout Section */}
+      <div className="w-full pt-4 border-t border-text-tertiary/20">
+        <button
+          onClick={handleLogout}
+          className="
+            flex items-center gap-2.5 px-4 py-2.5 rounded-xl
+            text-red-600 dark:text-red-400
+            bg-red-50 dark:bg-red-900/20
+            hover:bg-red-100 dark:hover:bg-red-900/30
+            transition-all duration-200
+          "
+        >
+          <IoLogOut className="text-lg" />
+          <span className="text-sm font-medium">{t("settings.logout")}</span>
+        </button>
+      </div>
     </SettingsPanelLayout>
   );
 }

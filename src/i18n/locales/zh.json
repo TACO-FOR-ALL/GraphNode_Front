@@ -31,7 +31,12 @@
     "my": {
       "api": {
         "title": "AI 服务商 API 密钥",
-        "subtitle": "安全地管理您的 AI 服务商 API 密钥。"
+        "subtitle": "安全地管理您的 AI 服务商 API 密钥。",
+        "placeholder": "输入您的 {{provider}} API 密钥",
+        "connected": "已连接",
+        "save": "保存",
+        "saving": "保存中...",
+        "remove": "删除"
       },
       "subscription": {
         "title": "我的订阅",
@@ -104,9 +109,75 @@
     },
     "dropMdZone": {
       "title": "拖拽 & 上传 MARKDOWN 文件",
+      "description": "将 Markdown 文件拖拽到这里",
+      "maxSize": "支持多个文件",
       "errorMessage": {
         "notMd": "只能上传 MARKDOWN 文件 (.md)",
         "exceptOther": "部分文件因不是 MD 格式而被排除。"
+      }
+    },
+    "notification": {
+      "overview": {
+        "title": "概览"
+      },
+      "desktopNotification": {
+        "title": "启用桌面通知",
+        "subtitle": "即使应用程序不在焦点时也能收到桌面提醒"
+      },
+      "sounds": {
+        "title": "声音",
+        "subtitle": "在以下情况播放声音..."
+      },
+      "newMessage": {
+        "title": "新消息",
+        "subtitle": "收到新消息时播放声音"
+      },
+      "appNotification": {
+        "title": "应用通知",
+        "subtitle": "应用通知时播放声音"
+      }
+    },
+    "dataPrivacy": {
+      "import": {
+        "title": "导入数据",
+        "subtitle": "从外部来源导入您的数据"
+      },
+      "dangerZone": {
+        "title": "危险区域",
+        "subtitle": "不可逆操作，请谨慎操作。"
+      },
+      "clearChats": {
+        "title": "清除所有聊天",
+        "description": "永久删除所有聊天对话"
+      },
+      "clearNotes": {
+        "title": "清除所有笔记",
+        "description": "永久删除所有笔记和文件夹"
+      },
+      "delete": "删除",
+      "cancel": "取消",
+      "confirmDelete": "确认删除",
+      "deleting": "删除中..."
+    },
+    "keybindsPanel": {
+      "title": "键盘快捷键",
+      "resetAll": "全部重置",
+      "description": "点击快捷键输入新的组合键。⌘+A、⌘+C、⌘+V 不能使用。",
+      "save": "保存",
+      "cancel": "取消",
+      "waitingForKey": "等待按键...",
+      "resetToDefault": "重置为默认值",
+      "tips": {
+        "title": "快捷键使用提示",
+        "modifierKeys": "将修饰键（⌘、Ctrl、Shift、Alt）与普通键组合使用",
+        "systemKeys": "系统快捷键（⌘+A、⌘+C、⌘+V）不能使用",
+        "windowsLinux": "在 Windows/Linux 上，使用 Ctrl 代替 ⌘"
+      },
+      "actions": {
+        "search": "打开搜索",
+        "newNote": "新建笔记",
+        "newFolder": "新建文件夹",
+        "newChat": "新建聊天"
       }
     }
   }

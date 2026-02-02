@@ -8,6 +8,7 @@ import { ChatMessage } from "../types/Chat";
 import type { Status } from "../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
 import { api } from "@/apiClient";
+import { IoChatbubbles, IoCloudUpload, IoCheckmarkCircle, IoAlertCircle } from "react-icons/io5";
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
@@ -52,7 +53,7 @@ export default function DropJsonZone() {
       const threads = await parseConversations(data);
       if (!threads?.length) {
         // 비정상/빈 데이터 경고이지만 실패로 보진 않음
-        console.warn("🟡 parsed threads = 0, JSON shape might differ");
+        console.warn("parsed threads = 0, JSON shape might differ");
       }
 
       // 5) content 강제 정규화
@@ -132,62 +133,86 @@ export default function DropJsonZone() {
   );
 
   return (
-    <div className="max-w-[780px] mx-auto mt-10 mb-10 font-sans">
-      <h2 className="text-2xl font-semibold mb-6">
-        {t("settings.dropJsonZone.title")}
-      </h2>
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`
+        relative w-full rounded-xl border-2 border-dashed p-6
+        transition-all duration-200 cursor-pointer
+        ${
+          isOver
+            ? "border-primary bg-primary/5 dark:bg-primary/10"
+            : "border-text-tertiary/50 bg-bg-secondary hover:border-text-tertiary hover:bg-bg-tertiary/50"
+        }
+        ${status === "done" ? "border-green-500 bg-green-50 dark:bg-green-900/20" : ""}
+        ${status === "error" ? "border-red-500 bg-red-50 dark:bg-red-900/20" : ""}
+      `}
+    >
+      <div className="flex flex-col items-center gap-3">
+        {/* Icon */}
+        <div
+          className={`
+            w-12 h-12 rounded-full flex items-center justify-center
+            transition-colors duration-200
+            ${
+              status === "done"
+                ? "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400"
+                : status === "error"
+                  ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400"
+                  : isOver
+                    ? "bg-primary/10 text-primary"
+                    : "bg-bg-tertiary text-text-secondary"
+            }
+          `}
+        >
+          {status === "done" ? (
+            <IoCheckmarkCircle className="text-2xl" />
+          ) : status === "error" ? (
+            <IoAlertCircle className="text-2xl" />
+          ) : isOver ? (
+            <IoCloudUpload className="text-2xl" />
+          ) : (
+            <IoChatbubbles className="text-2xl" />
+          )}
+        </div>
 
-      <div
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        className={`
-          border-2 border-dashed border-gray-400 rounded-2xl p-9 text-center
-          transition-colors duration-150 select-none
-          ${isOver ? "bg-blue-50" : "bg-gray-50"}
-        `}
-      >
-        <p className="m-0">{t("settings.dropJsonZone.description")}</p>
-        <small className="text-gray-500 text-sm">
-          {t("settings.dropJsonZone.maxSize")}
-        </small>
+        {/* Title & Description */}
+        <div className="text-center">
+          <p className="text-sm font-medium text-text-primary mb-1">
+            {status === "done"
+              ? t("settings.dropJsonZone.done")
+              : status === "error"
+                ? t("settings.dropJsonZone.error")
+                : t("settings.dropJsonZone.description")}
+          </p>
+          <p className="text-xs text-text-secondary">
+            {status === "idle" && t("settings.dropJsonZone.maxSize")}
+            {status === "reading" && !isParsing && t("settings.dropJsonZone.uploading", { progress })}
+            {isParsing && t("settings.dropJsonZone.parsing")}
+            {status === "error" && error?.message}
+          </p>
+        </div>
 
-        {/* 진행률 & 상태 */}
-        {status !== "idle" && (
-          <div className="mt-4">
-            <div className="text-xs text-gray-600 mb-1.5">
-              {status === "reading" && !isParsing && (
-                <>{t("settings.dropJsonZone.uploading", { progress })}</>
-              )}
-              {isParsing && <>{t("settings.dropJsonZone.parsing")}</>}
-              {status === "done" && !isParsing && (
-                <>{t("settings.dropJsonZone.done")}</>
-              )}
-              {status === "error" && <>{t("settings.dropJsonZone.error")}</>}
-            </div>
-
-            {/* 진행률 바 */}
-            {(status === "reading" || isParsing) && (
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all duration-150 ease-out"
-                  style={{
-                    width: isParsing
-                      ? "100%" // 파싱 중이면 꽉 찬 상태로 유지
-                      : `${progress}%`, // 파일 읽는 중이면 실제 진행률
-                  }}
-                />
-              </div>
-            )}
+        {/* Progress Bar */}
+        {(status === "reading" || isParsing) && (
+          <div className="w-full max-w-[200px] h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-150 ease-out"
+              style={{
+                width: isParsing ? "100%" : `${progress}%`,
+              }}
+            />
           </div>
         )}
-      </div>
 
-      {isError && (
-        <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-600">
-          {error?.message}
+        {/* File Type Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-tertiary rounded-full">
+          <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wide">
+            JSON
+          </span>
         </div>
-      )}
+      </div>
     </div>
   );
 }
