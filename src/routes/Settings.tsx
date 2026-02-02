@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSidebarSettingsStore } from "@/store/useSidebarSettingsStore";
 import MyAccountPanel from "@/components/settings/MyAccountPanel";
 import DataPrivacyPanel from "@/components/settings/DataPrivacyPanel";
@@ -8,7 +9,13 @@ import LanguageTimePanel from "@/components/settings/LanguageTimePanel";
 import { Me } from "@/types/Me";
 
 export default function Settings({ userInfo }: { userInfo: Me }) {
-  const { selectedCategory } = useSidebarSettingsStore();
+  const { selectedCategory, setSelectedCategory } = useSidebarSettingsStore();
+
+  useEffect(() => {
+    return () => {
+      setSelectedCategory({ id: "my-account" });
+    };
+  }, []);
 
   switch (selectedCategory.id) {
     case "my-account":
