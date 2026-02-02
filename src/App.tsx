@@ -1,5 +1,11 @@
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import SideTabBar from "./components/sidebar/SideTabBar";
 import { WebAppFrameBar } from "./components/WebAppFrameBar";
 import Home from "./routes/Home";
@@ -8,13 +14,16 @@ import Settings from "./routes/Settings";
 import Login from "./routes/Login";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
+import { folderRepo } from "./managers/folderRepo";
 import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
+import TestPaperGraphPage from "./components/test/TestPaperGraphPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
+import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 
 export default function App() {
   return (
@@ -31,6 +40,9 @@ function MainLayout() {
   const [openSearch, setOpenSearch] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const { theme } = useThemeStore();
+  const { keybinds } = useKeybindsStore();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // 최초 실행 시 기본 노트 추가
@@ -44,16 +56,45 @@ function MainLayout() {
       localStorage.setItem(FIRST_LAUNCH_KEY, "true");
       console.log("Initialized default note");
     }
+  }, []);
 
-    // 검색 단축키 감지 (Search 단축키)
+  // 키바인드 단축키 처리
+  useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLocaleLowerCase() === "f") {
-        e.preventDefault();
-        setOpenSearch(true);
-      }
-
+      // Escape 키로 검색 모달 닫기
       if (e.key === "Escape") {
         setOpenSearch(false);
+        return;
+      }
+
+      // 검색 모달 열기
+      if (matchesKeybind(e, keybinds.search)) {
+        e.preventDefault();
+        setOpenSearch(true);
+        return;
+      }
+
+      // 새 폴더 생성 (shift가 포함되어 있으므로 newNote보다 먼저 체크)
+      if (matchesKeybind(e, keybinds.newFolder)) {
+        e.preventDefault();
+        folderRepo.create("새 폴더").then(() => {
+          queryClient.invalidateQueries({ queryKey: ["folders"] });
+        });
+        return;
+      }
+
+      // 새 노트 생성
+      if (matchesKeybind(e, keybinds.newNote)) {
+        e.preventDefault();
+        navigate("/note");
+        return;
+      }
+
+      // 새 채팅 생성
+      if (matchesKeybind(e, keybinds.newChat)) {
+        e.preventDefault();
+        navigate("/chat");
+        return;
       }
     }
 
@@ -61,7 +102,7 @@ function MainLayout() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [keybinds, navigate, queryClient]);
 
   // GET APP THEME
   useEffect(() => {
@@ -131,6 +172,7 @@ function MainLayout() {
               element={<Settings userInfo={me as Me} />}
             />
             <Route path="/note/:noteId?" element={<Note />} />
+            <Route path="/test-graph" element={<TestPaperGraphPage />} />
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
