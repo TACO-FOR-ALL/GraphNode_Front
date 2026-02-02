@@ -1,9 +1,11 @@
 import threadRepo from "@/managers/threadRepo";
+import { api } from "@/apiClient";
 import { ChatThread } from "@/types/Chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
+import { useState } from "react";
 
 export default function SideExpandBarChat({
   data,
@@ -14,10 +16,23 @@ export default function SideExpandBarChat({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   const handleDeleteThread = async (chatId: string) => {
     await threadRepo.deleteThreadById(chatId);
     queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+  };
+
+  const handleAddNode = async (chatId: string) => {
+    if (addingId) return;
+    try {
+      setAddingId(chatId);
+      await api.graphAi.addConversation(chatId);
+      // 그래프 생성은 비동기이므로 여기서는 큐잉만 완료
+      console.log(`[graph-ai] add-conversation queued: ${chatId}`);
+    } finally {
+      setAddingId(null);
+    }
   };
 
   return (
@@ -44,10 +59,25 @@ export default function SideExpandBarChat({
                 onClick={() => navigate(`/chat/${item.id}`)}
               >
                 <div className="w-[195px] truncate">{item.title}</div>
-                <FaTrash
-                  className="text-[10px] cursor-pointer hidden group-hover:block"
-                  onClick={() => handleDeleteThread(item.id)}
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-[10px] px-2 py-0.5 rounded border border-current opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddNode(item.id);
+                    }}
+                    disabled={addingId === item.id}
+                  >
+                    {addingId === item.id ? "Adding..." : "Add node"}
+                  </button>
+                  <FaTrash
+                    className="text-[10px] cursor-pointer hidden group-hover:block"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteThread(item.id);
+                    }}
+                  />
+                </div>
               </div>
             );
           })}

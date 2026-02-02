@@ -27,7 +27,7 @@ export default function Login() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ userId: '123' })
+            body: JSON.stringify({ userId: '1' })
           });
         } catch (err) {
           console.error('[DEV] Auto-login failed:', err);
@@ -35,9 +35,9 @@ export default function Login() {
 
         setHasSession(true);
         await window.keytarAPI.setMe({
-          userId: "123",
+          userId: "1",
           profile: {
-            id: "123",
+            id: "1",
             avatarUrl:
               "https://lh3.googleusercontent.com/ogw/AF2bZyj8t00d6e-pJ9uS-qktXuPTf2SlhPlB7sqgoIF-RwuqBQ=s32-c-mo",
             displayName: "John Han",
