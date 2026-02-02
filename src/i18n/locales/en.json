@@ -32,7 +32,12 @@
     "my": {
       "api": {
         "title": "AI Provider API Key",
-        "subtitle": "Manage your AI provider API key safely."
+        "subtitle": "Manage your AI provider API key safely.",
+        "placeholder": "Enter your {{provider}} API key",
+        "connected": "Connected",
+        "save": "Save",
+        "saving": "Saving...",
+        "remove": "Remove"
       },
       "subscription": {
         "title": "My Subscription",
@@ -104,9 +109,75 @@
     },
     "dropMdZone": {
       "title": "Drag & Drop MARKDOWN File Upload",
+      "description": "Drop your markdown files here",
+      "maxSize": "Multiple files supported",
       "errorMessage": {
         "notMd": "Only Markdown files can be uploaded (.md)",
         "exceptOther": "Some files were excluded because they are not in MD format."
+      }
+    },
+    "notification": {
+      "overview": {
+        "title": "Overview"
+      },
+      "desktopNotification": {
+        "title": "Enable Desktop Notifications",
+        "subtitle": "Receive alerts on your desktop even when the app is not in focus"
+      },
+      "sounds": {
+        "title": "Sounds",
+        "subtitle": "Play a sound for..."
+      },
+      "newMessage": {
+        "title": "New Message",
+        "subtitle": "Play a sound when a new message is received"
+      },
+      "appNotification": {
+        "title": "App Notification",
+        "subtitle": "Play a sound for app notifications"
+      }
+    },
+    "dataPrivacy": {
+      "import": {
+        "title": "Import Data",
+        "subtitle": "Import your data from external sources"
+      },
+      "dangerZone": {
+        "title": "Danger Zone",
+        "subtitle": "Irreversible actions. Please proceed with caution."
+      },
+      "clearChats": {
+        "title": "Clear All Chats",
+        "description": "Permanently delete all chat conversations"
+      },
+      "clearNotes": {
+        "title": "Clear All Notes",
+        "description": "Permanently delete all notes and folders"
+      },
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "confirmDelete": "Confirm Delete",
+      "deleting": "Deleting..."
+    },
+    "keybindsPanel": {
+      "title": "Keyboard Shortcuts",
+      "resetAll": "Reset All",
+      "description": "Click a shortcut to enter a new key combination. ⌘+A, ⌘+C, ⌘+V cannot be used.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "waitingForKey": "Waiting for key...",
+      "resetToDefault": "Reset to default",
+      "tips": {
+        "title": "Shortcut Tips",
+        "modifierKeys": "Combine modifier keys (⌘, Ctrl, Shift, Alt) with regular keys",
+        "systemKeys": "System shortcuts (⌘+A, ⌘+C, ⌘+V) cannot be used",
+        "windowsLinux": "On Windows/Linux, Ctrl is used instead of ⌘"
+      },
+      "actions": {
+        "search": "Open Search Modal",
+        "newNote": "Create New Note",
+        "newFolder": "Create New Folder",
+        "newChat": "Create New Chat"
       }
     }
   }

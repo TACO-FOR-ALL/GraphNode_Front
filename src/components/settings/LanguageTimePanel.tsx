@@ -73,7 +73,7 @@ export default function LanguageTimePanel() {
             )}
           </button>
           {isOpen && (
-            <div className="absolute top-full left-0 mt-2 w-full border border-solid border-text-tertiary rounded-sm bg-background-primary shadow-lg z-10 bg-white">
+            <div className="absolute top-full left-0 mt-2 w-full border border-solid border-text-tertiary rounded-sm shadow-lg z-10 bg-bg-primary">
               {languages.map((lang) => (
                 <button
                   key={lang.code}
