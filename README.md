@@ -206,3 +206,12 @@ this.version(2).stores({
   folders: "id, name, parentId, createdAt, updatedAt", // 새 테이블
 });
 ```
+
+---
+
+### 부록: 코드 푸시
+
+```bash
+git push origin develop   # TACO-FOR-ALL/GraphNode_Front
+git push app develop      # Yoy0z-maps/graphnode-app (vercel)
+```
