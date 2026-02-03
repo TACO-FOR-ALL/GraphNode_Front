@@ -61,7 +61,9 @@
         "developer": "开发者模式",
         "developerDescription": "开发者模式提供了语境菜单，为 APP 开发者提供使用",
         "hardware": "硬件加速",
-        "hardwareDescription": "使用 GPU 让 GraphNode 更流畅。 如果您遇到视觉问题，请关闭此功能。"
+        "hardwareDescription": "使用 GPU 让 GraphNode 更流畅。 如果您遇到视觉问题，请关闭此功能。",
+        "restartRequired": "重启应用以应用更改。",
+        "restartNow": "立即重启"
       }
     },
     "title": "设置",
