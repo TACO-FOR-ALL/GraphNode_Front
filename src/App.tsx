@@ -19,7 +19,6 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
-import TestPaperGraphPage from "./components/test/TestPaperGraphPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
@@ -172,7 +171,7 @@ function MainLayout() {
               element={<Settings userInfo={me as Me} />}
             />
             <Route path="/note/:noteId?" element={<Note />} />
-            <Route path="/test-graph" element={<TestPaperGraphPage />} />
+            {/* <Route path="/test-graph" element={<TestPaperGraphPage />} /> */}
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
