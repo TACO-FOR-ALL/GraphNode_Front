@@ -9,6 +9,7 @@ import { ChatThread } from "@/types/Chat";
 import DraggableModal from "../DraggableModal";
 import SearchResult from "./SearchResult";
 import useDebounce from "@/hooks/useDebounce";
+import { useKeybindsStore } from "@/store/useKeybindsStore";
 
 export default function SearchModal({
   setOpenSearch,
@@ -17,6 +18,17 @@ export default function SearchModal({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const { keybinds } = useKeybindsStore();
+
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const searchKeybind = keybinds.search;
+  const modifierSymbols = searchKeybind.modifiers.map((mod) => {
+    if (mod === "meta") return isMac ? "⌘" : "Ctrl";
+    if (mod === "ctrl") return "Ctrl";
+    if (mod === "shift") return "⇧";
+    if (mod === "alt") return isMac ? "⌥" : "Alt";
+    return mod;
+  });
 
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["notes", debouncedSearchQuery],
@@ -76,11 +88,18 @@ export default function SearchModal({
         <img src={LogoIcon} alt="logo" className="w-[16px] h-[16px]" />
         <div className="flex items-center gap-1 justify-center">
           <p className="text-[12px] mr-1 text-text-secondary">shortcut</p>
+          {modifierSymbols.map((symbol, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-center rounded-[6px] bg-text-placeholder min-w-[24px] px-1 h-[20px]"
+            >
+              <span className="text-[12px] text-text-secondary">{symbol}</span>
+            </div>
+          ))}
           <div className="flex items-center justify-center rounded-[6px] bg-text-placeholder w-[24px] h-[20px]">
-            <span className="text-[12px] text-text-secondary">⌘</span>
-          </div>
-          <div className="flex items-center justify-center rounded-[6px] bg-text-placeholder w-[24px] h-[20px]">
-            <span className="text-[12px] text-text-secondary">F</span>
+            <span className="text-[12px] text-text-secondary">
+              {searchKeybind.key.toUpperCase()}
+            </span>
           </div>
         </div>
       </div>
