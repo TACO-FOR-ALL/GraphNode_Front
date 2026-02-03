@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import SettingsPanelLayout from "./SettingsPanelLayout";
@@ -24,6 +24,12 @@ export default function NotificationPanel() {
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
+
+  useEffect(()=>{
+    window.systemAPI.getSettings().then((settings) => {
+      updateSetting("desktopNotification", settings.desktopNotification)
+    })
+  },[]);
 
   return (
     <SettingsPanelLayout>

@@ -21,6 +21,9 @@ declare global {
     systemAPI: {
       getLocale: () => Promise<string>;
       openExternal: (url: string) => Promise<void>;
+      getSettings: () => Promise<{ hardwareAcceleration: boolean; desktopNotification: boolean }>;
+      saveSettings: (settings: { hardwareAcceleration?: boolean; desktopNotification?: boolean }) => Promise<{ hardwareAcceleration: boolean; desktopNotification: boolean }>;
+      restartApp: () => Promise<void>;
     };
     openaiAPI: {
       checkAPIKeyValid: (apiKey: string) => Promise<Result<true>>;
@@ -54,6 +57,14 @@ declare global {
       onReadError: (
         cb: (p: { id: string; message: string }) => void
       ) => () => void;
+    };
+    notification: {
+      start: (senderId: string) => void;
+      onToken: (callback: (token: string) => void) => void;
+      onReceive: (callback: (notification: any) => void) => void;
+      onError: (callback: (error: any) => void) => void;
+      activateWindow: () => void;
+      setBadge: (count: number) => void;
     };
   }
 }

@@ -1,8 +1,38 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import path from "node:path";
+import fs from "node:fs";
 import ipc from "./ipc";
 import { config, isAllowedOrigin } from "./config";
+
+// CommonJS 모듈을 ES module에서 로드 (import 사용하면 npm run dist에서 오류 발생 함)
+const require = createRequire(import.meta.url);
+const { setup } = require("electron-push-receiver");
+
+// 앱 시작 전에 하드웨어 가속 설정 적용 (app.whenReady() 전에 호출해야 함)
+function applyHardwareAccelerationSetting() {
+  try {
+    // app.getPath는 ready 전에도 일부 경로 사용 가능
+    const userDataPath = app.getPath("userData");
+    const settingsPath = path.join(userDataPath, "settings.json");
+
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, "utf-8");
+      const settings = JSON.parse(data);
+
+      if (settings.hardwareAcceleration === false) {
+        app.disableHardwareAcceleration();
+        console.log("Hardware acceleration disabled by user setting");
+      }
+    }
+  } catch (error) {
+    console.error("Failed to apply hardware acceleration setting:", error);
+  }
+}
+
+// 앱 시작 전에 설정 적용
+applyHardwareAccelerationSetting();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,13 +47,78 @@ function resolveRendererUrl(hash = "") {
     return `${process.env.VITE_DEV_SERVER_URL!}${hash}`;
   }
 
-  // 배포 모드: 원격 서버 URL 반환
+  // 배포 모드: 원격 서버 URL 반환 (디스코드처럼 웹 업데이트 시 앱도 자동 업데이트)
   const baseUrl = config.remoteUrl;
   return `${baseUrl}${hash}`;
 }
 
+// 테마 색상 정의
+function getThemeColors() {
+  const isDark = nativeTheme.shouldUseDarkColors;
+  return {
+    background: isDark ? "#1a1a2e" : "#ffffff",
+    text: isDark ? "#ffffff" : "#1a1a2e",
+    textSecondary: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+    spinnerTrack: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+    primary: "#667eea",
+    primaryHover: "#5a6fd6",
+    error: "#ff6b6b",
+  };
+}
+
+// 스플래시 다국어 지원
+type SupportedLocale = "ko" | "en" | "zh";
+
+const splashTexts: Record<
+  SupportedLocale,
+  {
+    connecting: string;
+    connectionFailed: string;
+    retry: string;
+    timeout: string;
+    cannotConnect: string;
+  }
+> = {
+  ko: {
+    connecting: "서버에 연결 중...",
+    connectionFailed: "연결 실패",
+    retry: "다시 시도",
+    timeout: "서버 연결 시간이 초과되었습니다.",
+    cannotConnect: "서버에 연결할 수 없습니다.",
+  },
+  en: {
+    connecting: "Connecting to server...",
+    connectionFailed: "Connection Failed",
+    retry: "Retry",
+    timeout: "Server connection timed out.",
+    cannotConnect: "Unable to connect to server.",
+  },
+  zh: {
+    connecting: "正在连接服务器...",
+    connectionFailed: "连接失败",
+    retry: "重试",
+    timeout: "服务器连接超时。",
+    cannotConnect: "无法连接服务器。",
+  },
+};
+
+function getSplashLocale(): SupportedLocale {
+  const locale = app.getLocale();
+  const lang = locale.split("-")[0];
+
+  if (lang === "ko") return "ko";
+  if (lang === "zh") return "zh";
+  return "en";
+}
+
+function getSplashTexts() {
+  return splashTexts[getSplashLocale()];
+}
+
 // 스플래시 창 HTML 생성
 function getSplashHtml(): string {
+  const colors = getThemeColors();
+  const texts = getSplashTexts();
   return `
     <!DOCTYPE html>
     <html>
@@ -37,8 +132,8 @@ function getSplashHtml(): string {
           justify-content: center;
           align-items: center;
           height: 100vh;
-          background: ${config.splash.backgroundColor};
-          color: #fff;
+          background: ${colors.background};
+          color: ${colors.text};
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           overflow: hidden;
         }
@@ -53,8 +148,8 @@ function getSplashHtml(): string {
         .spinner {
           width: 50px;
           height: 50px;
-          border: 3px solid rgba(255,255,255,0.1);
-          border-top-color: #667eea;
+          border: 3px solid ${colors.spinnerTrack};
+          border-top-color: ${colors.primary};
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
@@ -64,10 +159,10 @@ function getSplashHtml(): string {
         .status {
           margin-top: 20px;
           font-size: 14px;
-          color: rgba(255,255,255,0.6);
+          color: ${colors.textSecondary};
         }
         .error {
-          color: #ff6b6b;
+          color: ${colors.error};
           text-align: center;
           padding: 20px;
         }
@@ -77,13 +172,13 @@ function getSplashHtml(): string {
         }
         .error-message {
           font-size: 13px;
-          color: rgba(255,255,255,0.5);
+          color: ${colors.textSecondary};
           max-width: 300px;
         }
         .retry-btn {
           margin-top: 20px;
           padding: 10px 30px;
-          background: #667eea;
+          background: ${colors.primary};
           border: none;
           border-radius: 6px;
           color: #fff;
@@ -92,14 +187,14 @@ function getSplashHtml(): string {
           transition: background 0.2s;
         }
         .retry-btn:hover {
-          background: #5a6fd6;
+          background: ${colors.primaryHover};
         }
       </style>
     </head>
     <body>
       <div class="logo">GraphNode</div>
       <div class="spinner" id="spinner"></div>
-      <div class="status" id="status">서버에 연결 중...</div>
+      <div class="status" id="status">${texts.connecting}</div>
     </body>
     </html>
   `;
@@ -107,6 +202,8 @@ function getSplashHtml(): string {
 
 // 에러 표시 HTML 생성
 function getErrorHtml(errorMessage: string): string {
+  const colors = getThemeColors();
+  const texts = getSplashTexts();
   return `
     <!DOCTYPE html>
     <html>
@@ -120,8 +217,8 @@ function getErrorHtml(errorMessage: string): string {
           justify-content: center;
           align-items: center;
           height: 100vh;
-          background: ${config.splash.backgroundColor};
-          color: #fff;
+          background: ${colors.background};
+          color: ${colors.text};
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           overflow: hidden;
         }
@@ -134,7 +231,7 @@ function getErrorHtml(errorMessage: string): string {
           -webkit-text-fill-color: transparent;
         }
         .error {
-          color: #ff6b6b;
+          color: ${colors.error};
           text-align: center;
           padding: 20px;
         }
@@ -144,14 +241,14 @@ function getErrorHtml(errorMessage: string): string {
         }
         .error-message {
           font-size: 13px;
-          color: rgba(255,255,255,0.5);
+          color: ${colors.textSecondary};
           max-width: 300px;
           word-break: break-word;
         }
         .retry-btn {
           margin-top: 20px;
           padding: 10px 30px;
-          background: #667eea;
+          background: ${colors.primary};
           border: none;
           border-radius: 6px;
           color: #fff;
@@ -160,17 +257,17 @@ function getErrorHtml(errorMessage: string): string {
           transition: background 0.2s;
         }
         .retry-btn:hover {
-          background: #5a6fd6;
+          background: ${colors.primaryHover};
         }
       </style>
     </head>
     <body>
       <div class="logo">GraphNode</div>
       <div class="error">
-        <div class="error-title">연결 실패</div>
+        <div class="error-title">${texts.connectionFailed}</div>
         <div class="error-message">${errorMessage}</div>
       </div>
-      <button class="retry-btn" onclick="location.reload()">다시 시도</button>
+      <button class="retry-btn" onclick="location.reload()">${texts.retry}</button>
     </body>
     </html>
   `;
@@ -303,8 +400,9 @@ function createLoginWindow() {
 
   // 배포 모드: 타임아웃 및 에러 핸들링
   if (app.isPackaged) {
+    const texts = getSplashTexts();
     const timeoutId = setTimeout(() => {
-      showSplashError("서버 연결 시간이 초과되었습니다.");
+      showSplashError(texts.timeout);
     }, config.connectionTimeout);
 
     loginWindow.webContents.on("did-finish-load", () => {
@@ -316,7 +414,7 @@ function createLoginWindow() {
     loginWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
       clearTimeout(timeoutId);
       console.error(`Login window load failed: ${errorCode} - ${errorDescription}`);
-      showSplashError(`서버에 연결할 수 없습니다.\n(${errorDescription})`);
+      showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
     });
   }
 
@@ -407,8 +505,9 @@ function createMainWindow() {
     });
   } else {
     // 배포 모드: 타임아웃 및 에러 핸들링
+    const texts = getSplashTexts();
     const timeoutId = setTimeout(() => {
-      showSplashError("서버 연결 시간이 초과되었습니다.");
+      showSplashError(texts.timeout);
     }, config.connectionTimeout);
 
     mainWindow.webContents.on("did-finish-load", () => {
@@ -420,7 +519,7 @@ function createMainWindow() {
     mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
       clearTimeout(timeoutId);
       console.error(`Main window load failed: ${errorCode} - ${errorDescription}`);
-      showSplashError(`서버에 연결할 수 없습니다.\n(${errorDescription})`);
+      showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
     });
 
     mainWindow.loadURL(mainUrl);
@@ -429,12 +528,36 @@ function createMainWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+
+  // electron-push-receiver 설정 (mainWindow 생성 후 호출)
+  setup(mainWindow.webContents);
+}
+
+// 알림 관련 IPC 핸들러 등록 (전역에서 한 번만 호출)
+function registerNotificationHandlers() {
+  ipcMain.on('NOTIFICATION_CLICKED_FOCUS', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  ipcMain.on('SET_BADGE_COUNT', (_event, count) => {
+    if (process.platform === 'darwin' && app.dock) {
+      app.dock.setBadge(count > 0 ? count.toString() : '');
+    } else {
+      if (mainWindow && count > 0) {
+        mainWindow.flashFrame(true);
+      }
+    }
+  });
 }
 
 app.whenReady().then(() => {
-  // index.ts의 ipc 전부 가져오기
   ipc();
   registerAuthHandlers();
+  registerNotificationHandlers();
   createLoginWindow();
 
   app.on("activate", () => {
