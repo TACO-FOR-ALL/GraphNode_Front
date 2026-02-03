@@ -80,8 +80,8 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
     (async () => {
       const result_openai = await api.me.getApiKeys("openai");
       const result_deepseek = await api.me.getApiKeys("deepseek");
-      const result_gemini = await api.me.getApiKeys("gemini");
-      const result_claude = await api.me.getApiKeys("claude");
+      // const result_gemini = await api.me.getApiKeys("gemini");
+      // const result_claude = await api.me.getApiKeys("claude");
       // @ts-ignore
       setOpenaiApiKey(result_openai.data?.apiKey ? true : false);
       // @ts-ignore
