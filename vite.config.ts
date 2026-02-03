@@ -5,7 +5,8 @@ import electron from "vite-plugin-electron/simple";
 import path from "path";
 
 export default defineConfig({
-  base: "./",
+  // Vercel 배포 시 /app 경로에서 서빙
+  base: "/app/",
   plugins: [
     react(),
     electron({
