@@ -1,4 +1,8 @@
 {
+  "toast": {
+    "apiKeyRequired": "请先注册您的 API 密钥。",
+    "goToSettings": "前往设置"
+  },
   "sideTabBar": {
     "home": "首页",
     "visualize": "可视化",

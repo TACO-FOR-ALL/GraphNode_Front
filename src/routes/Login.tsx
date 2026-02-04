@@ -18,22 +18,22 @@ export default function Login() {
   // 세션 상태로 로그인 여부 확인
   useEffect(() => {
     (async () => {
-      // TODO: 백엔드 연결 후 제거
-      if (import.meta.env.DEV) {
-        setHasSession(true);
-        await window.keytarAPI.setMe({
-          userId: "123",
-          profile: {
-            id: "123",
-            avatarUrl:
-              "https://lh3.googleusercontent.com/ogw/AF2bZyj8t00d6e-pJ9uS-qktXuPTf2SlhPlB7sqgoIF-RwuqBQ=s32-c-mo",
-            displayName: "John Han",
-            email: "work.johnhan@gmail.com",
-          },
-        });
-        window.electron?.send("auth-success");
-        return;
-      }
+      // 백엔드 인증 없이 테스트용
+      // if (import.meta.env.DEV) {
+      //   setHasSession(true);
+      //   await window.keytarAPI.setMe({
+      //     userId: "123",
+      //     profile: {
+      //       id: "123",
+      //       avatarUrl:
+      //         "https://lh3.googleusercontent.com/ogw/AF2bZyj8t00d6e-pJ9uS-qktXuPTf2SlhPlB7sqgoIF-RwuqBQ=s32-c-mo",
+      //       displayName: "John Han",
+      //       email: "work.johnhan@gmail.com",
+      //     },
+      //   });
+      //   window.electron?.send("auth-success");
+      //   return;
+      // }
 
       const result = await api.me.get();
 

@@ -24,6 +24,7 @@ import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
+import Toaster from "./components/Toaster";
 
 export default function App() {
   return (
@@ -180,6 +181,7 @@ function MainLayout() {
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
         <AgentToolTipButton setIsOpen={setIsOpen} />
         {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
+        <Toaster />
       </div>
     </div>
   );

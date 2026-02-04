@@ -264,3 +264,19 @@ button {
     Arial,
     sans-serif;
 }
+
+/* 커스텀 TOAST 애니베이션 */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-down 0.3s ease-out;
+}

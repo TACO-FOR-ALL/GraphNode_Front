@@ -1,4 +1,8 @@
 {
+  "toast": {
+    "apiKeyRequired": "Please register your API key first.",
+    "goToSettings": "Go to Settings"
+  },
   "sideTabBar": {
     "home": "Home",
     "visualize": "Visualize",
