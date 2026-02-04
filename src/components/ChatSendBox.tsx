@@ -17,6 +17,7 @@ import { MdAttachFile } from "react-icons/md";
 import FilePreviewList from "./FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
 import { useTranslation } from "react-i18next";
+import { useToastStore } from "@/store/useToastStore";
 
 const HISTORY_LIMIT = 5;
 
@@ -26,6 +27,7 @@ export default function ChatSendBox({
   setIsTyping: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const { addToast } = useToastStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,6 +76,21 @@ export default function ChatSendBox({
         chatContent: messageText,
       });
 
+      console.log(result);
+
+      // API키 미등록 응답 처리 (TODO: statuscode 변경 필요)
+      if (!result.isSuccess && result.error.statusCode == 500) {
+        addToast({
+          message: t("toast.apiKeyRequired"),
+          type: "error",
+          action: {
+            label: t("toast.goToSettings"),
+            onClick: () => navigate("/settings"),
+          },
+        });
+        return;
+      }
+
       // @ts-ignore
       const messages = result.data.messages;
       // @ts-ignore
@@ -88,8 +105,7 @@ export default function ChatSendBox({
         queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
       }
 
-      // 6) 어시스턴트 메시지 저장 및 기존 대화 업데이트
-      await threadRepo;
+      // 6) 어시스턴트 메시지 저장 및 기존 대화
       await threadRepo.addMessageToThreadById(targetThreadId, {
         id: uuid(),
         role: "assistant",
