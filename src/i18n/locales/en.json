@@ -1,4 +1,8 @@
 {
+  "toast": {
+    "apiKeyRequired": "Please register your API key first.",
+    "goToSettings": "Go to Settings"
+  },
   "sideTabBar": {
     "home": "Home",
     "visualize": "Visualize",
@@ -13,7 +17,9 @@
     "selectSourceFirst": "Please select a source first (click @ to select a chat or note)"
   },
   "home": {
-    "title": "Home",
+    "title": "Hello {{provider}}",
+    "subtitle": "Capture your thoughts on GraphNode.",
+    "recentNotes": "Recent Notes",
     "chatList": {
       "title": "Chat List",
       "noChat": "No saved conversations yet",
@@ -21,11 +27,40 @@
     }
   },
   "chat": {
+    "newChat": "New Chat",
     "noChat": "No saved conversations yet",
-    "selectChat": "Please select a chat on the left or start a new chat."
+    "selectChat": "Please select a chat on the left or start a new chat.",
+    "helpMessage": "How can I help you?"
+  },
+  "notes": {
+    "workspace": "workspace",
+    "newNote": "New Note",
+    "newFolder": "New Folder"
   },
   "visualize": {
-    "loading": "Constructing graph..."
+    "loading": "Constructing graph...",
+    "error": {
+      "title": "Failed to load graph",
+      "description": "There was a problem loading the graph data. Please try again later.",
+      "retry": "Retry",
+      "persistentHint": "If the problem persists,",
+      "checkStatus": "check server status"
+    },
+    "empty": {
+      "title": "No graph generated yet",
+      "description": "Generate a graph to visualize connections between your chats and notes.",
+      "generate": "Generate Graph",
+      "generating": "Generating...",
+      "generatingNotice": "You will be notified when generation is complete. Please do not close the app.",
+      "notice": "Graphs are generated based on your saved chats and notes. If you have no chats or notes, graph generation is not possible."
+    }
+  },
+  "search": {
+    "placeholder": "Search for chats and notes...",
+    "chats": "Chats",
+    "notes": "Notes",
+    "noResultFound": "No {{provider}} Found",
+    "shortcut": "shortcut"
   },
   "settings": {
     "title": "Settings",

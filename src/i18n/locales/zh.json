@@ -1,4 +1,8 @@
 {
+  "toast": {
+    "apiKeyRequired": "请先注册您的 API 密钥。",
+    "goToSettings": "前往设置"
+  },
   "sideTabBar": {
     "home": "首页",
     "visualize": "可视化",
@@ -13,7 +17,9 @@
     "selectSourceFirst": "请先选择来源 (点击 @ 选择聊天或笔记)"
   },
   "home": {
-    "title": "首页",
+    "title": "你好，{{provider}}。",
+    "subtitle": "在 GraphNode，捕捉你的灵感。",
+    "recentNotes": "最近笔记",
     "chatList": {
       "title": "对话列表",
       "noChat": "还没有保存的对话",
@@ -21,11 +27,40 @@
     }
   },
   "chat": {
+    "newChat": "新建对话",
     "noChat": "还没有保存的对话",
-    "selectChat": "请先选择一个对话或开始新对话。"
+    "selectChat": "请先选择一个对话或开始新对话。",
+    "helpMessage": "怎么帮到您？"
+  },
+  "notes": {
+    "workspace": "工作区",
+    "newNote": "新建笔记",
+    "newFolder": "新建文件夹"
   },
   "visualize": {
-    "loading": "正在构建图结构…"
+    "loading": "正在构建图结构…",
+    "error": {
+      "title": "无法加载图结构",
+      "description": "加载图数据时出现问题。请稍后再试。",
+      "retry": "重试",
+      "persistentHint": "如果问题持续存在，",
+      "checkStatus": "请检查服务器状态"
+    },
+    "empty": {
+      "title": "尚未生成图结构",
+      "description": "生成图结构以可视化查看对话和笔记之间的关联。",
+      "generate": "生成图结构",
+      "generating": "生成中...",
+      "generatingNotice": "生成完成后会通知您。请不要关闭应用程序。",
+      "notice": "图结构基于您保存的聊天记录和笔记生成。如果没有任何聊天或笔记记录，则无法生成图结构。"
+    }
+  },
+  "search": {
+    "placeholder": "搜索对话和笔记...",
+    "chats": "对话",
+    "notes": "笔记",
+    "noResultFound": "未找到相关{{provider}}",
+    "shortcut": "快捷键"
   },
   "settings": {
     "my": {

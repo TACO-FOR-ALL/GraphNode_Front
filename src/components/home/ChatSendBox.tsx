@@ -8,8 +8,10 @@ import uuid from "@/utils/uuid";
 import { MdAttachFile } from "react-icons/md";
 import FilePreviewList from "../FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
+import { useTranslation } from "react-i18next";
 
 export default function ChatSendBox() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -69,7 +71,7 @@ export default function ChatSendBox() {
       <AutoResizeTextarea
         value={input}
         onChange={setInput}
-        placeholder="How can I help you?"
+        placeholder={t("chat.helpMessage")}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && input.trim() && !sending) {
             e.preventDefault();
