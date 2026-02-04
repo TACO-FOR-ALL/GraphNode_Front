@@ -11,7 +11,9 @@ import {
   ClusterCircle,
   PositionedNode,
   PositionedEdge,
+  Subcluster,
 } from "@/types/GraphData";
+import { GraphSummaryPanel } from "./summary";
 
 interface GraphData {
   nodeData: GraphSnapshotDto;
@@ -29,11 +31,23 @@ export default function VisualizeToggle({
   const nodeData = graphData.nodeData;
 
   const [mode, setMode] = useState<"2d" | "3d">("2d");
+  const [showSummary, setShowSummary] = useState(false);
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+
+  const snapshotSubclusters = (nodeData as { subclusters?: Subcluster[] })
+    .subclusters;
+  const statsSubclusters = (
+    nodeData.stats?.metadata as { subclusters?: Subcluster[] } | undefined
+  )?.subclusters;
+  const fallbackStatsSubclusters = (
+    statisticData.metadata as { subclusters?: Subcluster[] } | undefined
+  )?.subclusters;
+  const rawSubclusters =
+    snapshotSubclusters ?? statsSubclusters ?? fallbackStatsSubclusters;
 
   const handleClustersReady = useCallback(
     (
@@ -196,28 +210,42 @@ export default function VisualizeToggle({
         </>
       )}
 
-      {/* 2D/3D 모드 토글 패널 */}
+      {/* 2D/3D/Summary 모드 토글 패널 */}
       <div className="absolute z-20 top-6 right-6 flex flex-col gap-2">
-        <div className="flex gap-1 w-[170px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
+        <div className="flex gap-1 w-[255px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
           <div
-            onClick={() => setMode("2d")}
+            onClick={() => {
+              setMode("2d");
+              setShowSummary(false);
+            }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
-              mode === "2d" ? "text-primary" : "text-text-secondary"
+              mode === "2d" && !showSummary ? "text-primary" : "text-text-secondary"
             }`}
           >
             2D
           </div>
           <div
-            onClick={() => setMode("3d")}
+            onClick={() => {
+              setMode("3d");
+              setShowSummary(false);
+            }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
-              mode === "3d" ? "text-primary" : "text-text-secondary"
+              mode === "3d" && !showSummary ? "text-primary" : "text-text-secondary"
             }`}
           >
             3D
           </div>
           <div
+            onClick={() => setShowSummary(true)}
+            className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
+              showSummary ? "text-primary" : "text-text-secondary"
+            }`}
+          >
+            Summary
+          </div>
+          <div
             className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
-              mode === "3d" ? "left-[87px]" : "left-[2px]"
+              mode === "3d" && !showSummary ? "left-[87px]" : showSummary ? "left-[172px]" : "left-[2px]"
             }`}
           ></div>
         </div>
@@ -228,6 +256,7 @@ export default function VisualizeToggle({
         <Graph2D
           rawNodes={nodeData.nodes}
           rawEdges={nodeData.edges}
+          rawSubclusters={rawSubclusters}
           width={window.innerWidth}
           height={window.innerHeight}
           avatarUrl={avatarUrl}
@@ -236,6 +265,20 @@ export default function VisualizeToggle({
         />
       ) : (
         <Graph3D data={nodeData} />
+      )}
+
+      {/* Summary Overlay */}
+      {showSummary && (
+        <GraphSummaryPanel
+          onClose={() => setShowSummary(false)}
+          onClusterClick={(clusterId) => {
+            setZoomToClusterId(clusterId);
+            setMode("2d");
+            setShowSummary(false);
+            // Reset zoom after animation completes
+            setTimeout(() => setZoomToClusterId(null), 900);
+          }}
+        />
       )}
     </div>
   );

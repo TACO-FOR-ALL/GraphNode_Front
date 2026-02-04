@@ -61,3 +61,16 @@ export type ClusterCircle = {
   centerY: number;
   radius: number;
 };
+
+export type Subcluster = {
+  id: string;
+  cluster_id: string;
+  node_ids: number[];
+  representative_node_id: number;
+  size: number;
+  density: number;
+  avg_similarity?: number;
+  internal_edges?: number;
+  cohesion_score?: number;
+  top_keywords: string[];
+};
