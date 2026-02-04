@@ -13,6 +13,7 @@ import {
   PositionedEdge,
   Subcluster,
 } from "@/types/GraphData";
+import { GraphSummaryPanel } from "./summary";
 
 export default function VisualizeToggle({
   nodeData,
@@ -23,7 +24,7 @@ export default function VisualizeToggle({
   statisticData: GraphStatsDto;
   avatarUrl: string | null;
 }) {
-  const [mode, setMode] = useState<"2d" | "3d">("2d");
+  const [mode, setMode] = useState<"2d" | "3d" | "summary">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
@@ -202,9 +203,9 @@ export default function VisualizeToggle({
         </>
       )}
 
-      {/* 2D/3D 모드 토글 패널 */}
+      {/* 2D/3D/Summary 모드 토글 패널 */}
       <div className="absolute z-20 top-6 right-6 flex flex-col gap-2">
-        <div className="flex gap-1 w-[170px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
+        <div className="flex gap-1 w-[255px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
           <div
             onClick={() => setMode("2d")}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
@@ -222,8 +223,16 @@ export default function VisualizeToggle({
             3D
           </div>
           <div
+            onClick={() => setMode("summary")}
+            className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
+              mode === "summary" ? "text-primary" : "text-text-secondary"
+            }`}
+          >
+            Summary
+          </div>
+          <div
             className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
-              mode === "3d" ? "left-[87px]" : "left-[2px]"
+              mode === "3d" ? "left-[87px]" : mode === "summary" ? "left-[172px]" : "left-[2px]"
             }`}
           ></div>
         </div>
@@ -241,8 +250,17 @@ export default function VisualizeToggle({
           onClustersReady={handleClustersReady}
           zoomToClusterId={zoomToClusterId}
         />
-      ) : (
+      ) : mode === "3d" ? (
         <Graph3D data={nodeData} />
+      ) : (
+        <GraphSummaryPanel
+          onClusterClick={(clusterId) => {
+            setZoomToClusterId(clusterId);
+            setMode("2d");
+            // Reset zoom after animation completes
+            setTimeout(() => setZoomToClusterId(null), 900);
+          }}
+        />
       )}
     </div>
   );
