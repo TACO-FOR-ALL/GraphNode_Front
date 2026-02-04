@@ -16,6 +16,7 @@ import { api } from "@/apiClient";
 import { MdAttachFile } from "react-icons/md";
 import FilePreviewList from "./FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
+import { useTranslation } from "react-i18next";
 
 const HISTORY_LIMIT = 5;
 
@@ -24,6 +25,7 @@ export default function ChatSendBox({
 }: {
   setIsTyping: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -199,7 +201,7 @@ export default function ChatSendBox({
       <AutoResizeTextarea
         value={input}
         onChange={setInput}
-        placeholder="How can I help you?"
+        placeholder={t("chat.helpMessage")}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && input.trim()) {
             e.preventDefault();

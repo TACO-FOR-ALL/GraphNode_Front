@@ -6,9 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
 import { seperateTitleAndContentFromMarkdown } from "@/utils/extractTitleFromMarkdown";
+import { useTranslation } from "react-i18next";
 
 export default function RecentNotes() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["notes"],
@@ -18,7 +20,7 @@ export default function RecentNotes() {
   return (
     <div className="mt-[150px] w-[744px] flex flex-col items-center max-h-[calc(100vh-600px)] overflow-y-auto scroll-hidden text-text-primary">
       <p className="mb-6 font-noto-sans-kr font-medium text-[28px]">
-        Recent Notes
+        {t("home.recentNotes")}
       </p>
       <div className="grid grid-cols-3 gap-3">
         <div

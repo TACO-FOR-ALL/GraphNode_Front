@@ -13,7 +13,9 @@
     "selectSourceFirst": "Please select a source first (click @ to select a chat or note)"
   },
   "home": {
-    "title": "Home",
+    "title": "Hello {{provider}}",
+    "subtitle": "Capture your thoughts on GraphNode.",
+    "recentNotes": "Recent Notes",
     "chatList": {
       "title": "Chat List",
       "noChat": "No saved conversations yet",
@@ -21,8 +23,15 @@
     }
   },
   "chat": {
+    "newChat": "New Chat",
     "noChat": "No saved conversations yet",
-    "selectChat": "Please select a chat on the left or start a new chat."
+    "selectChat": "Please select a chat on the left or start a new chat.",
+    "helpMessage": "How can I help you?"
+  },
+  "notes": {
+    "workspace": "workspace",
+    "newNote": "New Note",
+    "newFolder": "New Folder"
   },
   "visualize": {
     "loading": "Constructing graph..."

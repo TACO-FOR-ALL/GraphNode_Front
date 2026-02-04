@@ -16,6 +16,7 @@ import { IoChevronDown, IoChevronForward } from "react-icons/io5";
 import NoteIcon from "@/assets/icons/note.svg";
 import NoteActiveIcon from "@/assets/icons/note_active_primary.svg";
 import FolderPlusIconActive from "@/assets/icons/folderplus_active.svg";
+import { useTranslation } from "react-i18next";
 
 export default function SideExpandBarNote({
   path,
@@ -29,6 +30,7 @@ export default function SideExpandBarNote({
   selectedId: string;
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // set을 사용하면 여러 폴더 확장 여부를 동시에 독립적으로 관리할 수 있으며, has()메서드로 O(1)의 시간복잡도로 확인 가능
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -225,7 +227,9 @@ export default function SideExpandBarNote({
           alt="note active"
           className="w-4 h-4 hidden group-hover:block"
         />
-        <p className="text-[14px] font-normal font-noto-sans-kr">New Note</p>
+        <p className="text-[14px] font-normal font-noto-sans-kr">
+          {t("notes.newNote")}
+        </p>
       </div>
       {/* 루트 토글 헤더 */}
       {buildTree &&
@@ -237,7 +241,7 @@ export default function SideExpandBarNote({
               className="flex items-center gap-1 cursor-pointer"
             >
               <span className="text-[12px] font-medium font-noto-sans-kr">
-                Workspace
+                {t("notes.workspace")}
               </span>
               {isRootExpanded ? (
                 <IoChevronDown className="text-[12px]" />
