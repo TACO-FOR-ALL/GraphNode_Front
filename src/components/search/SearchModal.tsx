@@ -10,12 +10,14 @@ import DraggableModal from "../DraggableModal";
 import SearchResult from "./SearchResult";
 import useDebounce from "@/hooks/useDebounce";
 import { useKeybindsStore } from "@/store/useKeybindsStore";
+import { useTranslation } from "react-i18next";
 
 export default function SearchModal({
   setOpenSearch,
 }: {
   setOpenSearch: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const { keybinds } = useKeybindsStore();
@@ -53,7 +55,7 @@ export default function SearchModal({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent outline-none border-none text-[14px] placeholder:text-text-secondary text-text-primary"
             type="text"
-            placeholder="Search for chats and notes..."
+            placeholder={t("search.placeholder")}
           />
         </div>
         <div
@@ -70,14 +72,14 @@ export default function SearchModal({
       <section className="flex flex-col w-full flex-1 overflow-y-scroll custom-scrollbar px-4 py-3 gap-3">
         <SearchResult
           type="chat"
-          title="Chats"
+          title={t("search.chats")}
           data={chatThreads}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
         />
         <SearchResult
           type="note"
-          title="Notes"
+          title={t("search.notes")}
           data={notes}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
@@ -87,7 +89,9 @@ export default function SearchModal({
       <div className="px-4 py-[10px] border-t-[1.5px] border-solid border-[rgba(var(--color-border-quaternary),0.08)] flex items-center justify-between flex-shrink-0">
         <img src={LogoIcon} alt="logo" className="w-[16px] h-[16px]" />
         <div className="flex items-center gap-1 justify-center">
-          <p className="text-[12px] mr-1 text-text-secondary">shortcut</p>
+          <p className="text-[12px] mr-1 text-text-secondary">
+            {t("search.shortcut")}
+          </p>
           {modifierSymbols.map((symbol, index) => (
             <div
               key={index}

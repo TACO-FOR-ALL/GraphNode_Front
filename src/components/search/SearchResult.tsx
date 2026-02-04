@@ -3,6 +3,7 @@ import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useCallback } from "react";
 import SearchResultItem from "./SearchResultItem";
+import { useTranslation } from "react-i18next";
 
 type SearchResultData = ChatThread[] | Note[] | undefined;
 
@@ -19,6 +20,7 @@ export default function SearchResult({
   searchQuery: string;
   setOpenSearch: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // searchQuery가 변경될 때만 정규식 재생성
@@ -26,7 +28,7 @@ export default function SearchResult({
     if (!searchQuery || searchQuery.length === 0) return null;
     return new RegExp(
       `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "gi"
+      "gi",
     );
   }, [searchQuery]);
 
@@ -35,7 +37,7 @@ export default function SearchResult({
       navigate(`/${type}/${item.id}`);
       setOpenSearch(false);
     },
-    [navigate, type, setOpenSearch]
+    [navigate, type, setOpenSearch],
   );
 
   return (
@@ -55,7 +57,9 @@ export default function SearchResult({
         ))
       ) : (
         <div className="w-full flex items-center justify-center py-1">
-          <p className="text-[14px] font-medium text-text-secondary">{`No ${title} found`}</p>
+          <p className="text-[14px] font-medium text-text-secondary">
+            {t("search.noResultFound", { provider: title })}
+          </p>
         </div>
       )}
     </div>

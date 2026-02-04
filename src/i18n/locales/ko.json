@@ -36,6 +36,13 @@
   "visualize": {
     "loading": "그래프를 구성하는 중..."
   },
+  "search": {
+    "placeholder": "대화 및 노트 검색...",
+    "chats": "대화",
+    "notes": "노트",
+    "noResultFound": "{{provider}} 검색 결과 없음",
+    "shortcut": "단축키"
+  },
   "settings": {
     "title": "설정",
     "my": {

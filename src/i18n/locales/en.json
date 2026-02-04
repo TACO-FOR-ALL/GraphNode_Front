@@ -36,6 +36,13 @@
   "visualize": {
     "loading": "Constructing graph..."
   },
+  "search": {
+    "placeholder": "Search for chats and notes...",
+    "chats": "Chats",
+    "notes": "Notes",
+    "noResultFound": "No {{provider}} Found",
+    "shortcut": "shortcut"
+  },
   "settings": {
     "title": "Settings",
     "my": {
