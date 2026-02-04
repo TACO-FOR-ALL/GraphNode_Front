@@ -23,7 +23,6 @@ import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
-import TestPaperGraphPageKr from "./components/test/TestPaperGraphPageKr";
 import { useTranslation } from "react-i18next";
 
 export default function App() {
@@ -31,7 +30,6 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/test-graph-kr" element={<TestPaperGraphPageKr />} />
         <Route path="/*" element={<MainLayout />} />
       </Routes>
     </Router>
