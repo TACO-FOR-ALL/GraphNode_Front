@@ -6,7 +6,90 @@ import PatternItem from "./PatternItem";
 import ConnectionItem from "./ConnectionItem";
 import RecommendationCard from "./RecommendationCard";
 
-// Section Header Component
+type FadeState = { start: boolean; end: boolean };
+
+// 요약 화면 내 슬라이드 정의 (순서가 곧 네비게이션 순서)
+const SLIDES = [
+  { id: "overview", name: "개요" },
+  { id: "clusters", name: "클러스터" },
+  { id: "patterns", name: "패턴" },
+  { id: "connections", name: "연결" },
+  { id: "recommendations", name: "추천" },
+] as const;
+
+// 페이드 마스크의 두께(px). 스크롤 경계가 잘릴 때만 적용됨
+const FADE_SIZE = 12;
+
+/** 스크롤 경계가 잘릴 때만 페이드가 보이도록 마스크를 생성 */
+const buildFadeStyle = (axis: "x" | "y", fade: FadeState) => {
+  const direction = axis === "x" ? "to right" : "to bottom";
+  const gradient = `linear-gradient(${direction}, ${
+    fade.start ? "transparent" : "black"
+  } 0px, black ${FADE_SIZE}px, black calc(100% - ${FADE_SIZE}px), ${
+    fade.end ? "transparent" : "black"
+  } 100%)`;
+
+  return {
+    WebkitMaskImage: gradient,
+    maskImage: gradient,
+  };
+};
+
+/**
+ * 스크롤 위치를 관찰해 시작/끝 페이드 여부를 계산
+ * - start: 스크롤이 시작 방향(왼쪽/위)에서 이미 이동했는지
+ * - end: 스크롤이 끝 방향(오른쪽/아래)에 아직 남았는지
+ */
+const useScrollFade = (axis: "x" | "y") => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [fade, setFade] = useState<FadeState>({ start: false, end: false });
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (axis === "x") {
+      const max = el.scrollWidth - el.clientWidth;
+      setFade({
+        start: el.scrollLeft > 1,
+        end: el.scrollLeft < max - 1,
+      });
+      return;
+    }
+
+    const max = el.scrollHeight - el.clientHeight;
+    setFade({
+      start: el.scrollTop > 1,
+      end: el.scrollTop < max - 1,
+    });
+  }, [axis]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    update();
+
+    const onScroll = () => update();
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    // 컨텐츠 크기 변경(리사이즈)에도 페이드 상태가 업데이트되도록 옵저버 등록
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(update)
+        : null;
+    if (ro) ro.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (ro) ro.disconnect();
+    };
+  }, [update]);
+
+  return { ref, fade };
+};
+
+// 섹션 제목 컴포넌트
 function SectionHeader({
   icon,
   title,
@@ -34,100 +117,30 @@ interface GraphSummaryPanelProps {
   onClose?: () => void;
 }
 
+/** 그래프 위에 얹히는 요약 팝업(배경 그래프가 보이도록 투명 처리) */
 export default function GraphSummaryPanel({
   onClusterClick,
   onClose,
 }: GraphSummaryPanelProps) {
   const summary = DUMMY_GRAPH_SUMMARY;
   const [currentSlide, setCurrentSlide] = useState(0);
+  const totalSlides = SLIDES.length;
 
-  // Define slides
-  const slides = [
-    { id: "overview", name: "개요" },
-    { id: "clusters", name: "클러스터" },
-    { id: "patterns", name: "패턴" },
-    { id: "connections", name: "연결" },
-    { id: "recommendations", name: "추천" },
-  ];
-
-  const totalSlides = slides.length;
-
-  const fadeSize = 12;
-
-  const edgeFadeX = (fadeStart: boolean, fadeEnd: boolean) => ({
-    WebkitMaskImage: `linear-gradient(to right, ${
-      fadeStart ? "transparent" : "black"
-    } 0px, black ${fadeSize}px, black calc(100% - ${fadeSize}px), ${
-      fadeEnd ? "transparent" : "black"
-    } 100%)`,
-    maskImage: `linear-gradient(to right, ${
-      fadeStart ? "transparent" : "black"
-    } 0px, black ${fadeSize}px, black calc(100% - ${fadeSize}px), ${
-      fadeEnd ? "transparent" : "black"
-    } 100%)`,
-  });
-
-  const edgeFadeY = (fadeStart: boolean, fadeEnd: boolean) => ({
-    WebkitMaskImage: `linear-gradient(to bottom, ${
-      fadeStart ? "transparent" : "black"
-    } 0px, black ${fadeSize}px, black calc(100% - ${fadeSize}px), ${
-      fadeEnd ? "transparent" : "black"
-    } 100%)`,
-    maskImage: `linear-gradient(to bottom, ${
-      fadeStart ? "transparent" : "black"
-    } 0px, black ${fadeSize}px, black calc(100% - ${fadeSize}px), ${
-      fadeEnd ? "transparent" : "black"
-    } 100%)`,
-  });
-
-  const useScrollFade = (axis: "x" | "y") => {
-    const ref = useRef<HTMLDivElement | null>(null);
-    const [fade, setFade] = useState({ start: false, end: false });
-
-    const update = useCallback(() => {
-      const el = ref.current;
-      if (!el) return;
-      if (axis === "x") {
-        const max = el.scrollWidth - el.clientWidth;
-        setFade({
-          start: el.scrollLeft > 1,
-          end: el.scrollLeft < max - 1,
-        });
-      } else {
-        const max = el.scrollHeight - el.clientHeight;
-        setFade({
-          start: el.scrollTop > 1,
-          end: el.scrollTop < max - 1,
-        });
-      }
-    }, [axis]);
-
-    useEffect(() => {
-      const el = ref.current;
-      if (!el) return;
-      update();
-      const onScroll = () => update();
-      el.addEventListener("scroll", onScroll, { passive: true });
-      const ro =
-        typeof ResizeObserver !== "undefined"
-          ? new ResizeObserver(update)
-          : null;
-      if (ro) ro.observe(el);
-      return () => {
-        el.removeEventListener("scroll", onScroll);
-        if (ro) ro.disconnect();
-      };
-    }, [update]);
-
-    return { ref, fade };
-  };
-
+  // 각 스크롤 영역별 페이드 상태
   const clustersFade = useScrollFade("x");
   const patternsFade = useScrollFade("y");
   const connectionsFade = useScrollFade("y");
   const recommendationsFade = useScrollFade("y");
 
-  // Navigation functions
+  const clustersFadeStyle = buildFadeStyle("x", clustersFade.fade);
+  const patternsFadeStyle = buildFadeStyle("y", patternsFade.fade);
+  const connectionsFadeStyle = buildFadeStyle("y", connectionsFade.fade);
+  const recommendationsFadeStyle = buildFadeStyle(
+    "y",
+    recommendationsFade.fade
+  );
+
+  // 슬라이드 이동
   const goToNextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % totalSlides);
   };
@@ -140,7 +153,7 @@ export default function GraphSummaryPanel({
     setCurrentSlide(index);
   };
 
-  // Keyboard navigation
+  // 키보드 네비게이션 (좌/우, ESC 닫기)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
@@ -158,15 +171,16 @@ export default function GraphSummaryPanel({
 
   return (
     <>
-      {/* Backdrop Overlay */}
+      {/* Backdrop Overlay: 배경 그래프가 보이도록 약한 dim + 최소 blur */}
       <div
         className="fixed inset-0 bg-black/10 backdrop-blur-[1px] z-40 transition-opacity duration-300"
         onClick={onClose}
       />
 
-      {/* Summary Panel */}
+      {/* Summary Panel: 중앙 정렬 팝업 컨테이너 */}
       <div className="fixed inset-0 z-50 pointer-events-none">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto p-4 sm:p-6 md:p-8 lg:p-12">
+          {/* 실제 컨텐츠 영역 (크기 조절은 max-w/max-h) */}
           <div className="relative w-full h-full max-w-[1300px] max-h-[900px] overflow-hidden rounded-2xl backdrop-blur-[1px]">
             {/* Close Button */}
             {onClose && (
@@ -232,7 +246,7 @@ export default function GraphSummaryPanel({
               </svg>
             </button>
 
-            {/* Slides Container */}
+            {/* Slides Container: 좌우 슬라이드 전환 영역 */}
             <div
               className="flex h-full transition-transform duration-500 ease-out"
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
@@ -252,13 +266,14 @@ export default function GraphSummaryPanel({
                     title="클러스터 분석"
                     subtitle={`${summary.clusters.length}개의 주제 그룹`}
                   />
-                <div
-                  ref={clustersFade.ref}
-                  className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
-                  style={edgeFadeX(clustersFade.fade.start, clustersFade.fade.end)}
-                >
-                  {summary.clusters.map((cluster) => (
-                    <ClusterCard
+                  {/* 가로 스크롤: 잘릴 때만 가장자리에 페이드 */}
+                  <div
+                    ref={clustersFade.ref}
+                    className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+                    style={clustersFadeStyle}
+                  >
+                    {summary.clusters.map((cluster) => (
+                      <ClusterCard
                         key={cluster.cluster_id}
                         cluster={cluster}
                         onClick={() => onClusterClick?.(cluster.cluster_id)}
@@ -276,13 +291,14 @@ export default function GraphSummaryPanel({
                     title="발견된 패턴"
                     subtitle={`${summary.patterns.length}개의 인사이트`}
                   />
-                <div
-                  ref={patternsFade.ref}
-                  className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
-                  style={edgeFadeY(patternsFade.fade.start, patternsFade.fade.end)}
-                >
-                  {summary.patterns.map((pattern, idx) => (
-                    <PatternItem key={idx} pattern={pattern} />
+                  {/* 세로 스크롤: 잘릴 때만 가장자리에 페이드 */}
+                  <div
+                    ref={patternsFade.ref}
+                    className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
+                    style={patternsFadeStyle}
+                  >
+                    {summary.patterns.map((pattern, idx) => (
+                      <PatternItem key={idx} pattern={pattern} />
                     ))}
                   </div>
                 </div>
@@ -296,13 +312,14 @@ export default function GraphSummaryPanel({
                     title="클러스터 연결"
                     subtitle={`${summary.connections.length}개의 연결 고리`}
                   />
-                <div
-                  ref={connectionsFade.ref}
-                  className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
-                  style={edgeFadeY(connectionsFade.fade.start, connectionsFade.fade.end)}
-                >
-                  {summary.connections.map((connection, idx) => (
-                    <ConnectionItem key={idx} connection={connection} />
+                  {/* 세로 스크롤: 잘릴 때만 가장자리에 페이드 */}
+                  <div
+                    ref={connectionsFade.ref}
+                    className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
+                    style={connectionsFadeStyle}
+                  >
+                    {summary.connections.map((connection, idx) => (
+                      <ConnectionItem key={idx} connection={connection} />
                     ))}
                   </div>
                 </div>
@@ -316,13 +333,14 @@ export default function GraphSummaryPanel({
                     title="추천 액션"
                     subtitle={`${summary.recommendations.length}개의 제안사항`}
                   />
-                <div
-                  ref={recommendationsFade.ref}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
-                  style={edgeFadeY(recommendationsFade.fade.start, recommendationsFade.fade.end)}
-                >
-                  {summary.recommendations.map((rec, idx) => (
-                    <RecommendationCard key={idx} recommendation={rec} />
+                  {/* 세로 스크롤(2열 그리드): 잘릴 때만 가장자리에 페이드 */}
+                  <div
+                    ref={recommendationsFade.ref}
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin"
+                    style={recommendationsFadeStyle}
+                  >
+                    {summary.recommendations.map((rec, idx) => (
+                      <RecommendationCard key={idx} recommendation={rec} />
                     ))}
                   </div>
                 </div>
@@ -331,7 +349,7 @@ export default function GraphSummaryPanel({
 
             {/* Slide Indicators */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-              {slides.map((slide, index) => (
+              {SLIDES.map((slide, index) => (
                 <button
                   key={slide.id}
                   onClick={() => goToSlide(index)}

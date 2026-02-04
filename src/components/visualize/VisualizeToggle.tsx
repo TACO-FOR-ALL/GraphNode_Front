@@ -24,7 +24,8 @@ export default function VisualizeToggle({
   statisticData: GraphStatsDto;
   avatarUrl: string | null;
 }) {
-  const [mode, setMode] = useState<"2d" | "3d" | "summary">("2d");
+  const [mode, setMode] = useState<"2d" | "3d">("2d");
+  const [showSummary, setShowSummary] = useState(false);
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
@@ -207,32 +208,38 @@ export default function VisualizeToggle({
       <div className="absolute z-20 top-6 right-6 flex flex-col gap-2">
         <div className="flex gap-1 w-[255px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
           <div
-            onClick={() => setMode("2d")}
+            onClick={() => {
+              setMode("2d");
+              setShowSummary(false);
+            }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
-              mode === "2d" ? "text-primary" : "text-text-secondary"
+              mode === "2d" && !showSummary ? "text-primary" : "text-text-secondary"
             }`}
           >
             2D
           </div>
           <div
-            onClick={() => setMode("3d")}
+            onClick={() => {
+              setMode("3d");
+              setShowSummary(false);
+            }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
-              mode === "3d" ? "text-primary" : "text-text-secondary"
+              mode === "3d" && !showSummary ? "text-primary" : "text-text-secondary"
             }`}
           >
             3D
           </div>
           <div
-            onClick={() => setMode("summary")}
+            onClick={() => setShowSummary(true)}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
-              mode === "summary" ? "text-primary" : "text-text-secondary"
+              showSummary ? "text-primary" : "text-text-secondary"
             }`}
           >
             Summary
           </div>
           <div
             className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
-              mode === "3d" ? "left-[87px]" : mode === "summary" ? "left-[172px]" : "left-[2px]"
+              mode === "3d" && !showSummary ? "left-[87px]" : showSummary ? "left-[172px]" : "left-[2px]"
             }`}
           ></div>
         </div>
@@ -250,13 +257,18 @@ export default function VisualizeToggle({
           onClustersReady={handleClustersReady}
           zoomToClusterId={zoomToClusterId}
         />
-      ) : mode === "3d" ? (
-        <Graph3D data={nodeData} />
       ) : (
+        <Graph3D data={nodeData} />
+      )}
+
+      {/* Summary Overlay */}
+      {showSummary && (
         <GraphSummaryPanel
+          onClose={() => setShowSummary(false)}
           onClusterClick={(clusterId) => {
             setZoomToClusterId(clusterId);
             setMode("2d");
+            setShowSummary(false);
             // Reset zoom after animation completes
             setTimeout(() => setZoomToClusterId(null), 900);
           }}
