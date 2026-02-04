@@ -38,7 +38,22 @@
     "newFolder": "새 폴더"
   },
   "visualize": {
-    "loading": "그래프를 구성하는 중..."
+    "loading": "그래프를 구성하는 중...",
+    "error": {
+      "title": "그래프를 불러올 수 없습니다",
+      "description": "그래프 데이터를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      "retry": "다시 시도",
+      "persistentHint": "문제가 지속된다면,",
+      "checkStatus": "서버 상태를 확인해주세요"
+    },
+    "empty": {
+      "title": "아직 생성된 그래프가 없습니다",
+      "description": "그래프를 생성하여 대화와 노트 간의 연결을 시각화하세요.",
+      "generate": "그래프 생성",
+      "generating": "생성 중...",
+      "generatingNotice": "생성이 완료되면 알림을 보내드립니다. 앱을 종료하지 마세요.",
+      "notice": "그래프는 저장된 채팅과 노트를 기반으로 생성됩니다. 채팅이나 노트가 없으면 그래프를 생성할 수 없습니다."
+    }
   },
   "search": {
     "placeholder": "대화 및 노트 검색...",

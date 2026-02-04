@@ -38,7 +38,22 @@
     "newFolder": "New Folder"
   },
   "visualize": {
-    "loading": "Constructing graph..."
+    "loading": "Constructing graph...",
+    "error": {
+      "title": "Failed to load graph",
+      "description": "There was a problem loading the graph data. Please try again later.",
+      "retry": "Retry",
+      "persistentHint": "If the problem persists,",
+      "checkStatus": "check server status"
+    },
+    "empty": {
+      "title": "No graph generated yet",
+      "description": "Generate a graph to visualize connections between your chats and notes.",
+      "generate": "Generate Graph",
+      "generating": "Generating...",
+      "generatingNotice": "You will be notified when generation is complete. Please do not close the app.",
+      "notice": "Graphs are generated based on your saved chats and notes. If you have no chats or notes, graph generation is not possible."
+    }
   },
   "search": {
     "placeholder": "Search for chats and notes...",
