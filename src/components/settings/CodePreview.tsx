@@ -23,10 +23,22 @@ export default function CodePreview({
     if (oldStyle) oldStyle.remove();
 
     // base16 스타일은 서브폴더에 있음 (예: base16-3024 -> base16/3024.css)
-    let cssPath = `/hljs-styles/${currentHighlight}.css`;
-    if (currentHighlight.startsWith("base16-")) {
-      const themeName = currentHighlight.replace("base16-", "");
-      cssPath = `/hljs-styles/base16/${themeName}.css`;
+    // -min 접미사는 .min으로 변환 (예: a11y-dark-min -> a11y-dark.min.css)
+    let themeName = currentHighlight;
+    let isMin = false;
+
+    if (themeName.endsWith("-min")) {
+      themeName = themeName.slice(0, -4);
+      isMin = true;
+    }
+
+    const extension = isMin ? ".min.css" : ".css";
+
+    const basePath = import.meta.env.BASE_URL || "/";
+    let cssPath = `${basePath}hljs-styles/${themeName}${extension}`;
+    if (themeName.startsWith("base16-")) {
+      themeName = themeName.replace("base16-", "");
+      cssPath = `${basePath}hljs-styles/base16/${themeName}${extension}`;
     }
 
     // public 폴더에서 CSS 로드

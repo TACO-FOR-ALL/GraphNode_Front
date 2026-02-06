@@ -13,15 +13,21 @@ import {
   PositionedEdge,
 } from "@/types/GraphData";
 
-export default function VisualizeToggle({
-  nodeData,
-  statisticData,
-  avatarUrl,
-}: {
+interface GraphData {
   nodeData: GraphSnapshotDto;
   statisticData: GraphStatsDto;
+}
+
+export default function VisualizeToggle({
+  graphData,
+  avatarUrl,
+}: {
+  graphData: GraphData;
   avatarUrl: string | null;
 }) {
+  const statisticData = graphData.statisticData;
+  const nodeData = graphData.nodeData;
+
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
@@ -33,13 +39,13 @@ export default function VisualizeToggle({
     (
       newClusters: ClusterCircle[],
       newNodes: PositionedNode[],
-      newEdges: PositionedEdge[]
+      newEdges: PositionedEdge[],
     ) => {
       setClusters(newClusters);
       setNodes(newNodes);
       setEdges(newEdges);
     },
-    []
+    [],
   );
 
   return (
@@ -82,7 +88,7 @@ export default function VisualizeToggle({
               {clusters.map((cluster) => {
                 // 클러스터 내부 노드들 가져오기
                 const clusterNodes = nodes.filter(
-                  (n) => n.clusterName === cluster.clusterId
+                  (n) => n.clusterName === cluster.clusterId,
                 );
 
                 // 클러스터 내부 엣지들 가져오기 (intra-cluster만)
@@ -90,7 +96,7 @@ export default function VisualizeToggle({
                   (e) =>
                     e.isIntraCluster &&
                     clusterNodes.some((n) => n.id === e.source) &&
-                    clusterNodes.some((n) => n.id === e.target)
+                    clusterNodes.some((n) => n.id === e.target),
                 );
 
                 // 노드 ID로 매핑 생성 (엣지 렌더링용)
@@ -101,22 +107,22 @@ export default function VisualizeToggle({
                 const minX =
                   Math.min(
                     ...clusterNodes.map((n) => n.x),
-                    cluster.centerX - cluster.radius
+                    cluster.centerX - cluster.radius,
                   ) - padding;
                 const minY =
                   Math.min(
                     ...clusterNodes.map((n) => n.y),
-                    cluster.centerY - cluster.radius
+                    cluster.centerY - cluster.radius,
                   ) - padding;
                 const maxX =
                   Math.max(
                     ...clusterNodes.map((n) => n.x),
-                    cluster.centerX + cluster.radius
+                    cluster.centerX + cluster.radius,
                   ) + padding;
                 const maxY =
                   Math.max(
                     ...clusterNodes.map((n) => n.y),
-                    cluster.centerY + cluster.radius
+                    cluster.centerY + cluster.radius,
                   ) + padding;
                 const viewBoxWidth = maxX - minX;
                 const viewBoxHeight = maxY - minY;

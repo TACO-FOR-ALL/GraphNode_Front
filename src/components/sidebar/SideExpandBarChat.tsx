@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
-import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function SideExpandBarChat({
   data,
@@ -14,6 +14,7 @@ export default function SideExpandBarChat({
   data: ChatThread[];
   selectedId: string;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -42,7 +43,9 @@ export default function SideExpandBarChat({
         onClick={() => navigate("/chat")}
       >
         <FaPlus className="w-4 h-4" />
-        <p className="text-[14px] font-normal font-noto-sans-kr">New Chat</p>
+        <p className="text-[14px] font-normal font-noto-sans-kr">
+          {t("chat.newChat")}
+        </p>
       </div>
       <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-20">
         {data &&

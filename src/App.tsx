@@ -19,11 +19,12 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
-import TestPaperGraphPage from "./components/test/TestPaperGraphPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
+import { useTranslation } from "react-i18next";
+import Toaster from "./components/Toaster";
 
 export default function App() {
   return (
@@ -43,6 +44,8 @@ function MainLayout() {
   const { keybinds } = useKeybindsStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     // 최초 실행 시 기본 노트 추가
@@ -77,7 +80,7 @@ function MainLayout() {
       // 새 폴더 생성 (shift가 포함되어 있으므로 newNote보다 먼저 체크)
       if (matchesKeybind(e, keybinds.newFolder)) {
         e.preventDefault();
-        folderRepo.create("새 폴더").then(() => {
+        folderRepo.create(t("notes.newFolder")).then(() => {
           queryClient.invalidateQueries({ queryKey: ["folders"] });
         });
         return;
@@ -141,7 +144,7 @@ function MainLayout() {
         style={{
           display: "flex",
           flex: 1,
-          height: "calc(100vh - 48px)", // WebAppFrameBar 높이(48px) 빼기
+          minHeight: 0, // flex 컨테이너에서 overflow 동작을 위해 필요
           overflow: "hidden", // 전체 스크롤 방지
         }}
       >
@@ -172,12 +175,13 @@ function MainLayout() {
               element={<Settings userInfo={me as Me} />}
             />
             <Route path="/note/:noteId?" element={<Note />} />
-            <Route path="/test-graph" element={<TestPaperGraphPage />} />
+            {/* <Route path="/test-graph" element={<TestPaperGraphPage />} /> */}
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
         <AgentToolTipButton setIsOpen={setIsOpen} />
         {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
+        <Toaster />
       </div>
     </div>
   );

@@ -14,18 +14,27 @@
     "dist": "vite build && electron-builder",
     "dist:mac:arm": "electron-builder --mac --arm64",
     "dist:mac:intel": "electron-builder --mac --x64",
-    "dist:mac:all": "npm run dist:mac:arm && npm run dist:mac:intel"
+    "dist:mac:all": "npm run dist:mac:arm && npm run dist:mac:intel",
+    "dist:windows": "electron-builder --windows"
   },
   "build": {
     "appId": "com.graphnode.app",
+    "asar": false,
+    "asarUnpack": [
+      "**/node_modules/@floating-ui/**/*",
+      "**/node_modules/@tiptap/**/*"
+    ],
     "productName": "GraphNode",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
     "mac": {
       "icon": "build/icon.icns",
@@ -41,7 +50,24 @@
     "afterSign": "scripts/notarize.cjs",
     "win": {
       "icon": "build/icon.ico",
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "GraphNode",
+      "uninstallDisplayName": "GraphNode Unintsaller",
+      "createDesktopShortcut": "always",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "keywords": [],
@@ -61,7 +87,7 @@
     "autoprefixer": "^10.4.21",
     "baseline-browser-mapping": "^2.9.10",
     "electron": "^38.2.2",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.7.0",
     "eslint": "^9.37.0",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
@@ -75,7 +101,7 @@
     "vite-plugin-electron": "^0.29.0"
   },
   "dependencies": {
-    "@taco_tsinghua/graphnode-sdk": "^0.1.15",
+    "@taco_tsinghua/graphnode-sdk": "^0.1.19",
     "@tanstack/react-query": "^5.90.5",
     "@tiptap/core": "^3.11.0",
     "@tiptap/extension-code-block-lowlight": "^3.11.0",
@@ -92,6 +118,7 @@
     "d3-force-3d": "^3.0.6",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
+    "electron-push-receiver": "^2.1.3",
     "highlight.js": "^11.11.1",
     "i18next": "^25.6.0",
     "keytar": "^7.9.0",

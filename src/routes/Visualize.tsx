@@ -9,6 +9,14 @@ import Lottie from "lottie-react";
 import loadingAnimation from "@/assets/lottie/loading.json";
 import { useTranslation } from "react-i18next";
 import { Me } from "@/types/Me";
+import { useQuery } from "@tanstack/react-query";
+import ErrorScreen from "@/components/visualize/Error";
+import EmptyGraph from "@/components/visualize/EmptyGraph";
+
+interface GraphData {
+  nodeData: GraphSnapshotDto;
+  statisticData: GraphStatsDto;
+}
 
 export default function Visualize() {
   const { t } = useTranslation();
@@ -21,23 +29,29 @@ export default function Visualize() {
     })();
   }, []);
 
-  const [nodeData, setNodeData] = useState<GraphSnapshotDto | null>(null);
-  const [statisticData, setStatisticData] = useState<GraphStatsDto | undefined>(
-    undefined
-  );
+  const {
+    data: graphData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<GraphData>({
+    queryKey: ["graphData"],
+    queryFn: async () => {
+      const [nodes, stats] = await Promise.all([
+        // @ts-ignore
+        await api.graph.getSnapshot().data,
+        // @ts-ignore
+        await api.graph.getStats().data,
+      ]);
 
-  useEffect(() => {
-    (async () => {
-      const resultData = await api.graph.getSnapshot();
-      const resultStatistic = await api.graph.getStats();
-      // @ts-ignore
-      setNodeData(resultData.data);
-      // @ts-ignore
-      setStatisticData(resultStatistic.data);
-    })();
-  }, []);
+      return {
+        nodeData: nodes,
+        statisticData: stats,
+      };
+    },
+  });
 
-  if (!nodeData || !statisticData) {
+  if (isLoading) {
     return (
       <div className="flex flex-col w-full h-full items-center justify-center gap-5">
         <div className="w-[200px] h-[200px]">
@@ -48,10 +62,15 @@ export default function Visualize() {
     );
   }
 
+  if (error) return <ErrorScreen onRetry={() => refetch()} />;
+
+  if (graphData?.statisticData == null) {
+    return <EmptyGraph />;
+  }
+
   return (
     <VisualizeToggle
-      nodeData={nodeData!}
-      statisticData={statisticData!}
+      graphData={graphData}
       avatarUrl={me?.profile?.avatarUrl ?? null}
     />
   );

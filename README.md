@@ -206,3 +206,63 @@ this.version(2).stores({
   folders: "id, name, parentId, createdAt, updatedAt", // 새 테이블
 });
 ```
+
+---
+
+### 부록: 코드 푸시
+
+```bash
+git push origin develop   # TACO-FOR-ALL/GraphNode_Front => 개발 및 IPC 업데이트 배포용
+git push app develop      # Yoy0z-maps/graphnode-app (vercel) => 웹 서버 URL 배포용
+```
+
+--
+
+## Local Setup
+
+1.  **의존성 설치**:
+    ```bash
+    npm install
+    ```
+2.  **환경 변수 설정**: 보안과 효율적인 협업을 위해 Infisical을 통해 환경 변수를 관리합니다. 로컬 개발 환경 설정을 위해 아래 단계를 진행해 주세요.
+
+① Infisical CLI 설치 및 로그인
+먼저 로컬 환경에 Infisical CLI가 설치되어 있어야 합니다.
+
+```bash
+# 설치 (Node.js 환경으로 개발함으로 npm을 권장합니다)
+npm install -g @infisical/cli
+brew install infisical/get-cli/infisical
+
+# 로그인 (US Cloud 선택) 및 프로젝트 초기화
+infisical login
+infisical init
+```
+
+② 환경 변수 주입 및 실행
+로컬에 .env 파일을 직접 만들지 마세요. 실행 시점에 Infisical에서 변수를 실시간으로 주입합니다.
+
+> 루트 디렉토리에 `.infisical.json`파일이 있는지 확인해주세요.
+
+```bash
+infisical run -- npm run dev
+```
+
+> 기존 `npm run dev`가 아닌 새로운 명령어를 사용합니다
+
+③ 환경 변수 사용 및 팁
+
+- 환경변수 접근은 `.env`를 사용할 때와 동일합니다.
+
+```ts
+// example
+console.log("TEST:", process.env.TEST_KEY);
+```
+
+- `infisical export`명령어를 통해 주입될 환경 변수를 확인할 수 있습니다.
+- `--env=value`명령어를 통해 특정 배포 상태의 환경 변수를 지정할 수 있습니다. (dev, staging, prod)
+
+```bash
+# example
+infisical run --env=prod -- npm start
+```
