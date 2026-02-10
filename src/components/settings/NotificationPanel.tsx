@@ -1,35 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import ToggleSettingItem from "./ToggleSettingItem";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
-interface NotificationSettings {
-  desktopNotification: boolean;
+interface LocalNotificationSettings {
   newMessageSound: boolean;
   appNotificationSound: boolean;
 }
 
 export default function NotificationPanel() {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<NotificationSettings>({
-    desktopNotification: false,
+  const desktopNotification = useSettingsStore((state) => state.desktopNotification);
+  const setDesktopNotification = useSettingsStore((state) => state.setDesktopNotification);
+
+  const [localSettings, setLocalSettings] = useState<LocalNotificationSettings>({
     newMessageSound: false,
     appNotificationSound: false,
   });
 
-  const updateSetting = <K extends keyof NotificationSettings>(
+  const updateLocalSetting = <K extends keyof LocalNotificationSettings>(
     key: K,
-    value: NotificationSettings[K],
+    value: LocalNotificationSettings[K],
   ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setLocalSettings((prev) => ({ ...prev, [key]: value }));
   };
-
-  useEffect(()=>{
-    window.systemAPI.getSettings().then((settings) => {
-      updateSetting("desktopNotification", settings.desktopNotification)
-    })
-  },[]);
 
   return (
     <SettingsPanelLayout>
@@ -37,8 +33,8 @@ export default function NotificationPanel() {
       <ToggleSettingItem
         title={t("settings.notification.desktopNotification.title")}
         subtitle={t("settings.notification.desktopNotification.subtitle")}
-        isActive={settings.desktopNotification}
-        onChange={(value) => updateSetting("desktopNotification", value)}
+        isActive={desktopNotification}
+        onChange={setDesktopNotification}
       />
       <SettingCategoryTitle
         title={t("settings.notification.sounds.title")}
@@ -47,14 +43,14 @@ export default function NotificationPanel() {
       <ToggleSettingItem
         title={t("settings.notification.newMessage.title")}
         subtitle={t("settings.notification.newMessage.subtitle")}
-        isActive={settings.newMessageSound}
-        onChange={(value) => updateSetting("newMessageSound", value)}
+        isActive={localSettings.newMessageSound}
+        onChange={(value) => updateLocalSetting("newMessageSound", value)}
       />
       <ToggleSettingItem
         title={t("settings.notification.appNotification.title")}
         subtitle={t("settings.notification.appNotification.subtitle")}
-        isActive={settings.appNotificationSound}
-        onChange={(value) => updateSetting("appNotificationSound", value)}
+        isActive={localSettings.appNotificationSound}
+        onChange={(value) => updateLocalSetting("appNotificationSound", value)}
       />
     </SettingsPanelLayout>
   );

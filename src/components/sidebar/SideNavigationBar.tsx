@@ -12,6 +12,10 @@ import VisualizeIconActive from "@/assets/icons/share_active.svg";
 import SearchIconActive from "@/assets/icons/search_active.svg";
 import SettingsIcon from "@/assets/icons/settings.svg";
 import SettingsIconActive from "@/assets/icons/settings_active.svg";
+import { IoNotificationsOutline } from "react-icons/io5";
+import { IoNotificationsOffOutline } from "react-icons/io5";
+import { useNotificationStore } from "@/store/useNotificationStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 const NAVIGATION_ITEMS = [
   { id: "chat", icon: ChatIcon, iconAcitve: ChatIconActive, label: "chat" },
@@ -41,6 +45,11 @@ export default function SideNavigationBar({
 }) {
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const markAllAsRead = useNotificationStore((state) => state.markAllAsRead);
+  const desktopNotification = useSettingsStore(
+    (state) => state.desktopNotification,
+  );
 
   return (
     <div
@@ -90,6 +99,22 @@ export default function SideNavigationBar({
               e.currentTarget.src = profile;
             }}
           />
+        </div>
+        <div
+          key="notification"
+          className={`relative flex items-center justify-center rounded-[6px] p-[6px] text-[#6B7280] hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 cursor-pointer`}
+          onClick={markAllAsRead}
+          onMouseEnter={() => setHoveredItem("notification")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          {desktopNotification ? (
+            <IoNotificationsOutline className="w-4 h-4" />
+          ) : (
+            <IoNotificationsOffOutline className="w-4 h-4" />
+          )}
+          {unreadCount > 0 && (
+            <div className="absolute top-[5px] right-[5px]  bg-red-400 flex items-center justify-center rounded-full w-1 h-1" />
+          )}
         </div>
         <div
           key="settings"

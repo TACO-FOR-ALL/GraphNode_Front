@@ -27,6 +27,8 @@ import { useThemeStore } from "./store/useThemeStore";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
+import { useNotificationConnection } from "./hooks/useNotification";
+import { useSettingsStore } from "./store/useSettingsStore";
 
 export default function App() {
   return (
@@ -47,6 +49,14 @@ function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+
+  // SSE 알림 연결
+  useNotificationConnection();
+
+  // 설정 로드
+  useEffect(() => {
+    useSettingsStore.getState().loadSettings();
+  }, []);
 
   // Visualize 페이지에서는 AgentToolTipButton 안 보이기
   const isVisualizePage = location.pathname.startsWith("/visualize");
