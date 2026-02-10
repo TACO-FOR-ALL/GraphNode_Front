@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
+import VisualizeDetail from "./routes/VisualizeDetail";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
@@ -43,7 +45,11 @@ function MainLayout() {
   const { theme } = useThemeStore();
   const { keybinds } = useKeybindsStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  // Visualize 페이지에서는 AgentToolTipButton 안 보이기
+  const isVisualizePage = location.pathname.startsWith("/visualize");
 
   const { t } = useTranslation();
 
@@ -170,6 +176,7 @@ function MainLayout() {
               element={<Chat avatarUrl={me?.profile?.avatarUrl ?? null} />}
             />
             <Route path="/visualize" element={<Visualize />} />
+            <Route path="/visualize/:nodeId" element={<VisualizeDetail />} />
             <Route
               path="/settings"
               element={<Settings userInfo={me as Me} />}
@@ -179,7 +186,7 @@ function MainLayout() {
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
-        <AgentToolTipButton setIsOpen={setIsOpen} />
+        {!isVisualizePage && <AgentToolTipButton setIsOpen={setIsOpen} />}
         {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
         <Toaster />
       </div>

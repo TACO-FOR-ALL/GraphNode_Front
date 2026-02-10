@@ -1,11 +1,13 @@
 import { api } from "@/apiClient";
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import GoogleIcon from "@/assets/icons/google.svg";
 import AppleIcon from "@/assets/icons/apple.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { Me } from "@/types/Me";
 
 export default function Login() {
+  const { t } = useTranslation();
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function Login() {
       }
 
       setHasSession(false);
-      setError("t.login.error.server");
+      setError(t("login.error.server"));
     })();
   }, []);
 
@@ -81,18 +83,14 @@ export default function Login() {
               await window.keytarAPI.setMe(me.data as Me);
               window.electron?.send("auth-success");
             } else {
-              setError(
-                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
-              );
+              setError(t("login.error.sessionNotSet"));
             }
           } catch (err: any) {
             console.error("getMe failed after oauth:", err);
             if (err.status === 401) {
-              setError(
-                "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
-              );
+              setError(t("login.error.sessionNotSet"));
             } else {
-              setError("로그인 후 사용자 정보를 불러오지 못했습니다.");
+              setError(t("login.error.fetchUserFailed"));
             }
           }
         })();
@@ -102,7 +100,7 @@ export default function Login() {
           popupIntervalRef.current = null;
         }
         setIsLoggingIn(false);
-        setError(data.message ?? "OAuth 에러가 발생했습니다.");
+        setError(data.message ?? t("login.error.oauthError"));
       }
     }
 
@@ -136,7 +134,7 @@ export default function Login() {
 
       if (!popup) {
         setIsLoggingIn(false);
-        alert("팝업이 차단되었습니다. 팝업 허용을 해주세요.");
+        alert(t("login.popupBlocked"));
         return;
       }
 
@@ -153,7 +151,11 @@ export default function Login() {
     } catch (err) {
       console.error(err);
       setIsLoggingIn(false);
-      setError("Google 로그인 시작에 실패했습니다.");
+      setError(
+        provider === "google"
+          ? t("login.error.googleLoginFailed")
+          : t("login.error.appleLoginFailed"),
+      );
     }
   };
 
@@ -163,17 +165,17 @@ export default function Login() {
         <header className="pt-3 px-4 flex items-center justify-start gap-2 drag-region">
           <div
             onClick={handleCloseWindow}
-            aria-label="창 닫기"
+            aria-label={t("login.closeWindow")}
             className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#ff5f57]"
           />
           <div
             onClick={handleMinimizeWindow}
-            aria-label="창 최소화"
+            aria-label={t("login.minimizeWindow")}
             className="w-3 h-3 rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#fdbc2c]"
           />
           <div
             onClick={handleToggleMaximize}
-            aria-label="창 최대화"
+            aria-label={t("login.maximizeWindow")}
             className="w-3 h-3 min-w-3 max-w-3 min-h-3 max-h-3 aspect-square rounded-full border-0 p-0 m-0 no-drag cursor-pointer bg-[#28c840] flex-shrink-0"
           />
         </header>
@@ -184,7 +186,7 @@ export default function Login() {
             <h1 className="text-xl font-semibold text-primary">GraphNode</h1>
           </div>
           <div className="h-4" />
-          <p className="text-[28px] font-medium">Welcome Back!</p>
+          <p className="text-[28px] font-medium">{t("login.welcome")}</p>
           <div className="h-[96px]" />
           <div
             className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -195,7 +197,7 @@ export default function Login() {
               alt="Google"
               className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
             />
-            <p className="text-[14px]">Sign in with Google</p>
+            <p className="text-[14px]">{t("login.signInWithGoogle")}</p>
           </div>
           <div className="h-3" />
           <div
@@ -207,7 +209,7 @@ export default function Login() {
               alt="Apple"
               className="w-5 h-5 absolute left-[14px] top-0 bottom-0 m-auto"
             />
-            <p className="text-[14px]">Sign in with Apple</p>
+            <p className="text-[14px]">{t("login.signInWithApple")}</p>
           </div>
 
           {error && (
