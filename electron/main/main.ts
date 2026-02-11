@@ -1,4 +1,10 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  nativeTheme,
+  Notification,
+} from "electron";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -8,7 +14,6 @@ import { config, isAllowedOrigin } from "./config";
 
 // CommonJS 모듈을 ES module에서 로드 (import 사용하면 npm run dist에서 오류 발생 함)
 const require = createRequire(import.meta.url);
-const { setup } = require("electron-push-receiver");
 
 // 앱 시작 전에 하드웨어 가속 설정 적용 (app.whenReady() 전에 호출해야 함)
 function applyHardwareAccelerationSetting() {
@@ -290,7 +295,7 @@ function createSplashWindow(): BrowserWindow {
   });
 
   splash.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(getSplashHtml())}`
+    `data:text/html;charset=utf-8,${encodeURIComponent(getSplashHtml())}`,
   );
 
   return splash;
@@ -300,7 +305,7 @@ function createSplashWindow(): BrowserWindow {
 function showSplashError(errorMessage: string) {
   if (splashWindow && !splashWindow.isDestroyed()) {
     splashWindow.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(getErrorHtml(errorMessage))}`
+      `data:text/html;charset=utf-8,${encodeURIComponent(getErrorHtml(errorMessage))}`,
     );
   }
 }
@@ -411,11 +416,16 @@ function createLoginWindow() {
       loginWindow?.show();
     });
 
-    loginWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
-      clearTimeout(timeoutId);
-      console.error(`Login window load failed: ${errorCode} - ${errorDescription}`);
-      showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
-    });
+    loginWindow.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription) => {
+        clearTimeout(timeoutId);
+        console.error(
+          `Login window load failed: ${errorCode} - ${errorDescription}`,
+        );
+        showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
+      },
+    );
   }
 
   loginWindow.loadURL(loginUrl);
@@ -516,11 +526,16 @@ function createMainWindow() {
       mainWindow?.show();
     });
 
-    mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
-      clearTimeout(timeoutId);
-      console.error(`Main window load failed: ${errorCode} - ${errorDescription}`);
-      showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
-    });
+    mainWindow.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription) => {
+        clearTimeout(timeoutId);
+        console.error(
+          `Main window load failed: ${errorCode} - ${errorDescription}`,
+        );
+        showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
+      },
+    );
 
     mainWindow.loadURL(mainUrl);
   }
@@ -528,14 +543,11 @@ function createMainWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
-
-  // electron-push-receiver 설정 (mainWindow 생성 후 호출)
-  setup(mainWindow.webContents);
 }
 
 // 알림 관련 IPC 핸들러 등록 (전역에서 한 번만 호출)
 function registerNotificationHandlers() {
-  ipcMain.on('NOTIFICATION_CLICKED_FOCUS', () => {
+  ipcMain.on("NOTIFICATION_CLICKED_FOCUS", () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
@@ -543,15 +555,44 @@ function registerNotificationHandlers() {
     }
   });
 
-  ipcMain.on('SET_BADGE_COUNT', (_event, count) => {
-    if (process.platform === 'darwin' && app.dock) {
-      app.dock.setBadge(count > 0 ? count.toString() : '');
+  ipcMain.on("SET_BADGE_COUNT", (_event, count) => {
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.setBadge(count > 0 ? count.toString() : "");
     } else {
       if (mainWindow && count > 0) {
         mainWindow.flashFrame(true);
       }
     }
   });
+
+  // 네이티브 알림 표시
+  ipcMain.on(
+    "SHOW_NATIVE_NOTIFICATION",
+    (_event, options: { title: string; body: string; silent?: boolean }) => {
+      console.log("[Notification] Received request:", options);
+
+      if (!Notification.isSupported()) {
+        // TODO: 만약 가능성이 있다면 로직 처리 필요
+        return;
+      }
+
+      const notification = new Notification({
+        title: options.title,
+        body: options.body,
+        silent: options.silent ?? false,
+      });
+
+      notification.on("click", () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      });
+
+      notification.show();
+    },
+  );
 }
 
 app.whenReady().then(() => {

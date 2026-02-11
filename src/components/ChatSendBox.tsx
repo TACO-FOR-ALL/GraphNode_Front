@@ -23,8 +23,10 @@ const HISTORY_LIMIT = 5;
 
 export default function ChatSendBox({
   setIsTyping,
+  setIsPinned,
 }: {
   setIsTyping: (v: boolean) => void;
+  setIsPinned: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
   const { addToast } = useToastStore();
@@ -164,6 +166,10 @@ export default function ChatSendBox({
     if (!id) {
       return; // TODO: 에러 처리
     }
+
+    // Pin-to-Top 모드 활성화
+    setIsPinned(true);
+
     // 자동으로 메시지 전송 (비동기로 실행)
     handleSendMessage(messageText, threadId, id).catch((err) => {
       console.error("Auto send failed:", err);
@@ -199,7 +205,10 @@ export default function ChatSendBox({
     await threadRepo.addMessageToThreadById(tid!, userMsg);
     setInput("");
 
-    // 3) 메시지 전송 로직 실행
+    // 3) Pin-to-Top 모드 활성화
+    setIsPinned(true);
+
+    // 4) 메시지 전송 로직 실행
     await handleSendMessage(text, tid!, id);
   };
 

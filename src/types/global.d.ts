@@ -65,6 +65,7 @@ declare global {
       onError: (callback: (error: any) => void) => void;
       activateWindow: () => void;
       setBadge: (count: number) => void;
+      showNative: (options: { title: string; body: string; silent?: boolean }) => void;
     };
   }
 }

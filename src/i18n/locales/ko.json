@@ -1,4 +1,21 @@
 {
+  "login": {
+    "welcome": "환영합니다!",
+    "signInWithGoogle": "Google로 로그인",
+    "signInWithApple": "Apple로 로그인",
+    "closeWindow": "창 닫기",
+    "minimizeWindow": "창 최소화",
+    "maximizeWindow": "창 최대화",
+    "popupBlocked": "팝업이 차단되었습니다. 팝업 허용을 해주세요.",
+    "error": {
+      "server": "서버 오류가 발생했습니다.",
+      "sessionNotSet": "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
+      "fetchUserFailed": "로그인 후 사용자 정보를 불러오지 못했습니다.",
+      "oauthError": "OAuth 에러가 발생했습니다.",
+      "googleLoginFailed": "Google 로그인 시작에 실패했습니다.",
+      "appleLoginFailed": "Apple 로그인 시작에 실패했습니다."
+    }
+  },
   "toast": {
     "apiKeyRequired": "API 키를 먼저 등록해주세요.",
     "goToSettings": "설정으로 이동"

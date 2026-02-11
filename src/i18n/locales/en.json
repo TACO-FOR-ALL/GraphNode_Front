@@ -1,4 +1,21 @@
 {
+  "login": {
+    "welcome": "Welcome Back!",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithApple": "Sign in with Apple",
+    "closeWindow": "Close window",
+    "minimizeWindow": "Minimize window",
+    "maximizeWindow": "Maximize window",
+    "popupBlocked": "Popup blocked. Please allow popups.",
+    "error": {
+      "server": "Server error occurred.",
+      "sessionNotSet": "Login session was not set. Please try again.",
+      "fetchUserFailed": "Failed to fetch user info after login.",
+      "oauthError": "OAuth error occurred.",
+      "googleLoginFailed": "Failed to start Google login.",
+      "appleLoginFailed": "Failed to start Apple login."
+    }
+  },
   "toast": {
     "apiKeyRequired": "Please register your API key first.",
     "goToSettings": "Go to Settings"
