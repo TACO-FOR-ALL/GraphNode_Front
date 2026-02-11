@@ -9,8 +9,9 @@ import ChevronsDown from "@/assets/icons/ChevronsDown.svg";
 import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
 import {
   ClusterCircle,
-  PositionedNode,
   PositionedEdge,
+  Subcluster,
+  DisplayNode,
 } from "@/types/GraphData";
 
 interface GraphData {
@@ -21,9 +22,21 @@ interface GraphData {
 export default function VisualizeToggle({
   graphData,
   avatarUrl,
+  onNodeClick,
+  focusedNodeId,
+  subclusters,
+  expandedSubclusters,
+  onToggleSubcluster,
+  onClusterClick,
 }: {
   graphData: GraphData;
   avatarUrl: string | null;
+  onNodeClick?: (nodeId: number) => void;
+  focusedNodeId?: number | null;
+  subclusters: Subcluster[];
+  expandedSubclusters: Set<string>;
+  onToggleSubcluster: (subclusterId: string) => void;
+  onClusterClick?: (clusterName: string) => void;
 }) {
   const statisticData = graphData.statisticData;
   const nodeData = graphData.nodeData;
@@ -31,14 +44,14 @@ export default function VisualizeToggle({
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
-  const [nodes, setNodes] = useState<PositionedNode[]>([]);
+  const [nodes, setNodes] = useState<DisplayNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
 
   const handleClustersReady = useCallback(
     (
       newClusters: ClusterCircle[],
-      newNodes: PositionedNode[],
+      newNodes: DisplayNode[],
       newEdges: PositionedEdge[],
     ) => {
       setClusters(newClusters);
@@ -50,20 +63,6 @@ export default function VisualizeToggle({
 
   return (
     <div style={{ position: "relative" }}>
-      {/* 그래프 데이터 정보 */}
-      <div className="absolute z-20 bottom-12 left-6 flex flex-col gap-1 text-text-tertiary text-sm">
-        <p>Graph Data Info</p>
-        <p>Total Nodes: {JSON.stringify(statisticData.nodes)}</p>
-        <p>Total Edges: {JSON.stringify(statisticData.edges)}</p>
-        <p>Total Clusters: {JSON.stringify(statisticData.clusters)}</p>
-        <p>
-          Generated At:
-          {statisticData.generatedAt
-            ? new Date(statisticData.generatedAt).toLocaleString()
-            : "N/A"}
-        </p>
-      </div>
-
       {/* 2D 모드 클러스터 토글 패널 */}
       {mode === "2d" && (
         <>
@@ -228,11 +227,17 @@ export default function VisualizeToggle({
         <Graph2D
           rawNodes={nodeData.nodes}
           rawEdges={nodeData.edges}
+          subclusters={subclusters}
           width={window.innerWidth}
           height={window.innerHeight}
           avatarUrl={avatarUrl}
           onClustersReady={handleClustersReady}
           zoomToClusterId={zoomToClusterId}
+          onNodeClick={onNodeClick}
+          externalFocusNodeId={focusedNodeId}
+          expandedSubclusters={expandedSubclusters}
+          onToggleSubcluster={onToggleSubcluster}
+          onClusterClick={onClusterClick}
         />
       ) : (
         <Graph3D data={nodeData} />

@@ -92,8 +92,9 @@
   --color-chat-bubble-border: #27272a;
 
   /* 그래프 노드/엣지 */
-  --color-node-default: #52525b;
-  --color-edge-default: #3f3f46;
+  --color-node-default: #ebeae2;
+  --color-node-focus: #ef7235;
+  --color-edge-default: #4a4a4f;
 
   /* 스크롤바 */
   --color-scrollbar-thumb: #3f3f46;
@@ -279,4 +280,24 @@ button {
 
 .animate-slide-in {
   animation: slide-down 0.3s ease-out;
+}
+
+/* 노드 포커스 펄스 애니메이션 (3회 반복) */
+@keyframes node-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-node-pulse {
+  animation: node-pulse 1s ease-out 3;
 }
