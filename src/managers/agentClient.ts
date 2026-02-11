@@ -1,7 +1,3 @@
-import { api } from "@/apiClient";
-
-const API_BASE = "https://taco4graphnode.online";
-
 export type Mode = "chat" | "summary" | "note";
 
 export type StreamEventType = "status" | "chunk" | "result" | "error";
@@ -46,6 +42,7 @@ export async function agentChatStream({
 }: AgentChatStreamParams & {
   callbacks: StreamEventCallbacks;
 }): Promise<StreamResultEvent | null> {
+  const API_BASE = import.meta.env.VITE_API_BASE;
   const res = await fetch(`${API_BASE}/v1/agent/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
