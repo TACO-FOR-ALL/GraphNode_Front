@@ -49,6 +49,7 @@ export default function ChatSendBox({
     handleButtonClick,
     handleFileChange,
     handleRemoveFile,
+    clearFiles,
   } = useFileAttachment();
 
   // threadId가 변경되면 리셋
@@ -70,6 +71,7 @@ export default function ChatSendBox({
 
     // 2) UI 타이핑 표시
     setIsTyping(true);
+    clearFiles();
 
     try {
       const result = await api.ai.chat(targetThreadId, {
@@ -78,10 +80,8 @@ export default function ChatSendBox({
         chatContent: messageText,
       });
 
-      console.log(result);
-
-      // API키 미등록 응답 처리 (TODO: statuscode 변경 필요)
-      if (!result.isSuccess && result.error.statusCode == 500) {
+      // API키 미등록 응답 처리
+      if (!result.isSuccess && result.error.statusCode == 403) {
         addToast({
           message: t("toast.apiKeyRequired"),
           type: "error",
