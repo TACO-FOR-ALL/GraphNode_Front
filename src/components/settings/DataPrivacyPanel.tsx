@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { threadRepo } from "@/managers/threadRepo";
-import DropJsonZone from "../DropJsonZone";
+import DropJsonZone from "./DropJsonZone";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import { api } from "@/apiClient";
 import { noteRepo } from "@/managers/noteRepo";
-import DropMdZone from "../DropMdZone";
+import DropMdZone from "./DropMdZone";
 import DangerZoneItem from "./DangerZoneItem";
 
 export default function DataPrivacyPanel() {

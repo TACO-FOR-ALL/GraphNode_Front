@@ -94,7 +94,11 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
   }, []);
 
   const handleLogout = async () => {
-    await api.me.logout();
+    const result = await api.me.logout();
+    console.log;
+    if (!result.isSuccess) {
+      // TODO: 로그인 실패 로직
+    }
     window.electron?.send("auth-logout");
   };
 

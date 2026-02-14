@@ -11,6 +11,7 @@ export interface UseFileAttachmentReturn {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleButtonClick: () => void;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleDropFile: (file: File[]) => void;
   handleRemoveFile: (index: number) => void;
   clearFiles: () => void;
 }
@@ -49,6 +50,11 @@ export default function useFileAttachment(): UseFileAttachmentReturn {
     e.target.value = "";
   };
 
+  const handleDropFile = (files: File[]) => {
+    const fileArray = Array.from(files);
+    setAttachedFiles((prev) => [...prev, ...fileArray]);
+  };
+
   const handleRemoveFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -63,6 +69,7 @@ export default function useFileAttachment(): UseFileAttachmentReturn {
     fileInputRef,
     handleButtonClick,
     handleFileChange,
+    handleDropFile,
     handleRemoveFile,
     clearFiles,
   };

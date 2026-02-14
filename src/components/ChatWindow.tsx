@@ -60,7 +60,7 @@ export default function ChatWindow({
   const startIndex = Math.max(0, total - visibleCount);
   const visible = total ? allMessages.slice(startIndex) : [];
 
-  // 이전 메시지(history)와 현재 턴(currentTurn) 분리
+  // 이전 메시지(history)와 현재 턴(턴 => 가장 최근의 유저와 에이전트의 질문, 응답) 분리
   const { history, currentTurn } = useMemo(() => {
     if (!isPinned || visible.length === 0) {
       return { history: visible, currentTurn: [] as ChatMessage[] };
@@ -75,6 +75,7 @@ export default function ChatWindow({
       }
     }
 
+    // 실제로 일어날 가능성은 없는데 (방어적 코드)
     if (lastUserIdx === -1) {
       return { history: visible, currentTurn: [] as ChatMessage[] };
     }
@@ -304,9 +305,7 @@ export default function ChatWindow({
         <div ref={topSentinelRef} />
 
         {/* 이전 메시지들 (history) */}
-        <div>
-          {history.map(renderMessage)}
-        </div>
+        <div>{history.map(renderMessage)}</div>
 
         {/* 현재 턴 (핀 모드일 때만 분리) */}
         {isPinned && currentTurn.length > 0 ? (

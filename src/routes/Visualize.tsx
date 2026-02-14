@@ -1,17 +1,17 @@
-import { api } from "@/apiClient";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import VisualizeToggle from "@/components/visualize/VisualizeToggle";
+import VisualizeSidebar from "@/components/visualize/VisualizeSidebar";
+import ClusterSummaryModal from "@/components/visualize/ClusterSummaryModal";
 import {
   GraphSnapshotDto,
   GraphStatsDto,
 } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import { useEffect, useState } from "react";
-import Lottie from "lottie-react";
-import loadingAnimation from "@/assets/lottie/loading.json";
-import { useTranslation } from "react-i18next";
 import { Me } from "@/types/Me";
-import { useQuery } from "@tanstack/react-query";
-import ErrorScreen from "@/components/visualize/Error";
-import EmptyGraph from "@/components/visualize/EmptyGraph";
+import { DUMMY_GRAPH } from "@/constants/DUMMY_GRAPH";
+import { DUMMY_GRAPH_SUMMARY } from "@/constants/DUMMY_GRAPH_SUMMARY";
+import { Subcluster } from "@/types/GraphData";
+import type { ClusterAnalysis } from "@/types/GraphSummary";
 
 interface GraphData {
   nodeData: GraphSnapshotDto;
@@ -19,8 +19,14 @@ interface GraphData {
 }
 
 export default function Visualize() {
-  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [me, setMe] = useState<Me | null>(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [focusedNodeId, setFocusedNodeId] = useState<number | null>(null);
+  const [expandedSubclusters, setExpandedSubclusters] = useState<Set<string>>(
+    new Set()
+  );
+  const [selectedClusterSummary, setSelectedClusterSummary] = useState<ClusterAnalysis | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -29,49 +35,98 @@ export default function Visualize() {
     })();
   }, []);
 
-  const {
-    data: graphData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<GraphData>({
-    queryKey: ["graphData"],
-    queryFn: async () => {
-      const [nodes, stats] = await Promise.all([
-        // @ts-ignore
-        await api.graph.getSnapshot().data,
-        // @ts-ignore
-        await api.graph.getStats().data,
-      ]);
+  // 중분류(subcluster) 펼치기/접기 토글
+  const handleToggleSubcluster = useCallback((subclusterId: string) => {
+    setExpandedSubclusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(subclusterId)) {
+        next.delete(subclusterId);
+      } else {
+        next.add(subclusterId);
+      }
+      return next;
+    });
+  }, []);
 
-      return {
-        nodeData: nodes,
-        statisticData: stats,
-      };
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col w-full h-full items-center justify-center gap-5">
-        <div className="w-[200px] h-[200px]">
-          <Lottie animationData={loadingAnimation} loop={true} />
-        </div>
-        <div className="text-lg text-primary">{t("visualize.loading")}</div>
-      </div>
+  // 클러스터 이름 클릭 시 요약 모달 표시
+  const handleClusterClick = useCallback((clusterName: string) => {
+    const clusterSummary = DUMMY_GRAPH_SUMMARY.clusters.find(
+      (c) => c.name === clusterName
     );
-  }
+    if (clusterSummary) {
+      setSelectedClusterSummary(clusterSummary);
+    }
+  }, []);
 
-  if (error) return <ErrorScreen onRetry={() => refetch()} />;
+  // DUMMY_GRAPH 데이터 사용
+  const graphData: GraphData = {
+    nodeData: {
+      nodes: DUMMY_GRAPH.nodes,
+      edges: DUMMY_GRAPH.edges,
+      clusters: DUMMY_GRAPH.clusters,
+      stats: DUMMY_GRAPH.stats,
+    } as GraphSnapshotDto,
+    statisticData: DUMMY_GRAPH.stats as GraphStatsDto,
+  };
 
-  if (graphData?.statisticData == null) {
-    return <EmptyGraph />;
-  }
+  // 중분류 데이터
+  const subclusters: Subcluster[] = DUMMY_GRAPH.subclusters;
+
+  // 사이드바에서 노드 클릭 시 포커싱만 (줌인 + 시각적 효과)
+  const handleNodeFocus = (nodeId: number) => {
+    setFocusedNodeId((prev) => (prev === nodeId ? null : nodeId));
+  };
+
+  // 그래프에서 노드 직접 클릭 시 상세 페이지로 이동
+  const handleNodeClick = (nodeId: number) => {
+    navigate(`/visualize/${nodeId}`);
+  };
 
   return (
-    <VisualizeToggle
-      graphData={graphData}
-      avatarUrl={me?.profile?.avatarUrl ?? null}
-    />
+    <div className="flex w-full h-full overflow-hidden select-none">
+      {/* 그래프 구조 사이드바 */}
+      <VisualizeSidebar
+        graphData={graphData.nodeData}
+        isExpanded={isSidebarExpanded}
+        setIsExpanded={setIsSidebarExpanded}
+        onNodeFocus={handleNodeFocus}
+        focusedNodeId={focusedNodeId}
+        subclusters={subclusters}
+        expandedSubclusters={expandedSubclusters}
+        onToggleSubcluster={handleToggleSubcluster}
+      />
+
+      {/* 메인 시각화 영역 */}
+      <div className="flex-1 overflow-hidden">
+        <VisualizeToggle
+          graphData={graphData}
+          avatarUrl={me?.profile?.avatarUrl ?? null}
+          onNodeClick={handleNodeClick}
+          focusedNodeId={focusedNodeId}
+          subclusters={subclusters}
+          expandedSubclusters={expandedSubclusters}
+          onToggleSubcluster={handleToggleSubcluster}
+          onClusterClick={handleClusterClick}
+        />
+      </div>
+
+      {/* 클러스터 요약 모달 */}
+      {selectedClusterSummary && (
+        <ClusterSummaryModal
+          cluster={selectedClusterSummary}
+          connections={DUMMY_GRAPH_SUMMARY.connections.filter(
+            (c) =>
+              c.source_cluster === selectedClusterSummary.name ||
+              c.target_cluster === selectedClusterSummary.name
+          )}
+          recommendations={DUMMY_GRAPH_SUMMARY.recommendations.filter((r) =>
+            r.related_nodes.some((nodeId) =>
+              selectedClusterSummary.notable_conversations.includes(nodeId)
+            )
+          )}
+          onClose={() => setSelectedClusterSummary(null)}
+        />
+      )}
+    </div>
   );
 }
