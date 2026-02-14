@@ -8,6 +8,7 @@ import uuid from "@/utils/uuid";
 import { MdAttachFile } from "react-icons/md";
 import FilePreviewList from "../FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
+import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 
 export default function ChatSendBox() {
@@ -22,8 +23,13 @@ export default function ChatSendBox() {
     fileInputRef,
     handleButtonClick,
     handleFileChange,
+    handleDropFile,
     handleRemoveFile,
   } = useFileAttachment();
+
+  const { dragProps } = useDragDrop({
+    onFileDrop: handleDropFile,
+  });
 
   const handleSend = async () => {
     const text = input.trim();
@@ -62,7 +68,10 @@ export default function ChatSendBox() {
   };
 
   return (
-    <div className="flex w-[744px] flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff]">
+    <div
+      {...dragProps}
+      className="flex w-[744px] flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff]"
+    >
       <FilePreviewList
         files={attachedFiles}
         previewUrls={previewUrls}

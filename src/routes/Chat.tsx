@@ -1,5 +1,5 @@
 import ChatWindow from "../components/ChatWindow";
-import ChatSendBox from "../components/ChatSendBox";
+import ChatSendBox from "../components/chat/ChatSendBox";
 import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";

@@ -1,20 +1,25 @@
-import React, { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import threadRepo from "../managers/threadRepo";
-import { parseConversations } from "../utils/parseConversations";
-import { toMarkdownFromUnknown } from "../utils/toMarkdown";
-import { ChatMessage } from "../types/Chat";
-import type { Status } from "../types/FileUploadStatus";
+import threadRepo from "../../managers/threadRepo";
+import { parseConversations } from "../../utils/parseConversations";
+import { toMarkdownFromUnknown } from "../../utils/toMarkdown";
+import { ChatMessage } from "../../types/Chat";
+import type { Status } from "../../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
 import { api } from "@/apiClient";
-import { IoChatbubbles, IoCloudUpload, IoCheckmarkCircle, IoAlertCircle } from "react-icons/io5";
+import useDragDrop from "@/hooks/useDragDrop";
+import {
+  IoChatbubbles,
+  IoCloudUpload,
+  IoCheckmarkCircle,
+  IoAlertCircle,
+} from "react-icons/io5";
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
-  const [isOver, setIsOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const latestProgress = useRef(0);
@@ -104,39 +109,18 @@ export default function DropJsonZone() {
         ? "error"
         : "idle";
 
-  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOver(true);
-  }, []);
-  const onDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOver(false);
-  }, []);
-
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsOver(false);
+  const { dragProps, isOver } = useDragDrop({
+    onFileDrop: (files) => {
       setProgress(0);
       reset();
-
-      const files = Array.from(e.dataTransfer.files || []);
-      if (!files.length) return;
-
       // 첫 파일만
       importJson(files[0]);
     },
-    [importJson, reset],
-  );
+  });
 
   return (
     <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      {...dragProps}
       className={`
         relative w-full rounded-xl border-2 border-dashed p-6
         transition-all duration-200 cursor-pointer
@@ -188,7 +172,9 @@ export default function DropJsonZone() {
           </p>
           <p className="text-xs text-text-secondary">
             {status === "idle" && t("settings.dropJsonZone.maxSize")}
-            {status === "reading" && !isParsing && t("settings.dropJsonZone.uploading", { progress })}
+            {status === "reading" &&
+              !isParsing &&
+              t("settings.dropJsonZone.uploading", { progress })}
             {isParsing && t("settings.dropJsonZone.parsing")}
             {status === "error" && error?.message}
           </p>

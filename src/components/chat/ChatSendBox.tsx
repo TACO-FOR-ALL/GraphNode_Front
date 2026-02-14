@@ -1,21 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { FaArrowRight } from "react-icons/fa6";
 import { IoIosArrowDown } from "react-icons/io";
-import uuid from "../utils/uuid";
-import threadRepo from "../managers/threadRepo";
+import uuid from "../../utils/uuid";
+import threadRepo from "../../managers/threadRepo";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   OPENAI_MODEL,
   OPENAI_MODEL_DEFAULT,
   OpenAIModel,
 } from "@/constants/OPENAI_MODEL";
-import AutoResizeTextarea from "./AutoResizeTextArea";
+import AutoResizeTextarea from "../AutoResizeTextArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { api } from "@/apiClient";
 import { MdAttachFile } from "react-icons/md";
-import FilePreviewList from "./FilePreviewList";
+import FilePreviewList from "../FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
+import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import { useToastStore } from "@/store/useToastStore";
 
@@ -48,9 +49,14 @@ export default function ChatSendBox({
     fileInputRef,
     handleButtonClick,
     handleFileChange,
+    handleDropFile,
     handleRemoveFile,
     clearFiles,
   } = useFileAttachment();
+
+  const { dragProps } = useDragDrop({
+    onFileDrop: handleDropFile,
+  });
 
   // threadId가 변경되면 리셋
   useEffect(() => {
@@ -216,6 +222,7 @@ export default function ChatSendBox({
 
   return (
     <div
+      {...dragProps}
       className={`flex w-[${width}] absolute bottom-8 left-0 right-0 flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md`}
     >
       <FilePreviewList

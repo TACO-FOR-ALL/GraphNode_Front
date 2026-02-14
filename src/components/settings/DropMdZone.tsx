@@ -1,18 +1,23 @@
 import { useTranslation } from "react-i18next";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Status } from "../types/FileUploadStatus";
+import type { Status } from "../../types/FileUploadStatus";
 import { readMdContent } from "@/utils/readMdContent";
 import { Note } from "@/types/Note";
 import uuid from "@/utils/uuid";
 import { noteRepo } from "@/managers/noteRepo";
-import { IoDocumentText, IoCloudUpload, IoCheckmarkCircle, IoAlertCircle } from "react-icons/io5";
+import useDragDrop from "@/hooks/useDragDrop";
+import {
+  IoDocumentText,
+  IoCloudUpload,
+  IoCheckmarkCircle,
+  IoAlertCircle,
+} from "react-icons/io5";
 
 export default function DropMdZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
-  const [isOver, setIsOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
 
@@ -73,26 +78,10 @@ export default function DropMdZone() {
         ? "error"
         : "idle";
 
-  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOver(true);
-  }, []);
-  const onDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOver(false);
-  }, []);
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsOver(false);
+  const { dragProps, isOver } = useDragDrop({
+    onFileDrop: (rawFiles) => {
       setProgress(0);
       reset();
-
-      const rawFiles = Array.from(e.dataTransfer.files || []);
-      if (!rawFiles.length) return;
 
       const validFiles = rawFiles.filter((file) =>
         file.name.toLowerCase().endsWith(".md"),
@@ -109,14 +98,11 @@ export default function DropMdZone() {
 
       importMds(validFiles);
     },
-    [importMds, reset, t],
-  );
+  });
 
   return (
     <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      {...dragProps}
       className={`
         relative w-full rounded-xl border-2 border-dashed p-6
         transition-all duration-200 cursor-pointer
@@ -164,11 +150,17 @@ export default function DropMdZone() {
               ? t("settings.dropJsonZone.done")
               : status === "error"
                 ? t("settings.dropJsonZone.error")
-                : t("settings.dropMdZone.description", "Drop your markdown files here")}
+                : t(
+                    "settings.dropMdZone.description",
+                    "Drop your markdown files here",
+                  )}
           </p>
           <p className="text-xs text-text-secondary">
-            {status === "idle" && t("settings.dropMdZone.maxSize", "Multiple files supported")}
-            {status === "reading" && !isParsing && t("settings.dropJsonZone.uploading", { progress })}
+            {status === "idle" &&
+              t("settings.dropMdZone.maxSize", "Multiple files supported")}
+            {status === "reading" &&
+              !isParsing &&
+              t("settings.dropJsonZone.uploading", { progress })}
             {isParsing && t("settings.dropJsonZone.parsing")}
             {status === "error" && error?.message}
           </p>
