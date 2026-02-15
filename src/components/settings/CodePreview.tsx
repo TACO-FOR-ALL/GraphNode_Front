@@ -63,8 +63,8 @@ export default function CodePreview({
   return (
     <div
       ref={containerRef}
-      className="rounded-lg overflow-hidden border border-text-tertiary transition-all duration-200 w-full"
-      style={{ marginTop: isOpenPanel ? "240px" : "0px" }}
+      className="rounded-lg overflow-auto border border-text-tertiary transition-all duration-200 w-full"
+      style={{ marginTop: isOpenPanel ? "240px" : "0px", minHeight: 140 }}
     >
       <pre className="p-4 text-sm m-0">
         <code
