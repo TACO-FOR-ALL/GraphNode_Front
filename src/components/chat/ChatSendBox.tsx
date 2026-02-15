@@ -80,11 +80,45 @@ export default function ChatSendBox({
     clearFiles();
 
     try {
-      const result = await api.ai.chat(targetThreadId, {
-        model: "openai",
-        id: id,
-        chatContent: messageText,
-      });
+      // =========================================================================================
+      // FIXME: [Frontend TEAM Check Required]
+      // 현재는 단건 응답(chat)을 사용 중이지만, 향후 스트리밍(chatStream)으로 전환할 수 있습니다.
+      //
+      // 1. chat() vs chatStream() 차이점
+      //    - chat(): 요청 -> 대기 -> (전체 완료 후) 응답 JSON 수신. (현재 방식)
+      //    - chatStream(): 요청 -> (즉시) SSE 연결 -> 청크(Chunk) 단위 수신 -> (완료 시) 연결 종료.
+      //
+      // 2. onStream / onEvent 콜백
+      //    - chat()의 onStream: 스트리밍 중 텍스트 조각(delta)이 도착할 때마다 호출됩니다.
+      //    - chatStream()의 onEvent: SSE 이벤트 객체({ event: 'chunk' | 'result', data: ... })가 도착할 때마다 호출됩니다.
+      //
+      // 3. 스트리밍 구현 예시 (Future Work)
+      //    const abort = await api.ai.chatStream(
+      //      targetThreadId,
+      //      { model: "openai", id: id, chatContent: messageText },
+      //      attachedFiles, // 파일 목록 전달
+      //      ({ event, data }) => {
+      //        if (event === 'chunk') {
+      //          // data.text (타이핑 효과 처럼 UI에 텍스트 추가)
+      //          appendMessageText(targetThreadId, id, data.text);
+      //        } else if (event === 'result') {
+      //          // data (최종 완료된 메시지 객체)
+      //          setSending(false);
+      //        }
+      //      }
+      //    );
+      //    // 중단 필요 시: abort();
+      // =========================================================================================
+
+      const result = await api.ai.chat(
+        targetThreadId,
+        {
+          model: "openai",
+          id: id,
+          chatContent: messageText,
+        },
+        attachedFiles // [Fixed] 파일 첨부 로직 추가 (빈 배열이어도 안전함)
+      );
 
       // API키 미등록 응답 처리
       if (!result.isSuccess && result.error.statusCode == 403) {
@@ -145,7 +179,7 @@ export default function ChatSendBox({
     const state = location.state as {
       autoSend?: boolean;
       initialMessage?: string;
-      attachedFiles?: File[]; // TODO: FormData로 백엔드에게 넘기기
+      attachedFiles?: File[]; // [Check] 여기서 받은 File[]을 그대로 chat()에 넘기면 됨
       id?: string;
     } | null;
 
