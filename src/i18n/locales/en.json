@@ -52,7 +52,15 @@
   "notes": {
     "workspace": "workspace",
     "newNote": "New Note",
-    "newFolder": "New Folder"
+    "newFolder": "New Folder",
+    "image": {
+      "onlyImageFiles": "Only image files can be uploaded.",
+      "added": "{{count}} image(s) added.",
+      "compressionFailed": "Failed to compress image.",
+      "pasteFailed": "Failed to paste image.",
+      "dropHere": "Drop image here"
+    },
+    "loading": "Loading Editor..."
   },
   "visualize": {
     "loading": "Constructing graph...",
@@ -124,7 +132,8 @@
       "subtitle": "Choose the language you want GraphNode to display.",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
-      "zh": "🇨🇳 简体中文"
+      "zh": "🇨🇳 简体中文",
+      "ja": "🇯🇵 日本語"
     },
     "timeFormat": {
       "title": "Time Format",

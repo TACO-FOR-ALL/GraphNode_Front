@@ -26,10 +26,15 @@ import { CustomReactNode } from "./CustomReactComponent";
 import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import { useImageCompression } from "@/hooks/useImageCompression";
+import useDragDrop from "@/hooks/useDragDrop";
+import { useToastStore } from "@/store/useToastStore";
+import { useTranslation } from "react-i18next";
 
 const lowlight = createLowlight(common);
 
 export default ({ noteId }: { noteId: string | null }) => {
+  const { t } = useTranslation();
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializingRef = useRef(false); // 에디터 초기화 중 자동 저장 방지
@@ -44,6 +49,8 @@ export default ({ noteId }: { noteId: string | null }) => {
   const isDirtyRef = useRef(false);
 
   const { currentHighlight } = useCurrentHightlightStore();
+  const { compressImage, isCompressing } = useImageCompression();
+  const { addToast } = useToastStore();
 
   // 하이라이트 테마 CSS 로드
   useEffect(() => {
@@ -53,10 +60,12 @@ export default ({ noteId }: { noteId: string | null }) => {
     const oldOverride = document.getElementById("hljs-override-style");
     if (oldOverride) oldOverride.remove();
 
-    let cssPath = `/hljs-styles/${currentHighlight}.css`;
+    // Vite base path 고려
+    const basePath = import.meta.env.BASE_URL || "/";
+    let cssPath = `${basePath}hljs-styles/${currentHighlight}.css`;
     if (currentHighlight.startsWith("base16-")) {
       const themeName = currentHighlight.replace("base16-", "");
-      cssPath = `/hljs-styles/base16/${themeName}.css`;
+      cssPath = `${basePath}hljs-styles/base16/${themeName}.css`;
     }
 
     fetch(cssPath)
@@ -346,11 +355,114 @@ export default ({ noteId }: { noteId: string | null }) => {
 
   const { isExpanded } = useSidebarExpandStore();
 
+  // 이미지 드롭 핸들러
+  const handleImageDrop = async (files: File[]) => {
+    if (!editor) return;
+
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length === 0) {
+      addToast({
+        message: t("notes.image.onlyImageFiles"),
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      for (const file of imageFiles) {
+        const base64 = await compressImage(file);
+        editor.commands.setImage({ src: base64 });
+      }
+
+      addToast({
+        message: t("notes.image.added", { count: imageFiles.length }),
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Failed to compress image:", error);
+      addToast({
+        message: t("notes.image.compressionFailed"),
+        type: "error",
+      });
+    }
+  };
+
+  // 드래그 앤 드롭 훅 사용
+  const { dragProps, isOver } = useDragDrop({
+    onFileDrop: handleImageDrop,
+  });
+
+  // 클립보드 붙여넣기 이벤트
+  useEffect(() => {
+    if (!editor || !editor.view) return;
+
+    // editor.view.dom 접근을 try-catch로 안전하게 처리
+    let editorElement: HTMLElement;
+    try {
+      editorElement = editor.view.dom;
+      if (!editorElement) return;
+    } catch (error) {
+      // view가 아직 마운트되지 않은 경우
+      console.warn("Editor view not yet mounted:", error);
+      return;
+    }
+
+    const handlePaste = async (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const imageItems = Array.from(items).filter((item) =>
+        item.type.startsWith("image/"),
+      );
+
+      if (imageItems.length === 0) return;
+
+      event.preventDefault();
+
+      try {
+        for (const item of imageItems) {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const base64 = await compressImage(file);
+          editor.commands.setImage({ src: base64 });
+        }
+
+        addToast({
+          message: t("notes.image.added", { count: imageItems.length }),
+          type: "success",
+        });
+      } catch (error) {
+        console.error("Failed to compress pasted image:", error);
+        addToast({
+          message: t("notes.image.pasteFailed"),
+          type: "error",
+        });
+      }
+    };
+
+    editorElement.addEventListener("paste", handlePaste);
+
+    return () => {
+      // cleanup 시에도 안전하게 체크
+      try {
+        if (editor.view?.dom) {
+          editor.view.dom.removeEventListener("paste", handlePaste);
+        }
+      } catch (error) {
+        // Cleanup 중 에러 무시
+        console.warn("Failed to remove paste listener:", error);
+      }
+    };
+  }, [editor, compressImage, addToast, t]);
+
   return (
     <div
-      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative`}
+      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative ${isOver ? "ring-2 ring-primary ring-opacity-50" : ""}`}
+      {...dragProps}
     >
-      {/* 기존 저장 상태 UI (우측 상단) 그대로 */}
+      {/* 저장 상태 UI */}
       {saveStatus && (
         <div className="absolute top-1 right-2 flex items-center gap-2 p-2 justify-center">
           {saveStatus === "saving" && (
@@ -359,6 +471,15 @@ export default ({ noteId }: { noteId: string | null }) => {
           <p className="text-[12px] font-normal font-noto-sans-kr text-text-secondary">
             {saveStatus === "saving" ? "Saving..." : "Saved"}
           </p>
+        </div>
+      )}
+
+      {/* 드래그 오버레이 */}
+      {isOver && (
+        <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-bg-primary rounded-lg px-4 py-2 shadow-lg">
+            <p className="text-primary font-medium">{t("notes.image.dropHere")}</p>
+          </div>
         </div>
       )}
       <div className="editor-container pt-6">
