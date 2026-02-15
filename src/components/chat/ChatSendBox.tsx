@@ -81,37 +81,16 @@ export default function ChatSendBox({
 
     try {
       // =========================================================================================
-      // FIXME: [Frontend TEAM Check Required]
-      // 현재는 단건 응답(chat)을 사용 중이지만, 향후 스트리밍(chatStream)으로 전환할 수 있습니다.
+      // [API Usage Note]
+      // 1. 기본 사용법 (api.ai.chat)
+      //    - 가장 권장되는 고수준 API입니다. 
+      //    - 내부적으로 SSE를 사용하며, 'onStream' 콜백을 통해 타이핑 효과(청크 수신)를 쉽게 구현할 수 있습니다.
+      //    - 모든 스트림이 완료되면 최종 결과(AIChatResponseDto)를 Promise로 반환합니다.
       //
-      // 1. chat() vs chatStream() 차이점
-      //    - chat(): 요청 -> 대기 -> (전체 완료 후) 응답 JSON 수신. (현재 방식)
-      //    - chatStream(): 요청 -> (즉시) SSE 연결 -> 청크(Chunk) 단위 수신 -> (완료 시) 연결 종료.
-      //
-      // 2. onStream / onEvent 콜백
-      //    - chat()의 onStream: 스트리밍 중 텍스트 조각(delta)이 도착할 때마다 호출됩니다.
-      //    - chatStream()의 onEvent: SSE 이벤트 객체({ event: 'chunk' | 'result', data: ... })가 도착할 때마다 호출됩니다.
-      //
-      // 3. 스트리밍 구현 예시 (Future Work)
-      //    const abort = await api.ai.chatStream(
-      //      targetThreadId,
-      //      { model: "openai", id: id, chatContent: messageText },
-      //      attachedFiles, // 파일 목록 전달
-      //      ({ event, data }) => {
-      //        if (event === 'chunk') {
-      //          // data.text (타이핑 효과 처럼 UI에 텍스트 추가)
-      //          appendMessageText(targetThreadId, id, data.text);
-      //        } else if (event === 'result') {
-      //          // data (최종 완료된 메시지 객체)
-      //          setSending(false);
-      //        }
-      //      }
-      //    );
-      //    // 중단 필요 시: abort();
-      //  
-      // AIChatResponseDto(src/endpoint/ai.ts) 및 MessageDto(src/types/message.ts) 보면 응답의 구조 파악 가능
-      // 혹은 FE SDK의 README.md 참조(완벽하지 않을 가능성 존재)   
-      
+      // 2. 고급 제어 (api.ai.chatStream)
+      //    - SSE 이벤트를 직접 제어해야 하는 경우(예: 커스텀 이벤트 처리 등)에만 사용하는 저수준 API입니다.
+      //    - onEvent 콜백을 통해 { event, data } 형태의 Raw 이벤트를 직접 처리해야 합니다.
+      //    - 일반적인 챗 기능 구현에는 1번(api.ai.chat)으로 충분합니다.
       // =========================================================================================
 
       const result = await api.ai.chat(
