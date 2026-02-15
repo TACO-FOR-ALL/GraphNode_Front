@@ -9,6 +9,7 @@ const languages = [
   { code: "ko", key: "settings.language.ko" },
   { code: "en", key: "settings.language.en" },
   { code: "zh", key: "settings.language.zh" },
+  { code: "ja", key: "settings.language.ja" },
 ] as const;
 
 const timeFormats = [

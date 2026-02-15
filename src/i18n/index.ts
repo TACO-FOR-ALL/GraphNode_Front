@@ -5,8 +5,9 @@ import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
 import ko from "./locales/ko.json";
 import zh from "./locales/zh.json";
+import ja from "./locales/ja.json";
 
-const supportedLangs = ["en", "ko", "zh"];
+const supportedLangs = ["en", "ko", "zh", "ja"];
 
 async function detectSystemLanguage() {
   try {
@@ -31,6 +32,7 @@ export async function initI18n() {
       en: { translation: en },
       ko: { translation: ko },
       zh: { translation: zh },
+      ja: { translation: ja },
     },
     lng: detectedLang,
     fallbackLng: "en",
