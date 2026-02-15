@@ -80,11 +80,28 @@ export default function ChatSendBox({
     clearFiles();
 
     try {
-      const result = await api.ai.chat(targetThreadId, {
-        model: "openai",
-        id: id,
-        chatContent: messageText,
-      });
+      // =========================================================================================
+      // [API Usage Note]
+      // 1. 기본 사용법 (api.ai.chat)
+      //    - 가장 권장되는 고수준 API입니다. 
+      //    - 내부적으로 SSE를 사용하며, 'onStream' 콜백을 통해 타이핑 효과(청크 수신)를 쉽게 구현할 수 있습니다.
+      //    - 모든 스트림이 완료되면 최종 결과(AIChatResponseDto)를 Promise로 반환합니다.
+      //
+      // 2. 고급 제어 (api.ai.chatStream)
+      //    - SSE 이벤트를 직접 제어해야 하는 경우(예: 커스텀 이벤트 처리 등)에만 사용하는 저수준 API입니다.
+      //    - onEvent 콜백을 통해 { event, data } 형태의 Raw 이벤트를 직접 처리해야 합니다.
+      //    - 일반적인 챗 기능 구현에는 1번(api.ai.chat)으로 충분합니다.
+      // =========================================================================================
+
+      const result = await api.ai.chat(
+        targetThreadId,
+        {
+          model: "openai",
+          id: id,
+          chatContent: messageText,
+        },
+        attachedFiles // [Fixed] 파일 첨부 로직 추가 (빈 배열이어도 안전함)
+      );
 
       // API키 미등록 응답 처리
       if (!result.isSuccess && result.error.statusCode == 403) {
@@ -145,7 +162,7 @@ export default function ChatSendBox({
     const state = location.state as {
       autoSend?: boolean;
       initialMessage?: string;
-      attachedFiles?: File[]; // TODO: FormData로 백엔드에게 넘기기
+      attachedFiles?: File[]; // [Check] 여기서 받은 File[]을 그대로 chat()에 넘기면 됨
       id?: string;
     } | null;
 
