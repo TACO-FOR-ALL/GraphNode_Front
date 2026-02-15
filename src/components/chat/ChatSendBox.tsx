@@ -108,6 +108,10 @@ export default function ChatSendBox({
       //      }
       //    );
       //    // 중단 필요 시: abort();
+      //  
+      // AIChatResponseDto(src/endpoint/ai.ts) 및 MessageDto(src/types/message.ts) 보면 응답의 구조 파악 가능
+      // 혹은 FE SDK의 README.md 참조(완벽하지 않을 가능성 존재)   
+      
       // =========================================================================================
 
       const result = await api.ai.chat(
