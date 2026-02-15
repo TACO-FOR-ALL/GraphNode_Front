@@ -315,10 +315,11 @@ export default function Graph2D({
 
     // ===== 클러스터 간 거리 (bigRadius) =====
     // 클러스터들이 화면 중앙에서 얼마나 떨어져 배치되는지 결정
-    // - 계수(0.1) 증가: 클러스터들이 더 멀리 퍼짐 (클러스터 간 거리 증가)
-    // - 계수(0.1) 감소: 클러스터들이 중앙에 더 모임 (클러스터 간 거리 감소)
+    // - 계수(0.15) 증가: 클러스터들이 더 멀리 퍼짐 (클러스터 간 거리 증가)
+    // - 계수(0.15) 감소: 클러스터들이 중앙에 더 모임 (클러스터 간 거리 감소)
     // - K(클러스터 개수) 추가: 클러스터가 많을수록 자동으로 더 퍼짐
-    const bigRadius = Math.min(width, height) * 0.01 + (K - 1);
+    // - 최소값 100 보장: 작은 화면에서도 충분한 간격 확보
+    const bigRadius = Math.max(100, Math.min(width, height) * 0.15 + K * 20);
 
     const newCircles: ClusterCircle[] = [];
 
@@ -330,10 +331,11 @@ export default function Graph2D({
 
       // ===== 클러스터 원 크기 (clusterRadius) =====
       // 각 클러스터의 배경 원 크기 결정
-      // - 기본값(40) 증가: 모든 클러스터의 최소 크기 증가
-      // - 계수(13) 증가: 노드 수에 따른 크기 증가 폭이 커짐 (큰 클러스터가 더 커짐)
+      // - 기본값(35) 증가: 모든 클러스터의 최소 크기 증가
+      // - 계수(10) 증가: 노드 수에 따른 크기 증가 폭이 커짐 (큰 클러스터가 더 커짐)
       // - Math.sqrt 사용: 노드 수가 많아도 크기가 급격히 커지지 않도록 완화
-      const clusterRadius = 40 + Math.sqrt(n) * 12;
+      // - 최대값 제한: 클러스터가 너무 커지는 것을 방지
+      const clusterRadius = Math.min(120, 35 + Math.sqrt(n) * 10);
 
       const cx = centerX + bigRadius * Math.cos(theta);
       const cy = centerY + bigRadius * Math.sin(theta);
@@ -452,14 +454,14 @@ export default function Graph2D({
 
       // ----- 노드 간 척력 (charge) -----
       // 음수 값: 노드끼리 서로 밀어냄
-      // - 절대값 증가 (예: -8 → -20): 노드들이 더 멀리 퍼짐 (척력 증가)
-      // - 절대값 감소 (예: -20 → -8): 노드들이 더 가까이 모임 (척력 감소)
-      // - 중분류 노드(-12/-20)가 일반 노드(-8)보다 더 큰 척력을 가짐
+      // - 절대값 증가 (예: -10 → -30): 노드들이 더 멀리 퍼짐 (척력 증가)
+      // - 절대값 감소 (예: -30 → -10): 노드들이 더 가까이 모임 (척력 감소)
+      // - 중분류 노드(-15/-30)가 일반 노드(-10)보다 더 큰 척력을 가짐
       .force(
         "charge",
         d3Force.forceManyBody<SimNode>().strength((d) => {
-          if (isSubclusterToggle) return d.isSubcluster ? -12 : -8;
-          return d.isSubcluster ? -20 : -8;
+          if (isSubclusterToggle) return d.isSubcluster ? -15 : -10;
+          return d.isSubcluster ? -30 : -10;
         }),
       )
 

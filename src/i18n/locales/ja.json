@@ -1,0 +1,247 @@
+{
+  "login": {
+    "welcome": "お帰りなさい！",
+    "signInWithGoogle": "Googleでログイン",
+    "signInWithApple": "Appleでログイン",
+    "closeWindow": "ウィンドウを閉じる",
+    "minimizeWindow": "ウィンドウを最小化",
+    "maximizeWindow": "ウィンドウを最大化",
+    "popupBlocked": "ポップアップがブロックされました。ポップアップを許可してください。",
+    "error": {
+      "server": "サーバーエラーが発生しました。",
+      "sessionNotSet": "ログインセッションが設定されていません。もう一度お試しください。",
+      "fetchUserFailed": "ログイン後にユーザー情報を取得できませんでした。",
+      "oauthError": "OAuthエラーが発生しました。",
+      "googleLoginFailed": "Googleログインの開始に失敗しました。",
+      "appleLoginFailed": "Appleログインの開始に失敗しました。"
+    }
+  },
+  "toast": {
+    "apiKeyRequired": "まずAPIキーを登録してください。",
+    "goToSettings": "設定へ移動"
+  },
+  "sideTabBar": {
+    "home": "ホーム",
+    "visualize": "可視化",
+    "settings": "設定"
+  },
+  "aiAgentChatBox": {
+    "title": "こんにちは！",
+    "subtitle": "何かお手伝いできますか？",
+    "summary": "この内容を要約",
+    "note": "この内容をメモに",
+    "placeholder": "質問、検索、または何でもお聞きください",
+    "selectSourceFirst": "まずソースを選択してください（@をクリックしてチャットまたはメモを選択）"
+  },
+  "home": {
+    "title": "こんにちは、{{provider}}さん",
+    "subtitle": "GraphNodeで思考を記録しましょう。",
+    "recentNotes": "最近のメモ",
+    "chatList": {
+      "title": "チャットリスト",
+      "noChat": "保存された会話はまだありません",
+      "startChat": "新しいチャットを開始"
+    }
+  },
+  "chat": {
+    "newChat": "新しいチャット",
+    "noChat": "保存された会話はまだありません",
+    "selectChat": "左側からチャットを選択するか、新しいチャットを開始してください。",
+    "helpMessage": "何かお手伝いできますか？"
+  },
+  "notes": {
+    "workspace": "ワークスペース",
+    "newNote": "新しいメモ",
+    "newFolder": "新しいフォルダ",
+    "image": {
+      "onlyImageFiles": "画像ファイルのみアップロードできます。",
+      "added": "画像{{count}}枚を追加しました。",
+      "compressionFailed": "画像の圧縮に失敗しました。",
+      "pasteFailed": "画像の貼り付けに失敗しました。",
+      "dropHere": "ここに画像をドロップ"
+    },
+    "loading": "エディターを読み込み中..."
+  },
+  "visualize": {
+    "loading": "グラフを構築中...",
+    "error": {
+      "title": "グラフを読み込めません",
+      "description": "グラフデータの読み込み中に問題が発生しました。後でもう一度お試しください。",
+      "retry": "再試行",
+      "persistentHint": "問題が解決しない場合は、",
+      "checkStatus": "サーバーの状態を確認してください"
+    },
+    "empty": {
+      "title": "まだグラフが生成されていません",
+      "description": "グラフを生成して、チャットとメモの間の接続を可視化します。",
+      "generate": "グラフを生成",
+      "generating": "生成中...",
+      "generatingNotice": "生成が完了したら通知します。アプリを閉じないでください。",
+      "notice": "グラフは保存されたチャットとメモに基づいて生成されます。チャットまたはメモがない場合、グラフは生成できません。"
+    }
+  },
+  "search": {
+    "placeholder": "チャットとメモを検索...",
+    "chats": "チャット",
+    "notes": "メモ",
+    "noResultFound": "{{provider}}が見つかりません",
+    "shortcut": "ショートカット"
+  },
+  "settings": {
+    "title": "設定",
+    "my": {
+      "api": {
+        "title": "AIプロバイダーAPIキー",
+        "subtitle": "AIプロバイダーのAPIキーを安全に管理します。",
+        "placeholder": "{{provider}}のAPIキーを入力",
+        "connected": "接続済み",
+        "save": "保存",
+        "saving": "保存中...",
+        "remove": "削除"
+      },
+      "subscription": {
+        "title": "マイサブスクリプション",
+        "subtitle": "GraphNodeのプランを管理します。"
+      },
+      "logout": "ログアウト"
+    },
+    "appearance": {
+      "editor": {
+        "title": "コードテーマ",
+        "subTitle": "見やすくするためにインターフェースのコードテーマを調整します"
+      },
+      "theme": {
+        "title": "テーマ",
+        "subTitle": "見やすくするためにアプリのテーマを調整します。",
+        "system": "システム",
+        "dark": "ダークモード",
+        "light": "ライトモード"
+      },
+      "advanced": {
+        "title": "詳細設定",
+        "developer": "開発者モード",
+        "developerDescription": "開発者モードは、アプリを作成する人に役立つメニュー項目を表示します",
+        "hardware": "ハードウェアアクセラレーション",
+        "hardwareDescription": "GPUを使用してGraphNodeをよりスムーズにします。視覚的な問題が発生している場合は、この機能をオフにしてください。",
+        "restartRequired": "変更を適用するにはアプリを再起動してください。",
+        "restartNow": "今すぐ再起動"
+      }
+    },
+    "language": {
+      "title": "言語を選択",
+      "subtitle": "GraphNodeに表示する言語を選択してください。",
+      "ko": "🇰🇷 한국어",
+      "en": "🇺🇸 English",
+      "zh": "🇨🇳 简体中文",
+      "ja": "🇯🇵 日本語"
+    },
+    "timeFormat": {
+      "title": "時刻形式",
+      "auto": "自動",
+      "12hour": "12時間",
+      "24hour": "24時間"
+    },
+    "userSettings": {
+      "title": "ユーザー設定",
+      "my-account": "マイアカウント",
+      "data-privacy": "データとプライバシー"
+    },
+    "appSettings": {
+      "title": "アプリ設定",
+      "appearance": "外観",
+      "notification": "通知",
+      "keybinds": "キーバインド",
+      "language-time": "言語と時刻"
+    },
+    "logout": "ログアウト",
+    "dropJsonZone": {
+      "title": "JSONファイルをドラッグ＆ドロップでアップロード",
+      "description": "conversation.jsonファイルをここにドロップ",
+      "maxSize": "1つのファイルのみドロップ可能（最大512MB推奨）",
+      "uploading": "アップロード中（読み取り中）... {progress}%",
+      "parsing": "解析中（パース中）...",
+      "done": "完了",
+      "error": "エラー",
+      "fileName": "ファイル名",
+      "errorMessage": {
+        "notJson": "JSONファイルのみアップロードできます（.json）",
+        "readFailed": "ファイルの読み取りに失敗",
+        "parseFailed": "JSONの解析に失敗",
+        "processingFailed": "処理中に失敗"
+      }
+    },
+    "dropMdZone": {
+      "title": "Markdownファイルをドラッグ＆ドロップでアップロード",
+      "description": "Markdownファイルをここにドロップ",
+      "maxSize": "複数ファイル対応",
+      "errorMessage": {
+        "notMd": "Markdownファイルのみアップロードできます（.md）",
+        "exceptOther": "一部のファイルはMD形式でないため除外されました。"
+      }
+    },
+    "notification": {
+      "overview": {
+        "title": "概要"
+      },
+      "desktopNotification": {
+        "title": "デスクトップ通知を有効にする",
+        "subtitle": "アプリがフォーカスされていない場合でもデスクトップで通知を受信"
+      },
+      "sounds": {
+        "title": "サウンド",
+        "subtitle": "次の場合にサウンドを再生..."
+      },
+      "newMessage": {
+        "title": "新しいメッセージ",
+        "subtitle": "新しいメッセージを受信したときにサウンドを再生"
+      },
+      "appNotification": {
+        "title": "アプリ通知",
+        "subtitle": "アプリ通知のサウンドを再生"
+      }
+    },
+    "dataPrivacy": {
+      "import": {
+        "title": "データをインポート",
+        "subtitle": "外部ソースからデータをインポート"
+      },
+      "dangerZone": {
+        "title": "危険ゾーン",
+        "subtitle": "元に戻せない操作です。慎重に進めてください。"
+      },
+      "clearChats": {
+        "title": "すべてのチャットをクリア",
+        "description": "すべてのチャット会話を完全に削除"
+      },
+      "clearNotes": {
+        "title": "すべてのメモをクリア",
+        "description": "すべてのメモとフォルダを完全に削除"
+      },
+      "delete": "削除",
+      "cancel": "キャンセル",
+      "confirmDelete": "削除を確認",
+      "deleting": "削除中..."
+    },
+    "keybindsPanel": {
+      "title": "キーボードショートカット",
+      "resetAll": "すべてリセット",
+      "description": "ショートカットをクリックして新しいキーの組み合わせを入力します。⌘+A、⌘+C、⌘+Vは使用できません。",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "waitingForKey": "キー入力待機中...",
+      "resetToDefault": "デフォルトにリセット",
+      "tips": {
+        "title": "ショートカットのヒント",
+        "modifierKeys": "修飾キー（⌘、Ctrl、Shift、Alt）と通常のキーを組み合わせます",
+        "systemKeys": "システムショートカット（⌘+A、⌘+C、⌘+V）は使用できません",
+        "windowsLinux": "Windows/Linuxでは⌘の代わりにCtrlが使用されます"
+      },
+      "actions": {
+        "search": "検索を開く",
+        "newNote": "新しいメモを作成",
+        "newFolder": "新しいフォルダを作成",
+        "newChat": "新しいチャットを作成"
+      }
+    }
+  }
+}

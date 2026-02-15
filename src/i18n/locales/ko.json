@@ -52,7 +52,15 @@
   "notes": {
     "workspace": "워크스페이스",
     "newNote": "새 노트",
-    "newFolder": "새 폴더"
+    "newFolder": "새 폴더",
+    "image": {
+      "onlyImageFiles": "이미지 파일만 업로드할 수 있습니다.",
+      "added": "이미지 {{count}}개가 추가되었습니다.",
+      "compressionFailed": "이미지 압축에 실패했습니다.",
+      "pasteFailed": "이미지 붙여넣기에 실패했습니다.",
+      "dropHere": "이미지를 여기에 드롭하세요"
+    },
+    "loading": "에디터 로딩 중..."
   },
   "visualize": {
     "loading": "그래프를 구성하는 중...",
@@ -124,7 +132,8 @@
       "subtitle": "GraphNode에 표시할 언어를 선택하세요.",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
-      "zh": "🇨🇳 简体中文"
+      "zh": "🇨🇳 简体中文",
+      "ja": "🇯🇵 日本語"
     },
     "timeFormat": {
       "title": "시간 형식",
