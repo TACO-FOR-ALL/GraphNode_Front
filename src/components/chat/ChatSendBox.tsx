@@ -68,8 +68,13 @@ export default function ChatSendBox({
     messageText: string,
     targetThreadId: string,
     id: string,
+    filesOverride?: File[], // [Fixed] 인자 추가: 외부(Home 등)에서 전달된 파일 강제 사용
   ) => {
     if (!messageText || sending || sendingRef.current) return;
+
+
+    // 첨부파일 우선순위: filesOverride > attachedFiles
+    const filesToSend = (filesOverride && filesOverride.length > 0) ? filesOverride : attachedFiles;
 
     // 중복 실행 방지
     sendingRef.current = true;
@@ -100,7 +105,7 @@ export default function ChatSendBox({
           id: id,
           chatContent: messageText,
         },
-        attachedFiles, // [Fixed] 파일 첨부 로직 추가 (빈 배열이어도 안전함)
+        filesToSend
       );
 
       // API키 미등록 응답 처리
@@ -194,7 +199,7 @@ export default function ChatSendBox({
     setIsPinned(true);
 
     // 자동으로 메시지 전송 (비동기로 실행)
-    handleSendMessage(messageText, threadId, id).catch((err) => {
+    handleSendMessage(messageText, threadId, id, state.attachedFiles).catch((err) => {
       console.error("Auto send failed:", err);
       // 에러 발생 시 ref 리셋하여 재시도 가능하게
       autoSendRef.current = false;
