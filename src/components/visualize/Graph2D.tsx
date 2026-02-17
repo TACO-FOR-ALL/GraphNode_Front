@@ -10,7 +10,13 @@ import {
   GraphEdgeDto,
   GraphNodeDto,
 } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import NodeChatPreview from "./NodeChatPreview";
 
 type SimNode = d3Force.SimulationNodeDatum &
@@ -361,6 +367,17 @@ function layoutWithBoundedForce(
 // 노드 크기 계산 (엣지 수 기반)
 const BASE_NODE_RADIUS = 3;
 const MAX_NODE_RADIUS = 5;
+const SUBCLUSTER_FOCUS_COLORS = [
+  "#4aa8c0",
+  "#e74c3c",
+  "#2ecc71",
+  "#f39c12",
+  "#9b59b6",
+  "#16a085",
+  "#e84393",
+  "#2d98da",
+  "#ff9f43",
+];
 
 function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
   if (maxEdgeCount === 0) return BASE_NODE_RADIUS;
@@ -415,6 +432,7 @@ export default function Graph2D({
     null,
   );
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
+  const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -429,6 +447,13 @@ export default function Graph2D({
     null,
   );
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
+  const lastPointerWasDraggingRef = useRef(false);
+  const collapsedSnapshotRef = useRef<Set<string> | null>(null);
+  const focusFetchIdRef = useRef(0);
+  const [focusLayoutMap, setFocusLayoutMap] = useState<Map<
+    number,
+    { x: number; y: number }
+  > | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const isAnimatingRef = useRef(false);
@@ -437,34 +462,141 @@ export default function Graph2D({
     () => new Map(positionedNodes.map((n) => [n.id, n])),
     [positionedNodes],
   );
-
-  const displayNodeMap = useMemo(
-    () => new Map(displayNodes.map((n) => [n.id, n])),
-    [displayNodes],
+  const nodeClusterNameById = useMemo(
+    () => new Map(positionedNodes.map((n) => [n.id, n.clusterName])),
+    [positionedNodes],
   );
 
-  const focusActive = focusNodeId !== null && displayNodeMap.has(focusNodeId);
+  const isSubclusterInFocus = useCallback(
+    (sc: Subcluster) =>
+      !!focusedClusterId &&
+      (sc.cluster_id === focusedClusterId ||
+        sc.node_ids.some(
+          (nodeId) => nodeClusterNameById.get(nodeId) === focusedClusterId,
+        )),
+    [focusedClusterId, nodeClusterNameById],
+  );
+
+  const clusterFocusActive = focusedClusterId !== null;
+  const focusCircle = useMemo(() => {
+    if (!clusterFocusActive) return null;
+    return circles.find((c) => c.clusterId === focusedClusterId) ?? null;
+  }, [clusterFocusActive, circles, focusedClusterId]);
+
+  const focusExplode = useMemo(() => {
+    if (!focusCircle) return null;
+    const targetRadius = Math.min(width, height) * 0.35;
+    const baseRadius = Math.max(focusCircle.radius, 1);
+    // Reduced explode factor for more natural organic layout
+    const factor = Math.min(1.5, Math.max(1.1, targetRadius / baseRadius));
+    return {
+      centerX: focusCircle.centerX,
+      centerY: focusCircle.centerY,
+      factor,
+    };
+  }, [focusCircle, width, height]);
+
+  const applyExplode = useCallback(
+    (x: number, y: number) => {
+      if (!focusExplode) return { x, y };
+      return {
+        x:
+          focusExplode.centerX +
+          (x - focusExplode.centerX) * focusExplode.factor,
+        y:
+          focusExplode.centerY +
+          (y - focusExplode.centerY) * focusExplode.factor,
+      };
+    },
+    [focusExplode],
+  );
+
+  const removeExplode = useCallback(
+    (x: number, y: number) => {
+      if (!focusExplode) return { x, y };
+      return {
+        x:
+          focusExplode.centerX +
+          (x - focusExplode.centerX) / focusExplode.factor,
+        y:
+          focusExplode.centerY +
+          (y - focusExplode.centerY) / focusExplode.factor,
+      };
+    },
+    [focusExplode],
+  );
+
+  const focusedDisplayNodes = useMemo(() => {
+    if (!clusterFocusActive) return displayNodes;
+    return displayNodes.filter((n) => n.cluster_name === focusedClusterId);
+  }, [clusterFocusActive, displayNodes, focusedClusterId]);
+
+  const focusedDisplayNodeMap = useMemo(
+    () => new Map(focusedDisplayNodes.map((n) => [n.id, n])),
+    [focusedDisplayNodes],
+  );
+
+  const focusedDisplayEdges = useMemo(() => {
+    if (!clusterFocusActive) return displayEdges;
+    return displayEdges.filter(
+      (e) =>
+        focusedDisplayNodeMap.has(e.source) &&
+        focusedDisplayNodeMap.has(e.target),
+    );
+  }, [clusterFocusActive, displayEdges, focusedDisplayNodeMap]);
+
+  const subclusterColorMap = useMemo(() => {
+    if (!clusterFocusActive) return new Map<string, string>();
+    const candidates = subclusters
+      .filter((sc) => isSubclusterInFocus(sc))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const map = new Map<string, string>();
+    candidates.forEach((sc, idx) => {
+      map.set(
+        sc.id,
+        SUBCLUSTER_FOCUS_COLORS[idx % SUBCLUSTER_FOCUS_COLORS.length],
+      );
+    });
+    return map;
+  }, [clusterFocusActive, isSubclusterInFocus, subclusters]);
+
+  const renderedDisplayNodes = useMemo(() => {
+    if (!focusExplode && !focusLayoutMap) return focusedDisplayNodes;
+    return focusedDisplayNodes.map((n) => {
+      const base = focusLayoutMap?.get(n.id as number) ?? { x: n.x, y: n.y };
+      const pos = focusExplode ? applyExplode(base.x, base.y) : base;
+      return { ...n, x: pos.x, y: pos.y };
+    });
+  }, [applyExplode, focusExplode, focusLayoutMap, focusedDisplayNodes]);
+
+  const renderedDisplayNodeMap = useMemo(
+    () => new Map(renderedDisplayNodes.map((n) => [n.id, n])),
+    [renderedDisplayNodes],
+  );
+
+  const focusActive =
+    focusNodeId !== null && focusedDisplayNodeMap.has(focusNodeId);
 
   // 엣지 분류
-  const normalIntraEdges = displayEdges.filter((e) => {
+  const normalIntraEdges = focusedDisplayEdges.filter((e) => {
     if (!e.isIntraCluster) return false;
     if (!focusActive) return true;
     return e.source !== focusNodeId && e.target !== focusNodeId;
   });
 
-  const focusedIntraEdges = displayEdges.filter((e) => {
+  const focusedIntraEdges = focusedDisplayEdges.filter((e) => {
     if (!focusActive) return false;
     if (!e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const focusedInterEdges = displayEdges.filter((e) => {
+  const focusedInterEdges = focusedDisplayEdges.filter((e) => {
     if (!focusActive) return false;
     if (e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const normalInterEdges = displayEdges.filter((e) => !e.isIntraCluster);
+  const normalInterEdges = focusedDisplayEdges.filter((e) => !e.isIntraCluster);
 
   // hoveredId가 변경될 때 thread title 가져오기
   useEffect(() => {
@@ -546,13 +678,8 @@ export default function Graph2D({
     [subclusters],
   );
 
-  // 클러스터로 줌인 (애니메이션)
-  useEffect(() => {
-    if (!zoomToClusterId || circles.length === 0 || isAnimatingRef.current)
-      return;
-
-    const circle = circles.find((c) => c.clusterId === zoomToClusterId);
-    if (!circle || !svgRef.current) return;
+  const animateZoomOut = useCallback(() => {
+    if (isAnimatingRef.current || !svgRef.current) return;
 
     isAnimatingRef.current = true;
 
@@ -561,36 +688,27 @@ export default function Graph2D({
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    // 목표 스케일과 오프셋 계산
-    const targetScale = Math.min(3, Math.max(1.5, 200 / circle.radius));
-    const targetOffsetX = centerX - circle.centerX * targetScale;
-    const targetOffsetY = centerY - circle.centerY * targetScale;
-
-    // 시작 값 저장
     const startScale = scale;
     const startOffsetX = offset.x;
     const startOffsetY = offset.y;
 
-    // 애니메이션 파라미터
-    const duration = 800; // 800ms
+    // Reset to initial view
+    const targetScale = 1;
+    const targetOffsetX = 0;
+    const targetOffsetY = 0;
+
+    const duration = 600;
     const startTime = performance.now();
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
+      // Cubic ease-out for smooth deceleration
+      const easeOut = 1 - Math.pow(1 - progress, 3);
 
-      // easing 함수 (ease-in-out)
-      const easeInOut =
-        progress < 0.5
-          ? 2 * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-      // 현재 값 계산
-      const newScale = startScale + (targetScale - startScale) * easeInOut;
-      const newOffsetX =
-        startOffsetX + (targetOffsetX - startOffsetX) * easeInOut;
-      const newOffsetY =
-        startOffsetY + (targetOffsetY - startOffsetY) * easeInOut;
+      const newScale = startScale + (targetScale - startScale) * easeOut;
+      const newOffsetX = startOffsetX + (targetOffsetX - startOffsetX) * easeOut;
+      const newOffsetY = startOffsetY + (targetOffsetY - startOffsetY) * easeOut;
 
       setScale(newScale);
       setOffset({ x: newOffsetX, y: newOffsetY });
@@ -603,7 +721,248 @@ export default function Graph2D({
     };
 
     requestAnimationFrame(animate);
-  }, [zoomToClusterId, circles, scale, offset]);
+  }, [offset, scale]);
+
+  const animateZoomToCluster = useCallback(
+    (clusterId: string, focusAfter: boolean = false) => {
+      if (!clusterId || circles.length === 0 || isAnimatingRef.current) return;
+
+      const circle = circles.find((c) => c.clusterId === clusterId);
+      if (!circle || !svgRef.current) return;
+
+      if (focusAfter && focusedClusterId === clusterId) return;
+
+      if (focusedClusterId && focusedClusterId !== clusterId) {
+        setFocusedClusterId(null);
+      }
+
+      isAnimatingRef.current = true;
+
+      const svg = svgRef.current;
+      const rect = svg.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // Reduced zoom level to show more of the graph
+      const targetScale = Math.min(2, Math.max(1.2, 150 / circle.radius));
+      const targetOffsetX = centerX - circle.centerX * targetScale;
+      const targetOffsetY = centerY - circle.centerY * targetScale;
+
+      const startScale = scale;
+      const startOffsetX = offset.x;
+      const startOffsetY = offset.y;
+
+      const duration = 900;
+      const startTime = performance.now();
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Smoother cubic ease-in-out
+        const easeInOut =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        const newScale = startScale + (targetScale - startScale) * easeInOut;
+        const newOffsetX =
+          startOffsetX + (targetOffsetX - startOffsetX) * easeInOut;
+        const newOffsetY =
+          startOffsetY + (targetOffsetY - startOffsetY) * easeInOut;
+
+        setScale(newScale);
+        setOffset({ x: newOffsetX, y: newOffsetY });
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isAnimatingRef.current = false;
+          if (focusAfter) {
+            setFocusedClusterId(clusterId);
+          }
+        }
+      };
+
+      requestAnimationFrame(animate);
+    },
+    [circles, focusedClusterId, offset, scale],
+  );
+
+  const [nodeTitleMap, setNodeTitleMap] = useState<Map<number, string>>(
+    () => new Map(),
+  );
+
+  useEffect(() => {
+    if (!focusedClusterId) return;
+    if (!collapsedSnapshotRef.current) {
+      collapsedSnapshotRef.current = new Set(collapsedSubclusters);
+    }
+    setCollapsedSubclusters((prev) => {
+      const next = new Set(prev);
+      subclusters.forEach((sc) => {
+        if (isSubclusterInFocus(sc)) {
+          next.delete(sc.id);
+        }
+      });
+      return next;
+    });
+  }, [
+    focusedClusterId,
+    subclusters,
+    isSubclusterInFocus,
+    collapsedSubclusters,
+  ]);
+
+  useEffect(() => {
+    if (!focusedClusterId) {
+      setNodeTitleMap(new Map());
+      return;
+    }
+    const requestId = ++focusFetchIdRef.current;
+    const focusNodes = focusedDisplayNodes.filter(
+      (n) => !n.isGroupNode && typeof n.id === "number",
+    );
+
+    Promise.all(
+      focusNodes.map(async (n) => {
+        const nodeId = n.id as number;
+        const pos = positionedNodeMap.get(nodeId);
+        const threadId =
+          pos?.origId ?? (typeof n.label === "string" ? n.label : null);
+        if (!threadId) return null;
+        try {
+          const thread = await threadRepo.getThreadById(threadId);
+          return { id: nodeId, title: thread?.title || threadId };
+        } catch {
+          return { id: nodeId, title: threadId };
+        }
+      }),
+    ).then((results) => {
+      if (focusFetchIdRef.current !== requestId) return;
+      const map = new Map<number, string>();
+      results.forEach((res) => {
+        if (!res) return;
+        map.set(res.id, res.title);
+      });
+      setNodeTitleMap(map);
+    });
+  }, [focusedClusterId, focusedDisplayNodes, positionedNodeMap]);
+
+  useEffect(() => {
+    if (!focusedClusterId) {
+      setFocusLayoutMap(null);
+      return;
+    }
+
+    const focusNodes = positionedNodes.filter(
+      (n) => n.clusterName === focusedClusterId,
+    );
+    if (focusNodes.length === 0) {
+      setFocusLayoutMap(null);
+      return;
+    }
+
+    const nodeById = new Map<number, PositionedNode>();
+    focusNodes.forEach((n) => nodeById.set(n.id, n));
+    const focusEdges = rawEdges.filter(
+      (e) => nodeById.has(e.source) && nodeById.has(e.target),
+    );
+
+    const centerX = focusCircle?.centerX ?? width / 2;
+    const centerY = focusCircle?.centerY ?? height / 2;
+
+    // Calculate degree (edge count) for each node
+    const degreeMap = new Map<number, number>();
+    focusNodes.forEach((n) => degreeMap.set(n.id, 0));
+    focusEdges.forEach((e) => {
+      degreeMap.set(e.source, (degreeMap.get(e.source) ?? 0) + 1);
+      degreeMap.set(e.target, (degreeMap.get(e.target) ?? 0) + 1);
+    });
+    const maxDegree = Math.max(...Array.from(degreeMap.values()), 1);
+
+    const simNodes = focusNodes.map((n) => ({
+      id: n.id,
+      x: n.x,
+      y: n.y,
+      degree: degreeMap.get(n.id) ?? 0,
+    }));
+
+    const simLinks = focusEdges.map((e) => ({
+      source: e.source,
+      target: e.target,
+    }));
+
+    const baseRadius = Math.min(width, height) * 0.15;
+
+    const simulation = d3Force
+      .forceSimulation(simNodes as any)
+      .force(
+        "link",
+        d3Force
+          .forceLink(simLinks)
+          .id((d: any) => d.id)
+          .distance(50)
+          .strength(0.1),
+      )
+      .force("charge", d3Force.forceManyBody().strength(-5))
+      .force("collide", d3Force.forceCollide(12).iterations(3))
+      .force("center", d3Force.forceCenter(centerX, centerY).strength(2))
+      .force(
+        "radial",
+        d3Force
+          .forceRadial(
+            (d: any) => {
+              // Nodes with fewer connections get pushed further out
+              // Highly connected nodes stay near center
+              const degreeRatio = (d.degree ?? 0) / maxDegree;
+              return baseRadius * (1.1 - degreeRatio);
+            },
+            centerX,
+            centerY,
+          )
+          .strength(0.01),
+      )
+      .stop();
+
+    for (let i = 0; i < 200; i += 1) {
+      simulation.tick();
+    }
+
+    const map = new Map<number, { x: number; y: number }>();
+    simNodes.forEach((n) => {
+      map.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
+    });
+    setFocusLayoutMap(map);
+  }, [focusedClusterId, positionedNodes, rawEdges, width, height, focusCircle]);
+
+  useEffect(() => {
+    if (focusedClusterId) return;
+    if (!collapsedSnapshotRef.current) return;
+    const snapshot = collapsedSnapshotRef.current;
+    collapsedSnapshotRef.current = null;
+    setCollapsedSubclusters(new Set(snapshot));
+  }, [focusedClusterId]);
+
+  // 클러스터로 줌인 (애니메이션)
+  useEffect(() => {
+    if (!zoomToClusterId) return;
+    animateZoomToCluster(zoomToClusterId, true);
+  }, [zoomToClusterId, animateZoomToCluster]);
+
+  useEffect(() => {
+    setHoveredId(null);
+  }, [focusedClusterId]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && focusedClusterId) {
+        animateZoomOut();
+        setFocusedClusterId(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusedClusterId, animateZoomOut]);
 
   const screenToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current!;
@@ -644,6 +1003,7 @@ export default function Graph2D({
       x: e.clientX - offset.x,
       y: e.clientY - offset.y,
     };
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -682,14 +1042,24 @@ export default function Graph2D({
     if (draggingNodeId !== null && dragNodeOffset.current) {
       const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
 
-      const newX = worldX + dragNodeOffset.current.dx;
-      const newY = worldY + dragNodeOffset.current.dy;
+      const displayX = worldX + dragNodeOffset.current.dx;
+      const displayY = worldY + dragNodeOffset.current.dy;
+      const basePos = removeExplode(displayX, displayY);
 
-      setPositionedNodes((prev) =>
-        prev.map((n) =>
-          n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n,
-        ),
-      );
+      if (clusterFocusActive) {
+        setFocusLayoutMap((prev) => {
+          if (!prev) return prev;
+          const next = new Map(prev);
+          next.set(draggingNodeId, { x: basePos.x, y: basePos.y });
+          return next;
+        });
+      } else {
+        setPositionedNodes((prev) =>
+          prev.map((n) =>
+            n.id === draggingNodeId ? { ...n, x: basePos.x, y: basePos.y } : n,
+          ),
+        );
+      }
       return;
     }
 
@@ -712,6 +1082,11 @@ export default function Graph2D({
         const dy = Math.abs(e.clientY - dragStartPos.current!.y);
         return Math.sqrt(dx * dx + dy * dy) > 5;
       })();
+
+    lastPointerWasDraggingRef.current = !!wasDragging;
+    window.setTimeout(() => {
+      lastPointerWasDraggingRef.current = false;
+    }, 0);
 
     const prevDraggingNodeId = draggingNodeId;
     setDraggingNodeId(null);
@@ -737,6 +1112,7 @@ export default function Graph2D({
     dragNodeOffset.current = null;
     dragClusterOffset.current = null;
     dragStartPos.current = null;
+    lastPointerWasDraggingRef.current = false;
   };
 
   const handleNodeMouseDown = (
@@ -746,12 +1122,15 @@ export default function Graph2D({
     e.stopPropagation();
     if (node.isGroupNode || typeof node.id !== "number") return;
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-    const positionedNode = positionedNodeMap.get(node.id);
-    if (!positionedNode) return;
+    const basePos =
+      (clusterFocusActive ? focusLayoutMap?.get(node.id) : null) ??
+      positionedNodeMap.get(node.id);
+    if (!basePos) return;
 
+    const displayPos = applyExplode(basePos.x, basePos.y);
     dragNodeOffset.current = {
-      dx: positionedNode.x - worldX,
-      dy: positionedNode.y - worldY,
+      dx: displayPos.x - worldX,
+      dy: displayPos.y - worldY,
     };
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     setDraggingNodeId(node.id);
@@ -762,6 +1141,7 @@ export default function Graph2D({
     clusterId: string,
   ) => {
     e.stopPropagation();
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
     const circle = circles.find((c) => c.clusterId === clusterId);
     if (!circle) return;
@@ -771,6 +1151,31 @@ export default function Graph2D({
       dy: circle.centerY - worldY,
     };
     setDraggingClusterId(clusterId);
+  };
+
+  const handleClusterLabelClick = (
+    e: React.MouseEvent<SVGTextElement>,
+    clusterId: string,
+  ) => {
+    e.stopPropagation();
+    if (lastPointerWasDraggingRef.current) {
+      lastPointerWasDraggingRef.current = false;
+      return;
+    }
+    animateZoomToCluster(clusterId, true);
+  };
+
+  const handleBackgroundClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!focusedClusterId) return;
+    if (lastPointerWasDraggingRef.current) {
+      lastPointerWasDraggingRef.current = false;
+      return;
+    }
+    const target = e.target as Element;
+    const tag = target.tagName.toLowerCase();
+    if (tag === "circle" || tag === "text" || tag === "line") return;
+    animateZoomOut();
+    setFocusedClusterId(null);
   };
 
   // 서브클러스터 클릭 핸들러 - 접기/펴기 토글
@@ -820,7 +1225,7 @@ export default function Graph2D({
       {/* 툴팁 */}
       {hoveredId != null &&
         (() => {
-          const n = displayNodeMap.get(hoveredId);
+          const n = renderedDisplayNodeMap.get(hoveredId);
           if (!n) return null;
           const left = n.x * scale + offset.x;
           const top = n.y * scale + offset.y - 24;
@@ -872,51 +1277,57 @@ export default function Graph2D({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
+        onClick={handleBackgroundClick}
       >
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
           {/* 클러스터 원형 아웃라인 */}
-          {circles.map((circle) => (
-            <g key={`circle-${circle.clusterId}`}>
-              <circle
-                cx={circle.centerX}
-                cy={circle.centerY}
-                r={circle.radius}
-                fill="var(--color-cluster-default)"
-                stroke="var(--color-edge-default)"
-                strokeWidth={1}
-                style={{ pointerEvents: "none" }}
-              />
-            </g>
-          ))}
+          {!clusterFocusActive &&
+            circles.map((circle) => (
+              <g key={`circle-${circle.clusterId}`}>
+                <circle
+                  cx={circle.centerX}
+                  cy={circle.centerY}
+                  r={circle.radius}
+                  fill="var(--color-cluster-default)"
+                  stroke="var(--color-edge-default)"
+                  strokeWidth={1}
+                  style={{ pointerEvents: "none" }}
+                />
+              </g>
+            ))}
 
           {/* 클러스터 라벨 */}
-          {circles.map((circle) => (
-            <text
-              key={`label-${circle.clusterId}`}
-              x={circle.centerX}
-              y={circle.centerY - circle.radius - 12}
-              textAnchor="middle"
-              fontSize={16}
-              fontWeight={600}
-              fill="var(--color-text-secondary)"
-              style={{
-                cursor:
-                  draggingClusterId === circle.clusterId ? "grabbing" : "grab",
-                pointerEvents: "all",
-                userSelect: "none",
-              }}
-              onMouseDown={(e) =>
-                handleClusterLabelMouseDown(e, circle.clusterId)
-              }
-            >
-              {circle.clusterName}
-            </text>
-          ))}
+          {!clusterFocusActive &&
+            circles.map((circle) => (
+              <text
+                key={`label-${circle.clusterId}`}
+                x={circle.centerX}
+                y={circle.centerY - circle.radius - 12}
+                textAnchor="middle"
+                fontSize={16}
+                fontWeight={600}
+                fill="var(--color-text-secondary)"
+                style={{
+                  cursor:
+                    draggingClusterId === circle.clusterId
+                      ? "grabbing"
+                      : "grab",
+                  pointerEvents: "all",
+                  userSelect: "none",
+                }}
+                onMouseDown={(e) =>
+                  handleClusterLabelMouseDown(e, circle.clusterId)
+                }
+                onClick={(e) => handleClusterLabelClick(e, circle.clusterId)}
+              >
+                {circle.clusterName}
+              </text>
+            ))}
 
           {/* Inter-cluster 엣지 (일반) */}
           {normalInterEdges.map((e, idx) => {
-            const s = displayNodeMap.get(e.source);
-            const t = displayNodeMap.get(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
@@ -934,8 +1345,8 @@ export default function Graph2D({
 
           {/* Intra-cluster 엣지 (일반) */}
           {normalIntraEdges.map((e, idx) => {
-            const s = displayNodeMap.get(e.source);
-            const t = displayNodeMap.get(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
@@ -952,8 +1363,8 @@ export default function Graph2D({
 
           {/* 포커스된 노드의 엣지 */}
           {[...focusedIntraEdges, ...focusedInterEdges].map((e, idx) => {
-            const s = displayNodeMap.get(e.source);
-            const t = displayNodeMap.get(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
@@ -969,7 +1380,7 @@ export default function Graph2D({
           })}
 
           {/* 노드 (그룹/일반 통합) */}
-          {displayNodes.map((n) => {
+          {renderedDisplayNodes.map((n) => {
             const isHovered = hoveredId === n.id;
             const isFocused =
               !n.isGroupNode &&
@@ -980,6 +1391,12 @@ export default function Graph2D({
               const baseRadius = 12;
               const radius = Math.max(baseRadius, Math.sqrt(n.size ?? 0) * 2);
               const displayRadius = isHovered ? radius + 2 : radius;
+              const groupFill =
+                (clusterFocusActive && n.subcluster_id
+                  ? subclusterColorMap.get(n.subcluster_id)
+                  : undefined) ??
+                n.color ??
+                "var(--color-node-default)";
               return (
                 <g
                   key={n.id}
@@ -992,7 +1409,7 @@ export default function Graph2D({
                 >
                   <circle
                     r={displayRadius}
-                    fill={n.color ?? "var(--color-node-default)"}
+                    fill={groupFill}
                     fillOpacity={0.8}
                     stroke="var(--color-node-focus)"
                     strokeWidth={2}
@@ -1013,28 +1430,49 @@ export default function Graph2D({
 
             const baseRadius = getNodeRadius(n.edgeCount ?? 0, maxEdgeCount);
             const radius = isHovered ? baseRadius + 2 : baseRadius;
-            const hasSubcluster = !!n.subcluster_id;
-            const fill = isFocused
-              ? "var(--color-node-focus)"
-              : isHovered
-                ? "var(--color-node-focus)"
-                : hasSubcluster
-                  ? "var(--color-node-default)"
-                  : "var(--color-node-default)";
+            const subclusterFill =
+              clusterFocusActive && n.subcluster_id
+                ? subclusterColorMap.get(n.subcluster_id)
+                : undefined;
+            const baseFill = subclusterFill ?? "var(--color-node-default)";
+            const fill =
+              isFocused || isHovered ? "var(--color-node-focus)" : baseFill;
+            const title =
+              clusterFocusActive && typeof n.id === "number"
+                ? (nodeTitleMap.get(n.id) ?? n.label ?? String(n.id))
+                : null;
+            const displayTitle =
+              title && title.length > 10 ? title.slice(0, 10) : title;
 
             return (
-              <circle
+              <g
                 key={n.id}
-                cx={n.x}
-                cy={n.y}
-                r={radius}
-                fill={fill}
-                className="cursor-pointer shadow-[0_2px_20px_#BADAFF]"
+                transform={`translate(${n.x}, ${n.y})`}
+                className="cursor-pointer"
                 onMouseDown={(e) => handleNodeMouseDown(e, n)}
                 onMouseEnter={() => setHoveredId(n.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={(e) => handleNodeClick(e, n)}
-              />
+              >
+                <circle
+                  r={radius}
+                  fill={fill}
+                  className="shadow-[0_2px_20px_#BADAFF]"
+                />
+                {displayTitle && (
+                  <text
+                    x={0}
+                    y={-(radius + 4)}
+                    textAnchor="middle"
+                    fontSize={6}
+                    fontWeight={500}
+                    fill="var(--color-text-secondary)"
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {displayTitle}
+                  </text>
+                )}
+              </g>
             );
           })}
         </g>

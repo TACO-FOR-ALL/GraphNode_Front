@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Graph3D from "./Graph3D";
 import {
   GraphSnapshotDto,
@@ -14,6 +14,7 @@ import {
   Subcluster,
 } from "@/types/GraphData";
 import { GraphSummaryPanel } from "./summary";
+import { useThemeStore } from "@/store/useThemeStore";
 
 export default function VisualizeToggle({
   nodeData,
@@ -31,6 +32,32 @@ export default function VisualizeToggle({
   const [nodes, setNodes] = useState<PositionedNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+  const { theme } = useThemeStore();
+  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(
+    theme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : theme,
+  );
+
+  useEffect(() => {
+    if (theme !== "system") {
+      setResolvedTheme(theme);
+      return;
+    }
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setResolvedTheme(media.matches ? "dark" : "light");
+    update();
+
+    if (media.addEventListener) {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, [theme]);
 
   const snapshotSubclusters = (nodeData as { subclusters?: Subcluster[] })
     .subclusters;
@@ -47,14 +74,83 @@ export default function VisualizeToggle({
     (
       newClusters: ClusterCircle[],
       newNodes: PositionedNode[],
-      newEdges: PositionedEdge[]
+      newEdges: PositionedEdge[],
     ) => {
       setClusters(newClusters);
       setNodes(newNodes);
       setEdges(newEdges);
     },
-    []
+    [],
   );
+
+  const handleClusterZoom = useCallback((clusterId: string) => {
+    setZoomToClusterId(clusterId);
+    window.setTimeout(() => setZoomToClusterId(null), 900);
+  }, []);
+
+  const clusterSummaries = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; size: number }>();
+
+    nodeData.clusters.forEach((cluster) => {
+      if (!cluster?.id) return;
+      byId.set(cluster.id, {
+        id: cluster.id,
+        name: cluster.name,
+        size: cluster.size ?? 0,
+      });
+    });
+
+    nodeData.nodes.forEach((node) => {
+      const id = (node.clusterId ?? "default") as string;
+      const existing = byId.get(id);
+      const name = existing?.name ?? node.clusterName ?? id;
+      const size = (existing?.size ?? 0) + 1;
+      byId.set(id, { id, name, size });
+    });
+
+    return Array.from(byId.values());
+  }, [nodeData]);
+
+  const clusterPalette = [
+    "#4aa8c0",
+    "#e74c3c",
+    "#2ecc71",
+    "#f39c12",
+    "#9b59b6",
+  ];
+  const clusterIdColorMap: Record<string, string> = {
+    cluster_1: "#4aa8c0",
+    cluster_2: "#e74c3c",
+    cluster_3: "#2ecc71",
+    cluster_4: "#f39c12",
+    cluster_5: "#9b59b6",
+  };
+
+  const hashString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash * 31 + value.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  };
+
+  const buildSeededPoints = (seed: number, count: number) => {
+    let state = seed >>> 0;
+    const rand = () => {
+      state = (state * 1664525 + 1013904223) % 4294967296;
+      return state / 4294967296;
+    };
+    const pts: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < count; i += 1) {
+      const angle = rand() * Math.PI * 2;
+      const radius = Math.sqrt(rand()) * 12;
+      pts.push({
+        x: 25 + Math.cos(angle) * radius,
+        y: 25 + Math.sin(angle) * radius,
+      });
+    }
+    return pts;
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -72,8 +168,8 @@ export default function VisualizeToggle({
         </p>
       </div>
 
-      {/* 2D 모드 클러스터 토글 패널 */}
-      {mode === "2d" && (
+      {/* 2D/3D 모드 클러스터 토글 패널 */}
+      {!showSummary && (
         <>
           <div
             className="absolute z-20 top-3 left-1/2 -translate-x-1/2 cursor-pointer"
@@ -93,112 +189,185 @@ export default function VisualizeToggle({
             }`}
           >
             <div className="w-full h-full flex items-center justify-between px-14 overflow-x-auto">
-              {clusters.map((cluster) => {
-                // 클러스터 내부 노드들 가져오기
-                const clusterNodes = nodes.filter(
-                  (n) => n.clusterName === cluster.clusterId
-                );
+              {mode === "2d" &&
+                clusters.map((cluster) => {
+                  // 클러스터 내부 노드들 가져오기
+                  const clusterNodes = nodes.filter(
+                    (n) => n.clusterName === cluster.clusterId,
+                  );
 
-                // 클러스터 내부 엣지들 가져오기 (intra-cluster만)
-                const clusterEdges = edges.filter(
-                  (e) =>
-                    e.isIntraCluster &&
-                    clusterNodes.some((n) => n.id === e.source) &&
-                    clusterNodes.some((n) => n.id === e.target)
-                );
+                  // 클러스터 내부 엣지들 가져오기 (intra-cluster만)
+                  const clusterEdges = edges.filter(
+                    (e) =>
+                      e.isIntraCluster &&
+                      clusterNodes.some((n) => n.id === e.source) &&
+                      clusterNodes.some((n) => n.id === e.target),
+                  );
 
-                // 노드 ID로 매핑 생성 (엣지 렌더링용)
-                const nodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
+                  // 노드 ID로 매핑 생성 (엣지 렌더링용)
+                  const nodeMap = new Map(clusterNodes.map((n) => [n.id, n]));
 
-                // viewBox 계산 (클러스터 원을 포함하도록)
-                const padding = cluster.radius * 0.2;
-                const minX =
-                  Math.min(
-                    ...clusterNodes.map((n) => n.x),
-                    cluster.centerX - cluster.radius
-                  ) - padding;
-                const minY =
-                  Math.min(
-                    ...clusterNodes.map((n) => n.y),
-                    cluster.centerY - cluster.radius
-                  ) - padding;
-                const maxX =
-                  Math.max(
-                    ...clusterNodes.map((n) => n.x),
-                    cluster.centerX + cluster.radius
-                  ) + padding;
-                const maxY =
-                  Math.max(
-                    ...clusterNodes.map((n) => n.y),
-                    cluster.centerY + cluster.radius
-                  ) + padding;
-                const viewBoxWidth = maxX - minX;
-                const viewBoxHeight = maxY - minY;
+                  // viewBox 계산 (클러스터 원을 포함하도록)
+                  const padding = cluster.radius * 0.2;
+                  const minX =
+                    Math.min(
+                      ...clusterNodes.map((n) => n.x),
+                      cluster.centerX - cluster.radius,
+                    ) - padding;
+                  const minY =
+                    Math.min(
+                      ...clusterNodes.map((n) => n.y),
+                      cluster.centerY - cluster.radius,
+                    ) - padding;
+                  const maxX =
+                    Math.max(
+                      ...clusterNodes.map((n) => n.x),
+                      cluster.centerX + cluster.radius,
+                    ) + padding;
+                  const maxY =
+                    Math.max(
+                      ...clusterNodes.map((n) => n.y),
+                      cluster.centerY + cluster.radius,
+                    ) + padding;
+                  const viewBoxWidth = maxX - minX;
+                  const viewBoxHeight = maxY - minY;
 
-                return (
-                  <div
-                    key={cluster.clusterId}
-                    className="flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                    onClick={() => {
-                      setZoomToClusterId(cluster.clusterId);
-                      // 줌인 후 리셋 (애니메이션 시간보다 길게)
-                      setTimeout(() => setZoomToClusterId(null), 900);
-                    }}
-                    style={{
-                      width: "50px",
-                      height: "50px",
-                    }}
-                  >
-                    <svg
-                      width="50"
-                      height="50"
-                      viewBox={`${minX} ${minY} ${viewBoxWidth} ${viewBoxHeight}`}
-                      style={{ overflow: "visible" }}
+                  return (
+                    <div
+                      key={cluster.clusterId}
+                      className="flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                      onClick={() => handleClusterZoom(cluster.clusterId)}
+                      style={{
+                        width: "60px",
+                      }}
+                      title={cluster.clusterName ?? cluster.clusterId}
                     >
-                      {/* 클러스터 원 */}
-                      <circle
-                        cx={cluster.centerX}
-                        cy={cluster.centerY}
-                        r={cluster.radius}
-                        fill="var(--color-cluster-default)"
-                        stroke="var(--color-edge-default)"
-                        strokeWidth={1}
-                      />
-                      {/* 클러스터 내부 엣지들 */}
-                      {clusterEdges.map((edge, idx) => {
-                        const sourceNode = nodeMap.get(edge.source);
-                        const targetNode = nodeMap.get(edge.target);
-                        if (!sourceNode || !targetNode) return null;
-                        return (
-                          <line
-                            key={`edge-${edge.source}-${edge.target}-${idx}`}
-                            x1={sourceNode.x}
-                            y1={sourceNode.y}
-                            x2={targetNode.x}
-                            y2={targetNode.y}
-                            stroke="var(--color-edge-default)"
-                            strokeWidth={0.5}
-                            strokeOpacity={0.6}
-                          />
-                        );
-                      })}
-                      {/* 클러스터 내부 노드들 (실제 위치 사용) */}
-                      {clusterNodes.map((node) => (
+                      <svg
+                        width="50"
+                        height="50"
+                        viewBox={`${minX} ${minY} ${viewBoxWidth} ${viewBoxHeight}`}
+                        style={{ overflow: "visible" }}
+                      >
+                        {/* 클러스터 원 */}
                         <circle
-                          key={node.id}
-                          cx={node.x}
-                          cy={node.y}
-                          r={2}
-                          fill="var(--color-node-default)"
+                          cx={cluster.centerX}
+                          cy={cluster.centerY}
+                          r={cluster.radius}
+                          fill="var(--color-cluster-default)"
+                          stroke="var(--color-edge-default)"
+                          strokeWidth={1}
                         />
-                      ))}
-                    </svg>
-                    <span className="text-[10px] text-text-secondary mt-1 truncate max-w-[50px] text-center">
-                      {cluster.clusterName}
-                    </span>
-                  </div>
-                );
-              })}
+                        {/* 클러스터 내부 엣지들 */}
+                        {clusterEdges.map((edge, idx) => {
+                          const sourceNode = nodeMap.get(edge.source);
+                          const targetNode = nodeMap.get(edge.target);
+                          if (!sourceNode || !targetNode) return null;
+                          return (
+                            <line
+                              key={`edge-${edge.source}-${edge.target}-${idx}`}
+                              x1={sourceNode.x}
+                              y1={sourceNode.y}
+                              x2={targetNode.x}
+                              y2={targetNode.y}
+                              stroke="var(--color-edge-default)"
+                              strokeWidth={0.5}
+                              strokeOpacity={0.6}
+                            />
+                          );
+                        })}
+                        {/* 클러스터 내부 노드들 (실제 위치 사용) */}
+                        {clusterNodes.map((node) => (
+                          <circle
+                            key={node.id}
+                            cx={node.x}
+                            cy={node.y}
+                            r={2}
+                            fill="var(--color-node-default)"
+                          />
+                        ))}
+                      </svg>
+                      <span className="text-[10px] text-text-secondary mt-1 truncate max-w-[50px] text-center">
+                        {cluster.clusterName ?? cluster.clusterId}
+                      </span>
+                    </div>
+                  );
+                })}
+
+              {mode === "3d" &&
+                clusterSummaries.map((cluster, idx) => {
+                  const color =
+                    clusterIdColorMap[cluster.id] ??
+                    clusterPalette[idx % clusterPalette.length];
+                  const seed = hashString(cluster.id);
+                  const gradientId = `grad-${seed}-${idx}`;
+                  const dotCount = Math.min(
+                    10,
+                    Math.max(4, Math.round(Math.sqrt(cluster.size || 1)) + 3),
+                  );
+                  const points = buildSeededPoints(seed, dotCount);
+
+                  return (
+                    <div
+                      key={cluster.id}
+                      className="flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                      onClick={() => handleClusterZoom(cluster.id)}
+                      style={{
+                        width: "60px",
+                      }}
+                    >
+                      <svg width="50" height="50" viewBox="0 0 50 50">
+                        <defs>
+                          <radialGradient
+                            id={gradientId}
+                            cx="50%"
+                            cy="45%"
+                            r="60%"
+                          >
+                            <stop
+                              offset="0%"
+                              stopColor={color}
+                              stopOpacity={0.4}
+                            />
+                            <stop
+                              offset="100%"
+                              stopColor={color}
+                              stopOpacity={0.1}
+                            />
+                          </radialGradient>
+                        </defs>
+                        <circle
+                          cx="25"
+                          cy="25"
+                          r="18"
+                          fill={`url(#${gradientId})`}
+                          stroke={color}
+                          strokeOpacity={0.7}
+                          strokeWidth="1"
+                        />
+                        {points.map((p, i) => (
+                          <circle
+                            key={`${cluster.id}-dot-${i}`}
+                            cx={p.x}
+                            cy={p.y}
+                            r="1.6"
+                            fill={color}
+                            fillOpacity={0.7}
+                          />
+                        ))}
+                        <path
+                          d="M12 30 C16 38, 34 38, 38 30"
+                          stroke={color}
+                          strokeOpacity={0.4}
+                          strokeWidth="1"
+                          fill="none"
+                        />
+                      </svg>
+                      <span className="text-[10px] text-text-secondary mt-1 truncate max-w-[50px] text-center">
+                        {cluster.name}
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </>
@@ -213,7 +382,9 @@ export default function VisualizeToggle({
               setShowSummary(false);
             }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
-              mode === "2d" && !showSummary ? "text-primary" : "text-text-secondary"
+              mode === "2d" && !showSummary
+                ? "text-primary"
+                : "text-text-secondary"
             }`}
           >
             2D
@@ -224,7 +395,9 @@ export default function VisualizeToggle({
               setShowSummary(false);
             }}
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
-              mode === "3d" && !showSummary ? "text-primary" : "text-text-secondary"
+              mode === "3d" && !showSummary
+                ? "text-primary"
+                : "text-text-secondary"
             }`}
           >
             3D
@@ -239,7 +412,11 @@ export default function VisualizeToggle({
           </div>
           <div
             className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
-              mode === "3d" && !showSummary ? "left-[87px]" : showSummary ? "left-[172px]" : "left-[2px]"
+              mode === "3d" && !showSummary
+                ? "left-[87px]"
+                : showSummary
+                  ? "left-[172px]"
+                  : "left-[2px]"
             }`}
           ></div>
         </div>
@@ -258,7 +435,15 @@ export default function VisualizeToggle({
           zoomToClusterId={zoomToClusterId}
         />
       ) : (
-        <Graph3D data={nodeData} />
+        <Graph3D
+          data={nodeData}
+          zoomToClusterId={zoomToClusterId}
+          theme={resolvedTheme}
+          onClusterClick={(clusterId) => {
+            setZoomToClusterId(clusterId);
+            setTimeout(() => setZoomToClusterId(null), 900);
+          }}
+        />
       )}
 
       {/* Summary Overlay */}
