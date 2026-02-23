@@ -1,7 +1,7 @@
 import { db } from "@/db/graphnode.db";
 import { api } from "@/apiClient";
 import { Note } from "@/types/Note";
-import { NoteDto } from "@taco_tsinghua/graphnode-sdk";
+import { mapNote } from "@/utils/dtoMappers";
 
 export async function pullNotesOnce() {
   const result = await api.note.listNotes();
@@ -9,14 +9,7 @@ export async function pullNotesOnce() {
   let serverNotes: Note[] = [];
 
   if (result.isSuccess) {
-    serverNotes = result.data.map((n: NoteDto) => ({
-      id: n.id,
-      title: n.title,
-      content: n.content,
-      folderId: n.folderId,
-      createdAt: new Date(n.createdAt).getTime(),
-      updatedAt: new Date(n.updatedAt).getTime(),
-    }));
+    serverNotes = result.data.map(mapNote);
   } else {
     console.error(result.error);
     return;

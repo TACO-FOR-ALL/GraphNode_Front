@@ -1,6 +1,11 @@
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import { FaCheck } from "react-icons/fa";
-import { IoCamera, IoLogOut, IoMail } from "react-icons/io5";
+import {
+  IoCamera,
+  IoChatbubbleEllipses,
+  IoLogOut,
+  IoMail,
+} from "react-icons/io5";
 import { Me } from "@/types/Me";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import ApiKeyManager from "./ApiKeyManager";
@@ -80,16 +85,15 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
     (async () => {
       const result_openai = await api.me.getApiKeys("openai");
       const result_deepseek = await api.me.getApiKeys("deepseek");
-      // const result_gemini = await api.me.getApiKeys("gemini");
-      // const result_claude = await api.me.getApiKeys("claude");
-      // @ts-ignore
-      setOpenaiApiKey(result_openai.data?.apiKey ? true : false);
-      // @ts-ignore
-      setDeepseekApiKey(result_deepseek.data?.apiKey ? true : false);
-      // @ts-ignore
-      setClaudeApiKey(result_claude.data?.apiKey ? true : false);
-      // @ts-ignore
-      setGeminiApiKey(result_gemini.data?.apiKey ? true : false);
+      const result_gemini = await api.me.getApiKeys("gemini");
+      const result_claude = await api.me.getApiKeys("claude");
+
+      setOpenaiApiKey(result_openai.isSuccess && !!result_openai.data?.apiKey);
+      setDeepseekApiKey(
+        result_deepseek.isSuccess && !!result_deepseek.data?.apiKey,
+      );
+      setClaudeApiKey(result_claude.isSuccess && !!result_claude.data?.apiKey);
+      setGeminiApiKey(result_gemini.isSuccess && !!result_gemini.data?.apiKey);
     })();
   }, []);
 
@@ -306,12 +310,31 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
         })}
       </div>
 
-      {/* Logout Section */}
-      <div className="w-full pt-4 border-t border-text-tertiary/20">
+      <div className="m-1 h-[1px] p-[1px] w-full flex bg-text-tertiary/20" />
+      {/* Feedback & Logout Section */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            window.systemAPI?.openExternal(
+              "https://www.graphnode.site/feedback",
+            );
+          }}
+          className="
+            flex items-center gap-2.5 px-4 py-2.5 rounded-md
+            text-primary
+            bg-primary/10 dark:bg-primary/20
+            hover:bg-primary/20 dark:hover:bg-primary/30
+            transition-all duration-200
+            cursor-pointer
+          "
+        >
+          <IoChatbubbleEllipses className="text-lg" />
+          <span className="text-sm font-medium">{t("settings.feedback")}</span>
+        </button>
         <button
           onClick={handleLogout}
           className="
-            flex items-center gap-2.5 px-4 py-2.5 rounded-xl
+            flex items-center gap-2.5 px-4 py-2.5 rounded-md
             text-red-600 dark:text-red-400
             bg-red-50 dark:bg-red-900/20
             hover:bg-red-100 dark:hover:bg-red-900/30

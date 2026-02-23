@@ -1,11 +1,8 @@
 import { db } from "@/db/graphnode.db";
 import uuid from "@/utils/uuid";
 import type { OutboxOp, OutboxOpType } from "@/types/Outbox";
-import type {
-  ConversationUpdateDto,
-  NoteCreateDto,
-  NoteUpdateDto,
-} from "@taco_tsinghua/graphnode-sdk";
+import type { NoteCreate, NoteUpdate } from "@/types/Note";
+import type { ConversationUpdate } from "@/types/Conversation";
 
 /**
  * Coalesce 기준
@@ -15,15 +12,15 @@ import type {
  * (D) note.move도 NoteUpdateDto로 처리하며 noteId당 1개만 유지: 이미 있으면 payload 덮어쓰기
  */
 export const outboxRepo = {
-  async enqueueNoteCreate(noteId: string, payload: NoteCreateDto) {
+  async enqueueNoteCreate(noteId: string, payload: NoteCreate) {
     await enqueueWithCoalesce("note.create", noteId, payload);
   },
 
-  async enqueueNoteUpdate(noteId: string, payload: NoteUpdateDto) {
+  async enqueueNoteUpdate(noteId: string, payload: NoteUpdate) {
     await enqueueWithCoalesce("note.update", noteId, payload);
   },
 
-  async enqueueNoteMove(noteId: string, payload: NoteUpdateDto) {
+  async enqueueNoteMove(noteId: string, payload: NoteUpdate) {
     await enqueueWithCoalesce("note.move", noteId, payload);
   },
 
@@ -33,7 +30,7 @@ export const outboxRepo = {
 
   async enqueueThreadUpdateTitle(
     threadId: string,
-    payload: ConversationUpdateDto,
+    payload: ConversationUpdate,
   ) {
     await enqueueWithCoalesce("thread.update", threadId, payload);
   },
@@ -116,7 +113,7 @@ async function enqueueWithCoalesce(
 
     if (pendingCreate) {
       const merged = mergeIntoCreatePayload(
-        pendingCreate.payload as NoteCreateDto,
+        pendingCreate.payload as NoteCreate,
         type,
         payload,
       );
@@ -182,12 +179,12 @@ function makeOp(
 }
 
 function mergeIntoCreatePayload(
-  existing: NoteCreateDto,
+  existing: NoteCreate,
   incomingType: OutboxOpType,
   incomingPayload: any,
-): NoteCreateDto {
+): NoteCreate {
   if (incomingType === "note.update" || incomingType === "note.move") {
-    const u = incomingPayload as NoteUpdateDto;
+    const u = incomingPayload as NoteUpdate;
     return {
       id: existing.id,
       content: u.content ?? existing.content,

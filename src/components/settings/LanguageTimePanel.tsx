@@ -1,9 +1,11 @@
-import i18n from "@/i18n";
+import i18n, { saveLanguage, SupportedLangs } from "@/i18n";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import { useTranslation } from "react-i18next";
 import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
+import { useToastStore } from "@/store/useToastStore";
+import { api } from "@/apiClient";
 
 const languages = [
   { code: "ko", key: "settings.language.ko" },
@@ -25,6 +27,7 @@ export default function LanguageTimePanel() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>("auto");
+  const addToast = useToastStore((state) => state.addToast);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,8 +52,19 @@ export default function LanguageTimePanel() {
   const currentLanguage =
     languages.find((lang) => lang.code === currentLangCode) || languages[0];
 
-  const handleLanguageChange = (langCode: string) => {
+  const handleLanguageChange = async (langCode: SupportedLangs) => {
     i18n.changeLanguage(langCode);
+
+    try {
+      const saved = saveLanguage(langCode);
+      if (!saved) throw new Error("Local save failed");
+      await api.me.updatePreferredLanguage(langCode);
+    } catch {
+      addToast({
+        message: t("settings.language.saveFailed"),
+        type: "error",
+      });
+    }
     setIsOpen(false);
   };
 

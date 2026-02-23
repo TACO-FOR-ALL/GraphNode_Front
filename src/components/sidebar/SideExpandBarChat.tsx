@@ -20,6 +20,7 @@ export default function SideExpandBarChat({
   const handleDeleteThread = async (chatId: string) => {
     await threadRepo.deleteThreadById(chatId);
     queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+    navigate("/chat");
   };
 
   return (

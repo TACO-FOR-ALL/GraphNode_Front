@@ -72,6 +72,44 @@ export const threadRepo = {
     return updated;
   },
 
+  async updateMessageInThreadById(
+    threadId: string,
+    messageId: string,
+    content: string,
+  ) {
+    const thread = await this.getThreadById(threadId);
+    if (!thread) return null;
+
+    const updated = {
+      ...thread,
+      messages: thread.messages.map((msg) =>
+        msg.id === messageId ? { ...msg, content } : msg,
+      ),
+      updatedAt: Date.now(),
+    };
+    await db.threads.put(updated);
+
+    // Zustand 상태도 업데이트
+    useThreadsStore.getState().updateThreadInStore(updated);
+    return updated;
+  },
+
+  async deleteMessageFromThreadById(threadId: string, messageId: string) {
+    const thread = await this.getThreadById(threadId);
+    if (!thread) return null;
+
+    const updated = {
+      ...thread,
+      messages: thread.messages.filter((msg) => msg.id !== messageId),
+      updatedAt: Date.now(),
+    };
+    await db.threads.put(updated);
+
+    // Zustand 상태도 업데이트
+    useThreadsStore.getState().updateThreadInStore(updated);
+    return updated;
+  },
+
   async deleteThreadById(id: string): Promise<string | null> {
     const thread = await this.getThreadById(id);
     if (!thread) return null;

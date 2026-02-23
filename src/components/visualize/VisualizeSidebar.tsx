@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FiChevronRight,
   FiChevronDown,
@@ -9,46 +10,26 @@ import {
   FiMessageCircle,
   FiZap,
   FiStar,
+  FiRefreshCw,
 } from "react-icons/fi";
-import { GraphSnapshotDto } from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import SideExpandPanelIcon from "@/assets/icons/panel.svg";
-import { Subcluster } from "@/types/GraphData";
-import { DUMMY_GRAPH_SUMMARY } from "@/constants/DUMMY_GRAPH_SUMMARY";
+import { Subcluster, GraphSnapshot } from "@/types/GraphData";
+import ToggleSidebarExpand from "../sidebar/ToggleSidebarExpand";
+import { GraphSummary } from "@/types/GraphSummary";
 
-// 패턴 타입 라벨 및 색상
+// 패턴 타입 스타일
 const PATTERN_CONFIG = {
-  repetition: {
-    label: "반복",
-    color: "bg-yellow-500/20 text-yellow-600",
-    icon: "🔄",
-  },
-  progression: {
-    label: "진행",
-    color: "bg-green-500/20 text-green-600",
-    icon: "📈",
-  },
-  gap: { label: "공백", color: "bg-red-500/20 text-red-600", icon: "⚠️" },
-  bridge: { label: "연결", color: "bg-blue-500/20 text-blue-600", icon: "🔗" },
+  repetition: { color: "bg-yellow-500/20 text-yellow-600", icon: "🔄" },
+  progression: { color: "bg-green-500/20 text-green-600", icon: "📈" },
+  gap: { color: "bg-red-500/20 text-red-600", icon: "⚠️" },
+  bridge: { color: "bg-blue-500/20 text-blue-600", icon: "🔗" },
 };
 
-// 추천 타입 라벨 및 색상
+// 추천 타입 스타일
 const RECOMMENDATION_CONFIG = {
-  consolidate: {
-    label: "통합",
-    color: "bg-purple-500/20 text-purple-600",
-    icon: "📦",
-  },
-  explore: { label: "탐색", color: "bg-blue-500/20 text-blue-600", icon: "🔍" },
-  review: {
-    label: "검토",
-    color: "bg-yellow-500/20 text-yellow-600",
-    icon: "📝",
-  },
-  connect: {
-    label: "연결",
-    color: "bg-green-500/20 text-green-600",
-    icon: "🔗",
-  },
+  consolidate: { color: "bg-purple-500/20 text-purple-600", icon: "📦" },
+  explore: { color: "bg-blue-500/20 text-blue-600", icon: "🔍" },
+  review: { color: "bg-yellow-500/20 text-yellow-600", icon: "📝" },
+  connect: { color: "bg-green-500/20 text-green-600", icon: "🔗" },
 };
 
 // 우선순위 색상
@@ -59,7 +40,8 @@ const PRIORITY_CONFIG = {
 };
 
 interface VisualizeSidebarProps {
-  graphData: GraphSnapshotDto;
+  graphData: GraphSnapshot;
+  graphSummary: GraphSummary;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
   onNodeFocus?: (nodeId: number) => void;
@@ -67,6 +49,8 @@ interface VisualizeSidebarProps {
   subclusters: Subcluster[];
   expandedSubclusters: Set<string>;
   onToggleSubcluster: (subclusterId: string) => void;
+  onUpdateGraph?: () => void;
+  isUpdating?: boolean;
 }
 
 interface SubclusterGroup {
@@ -92,6 +76,7 @@ interface ClusterGroup {
 
 export default function VisualizeSidebar({
   graphData,
+  graphSummary,
   isExpanded,
   setIsExpanded,
   onNodeFocus,
@@ -99,7 +84,56 @@ export default function VisualizeSidebar({
   subclusters,
   expandedSubclusters,
   onToggleSubcluster,
+  onUpdateGraph,
+  isUpdating = false,
 }: VisualizeSidebarProps) {
+  const { t } = useTranslation();
+
+  // 드래그 리사이즈 관련 상태
+  const [sidebarWidth, setSidebarWidth] = useState(259);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(259);
+
+  const MIN_WIDTH = 259;
+  const MAX_WIDTH = 400;
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isExpanded) return;
+      e.preventDefault();
+      setIsDragging(true);
+      dragStartX.current = e.clientX;
+      dragStartWidth.current = sidebarWidth;
+    },
+    [isExpanded, sidebarWidth],
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - dragStartX.current;
+      const newWidth = Math.min(
+        MAX_WIDTH,
+        Math.max(MIN_WIDTH, dragStartWidth.current + delta),
+      );
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(
     new Set(),
   );
@@ -202,20 +236,15 @@ export default function VisualizeSidebar({
     <div className="relative flex">
       {/* 사이드바 메인 영역 */}
       <div
-        className={`bg-sidebar-expanded-background duration-300 transition-all ${
-          isExpanded ? "w-[259px]" : "w-0"
-        } flex flex-col h-full border-r border-base-border overflow-hidden`}
+        className={`bg-sidebar-expanded-background flex flex-col h-full overflow-hidden ${
+          isDragging ? "" : "duration-300 transition-all"
+        }`}
+        style={{ width: isExpanded ? sidebarWidth : 40 }}
       >
-        {/* 토글 버튼 (펼쳐진 상태에서만) */}
-        <div className="flex px-3 py-4">
-          <img
-            onClick={() => setIsExpanded(false)}
-            src={SideExpandPanelIcon}
-            alt="side expand panel"
-            className="w-4 h-4 ml-auto cursor-pointer hover:opacity-70 transition-opacity"
-          />
-        </div>
-
+        <ToggleSidebarExpand
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
+        />
         {isExpanded && (
           <div className="flex-1 overflow-y-auto scroll-hidden flex flex-col px-3 pb-20">
             {/* Overview 섹션 */}
@@ -233,7 +262,7 @@ export default function VisualizeSidebar({
                 )}
                 <FiInfo size={14} />
                 <span className="text-[13px] font-normal font-noto-sans-kr">
-                  개요
+                  {t("visualize.overview")}
                 </span>
               </div>
               <div
@@ -248,7 +277,7 @@ export default function VisualizeSidebar({
                   <p className="text-[11px] text-text-tertiary leading-relaxed">
                     {isOverviewTextExpanded ? (
                       <>
-                        {DUMMY_GRAPH_SUMMARY.overview.summary_text}
+                        {graphSummary.overview.summary_text}
                         <span
                           onClick={(e) => {
                             e.stopPropagation();
@@ -256,15 +285,12 @@ export default function VisualizeSidebar({
                           }}
                           className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
                         >
-                          접기
+                          {t("visualize.collapse")}
                         </span>
                       </>
                     ) : (
                       <>
-                        {DUMMY_GRAPH_SUMMARY.overview.summary_text.slice(
-                          0,
-                          100,
-                        )}
+                        {graphSummary.overview.summary_text.slice(0, 100)}
                         ...
                         <span
                           onClick={(e) => {
@@ -273,7 +299,7 @@ export default function VisualizeSidebar({
                           }}
                           className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
                         >
-                          더보기
+                          {t("visualize.expand")}
                         </span>
                       </>
                     )}
@@ -285,19 +311,21 @@ export default function VisualizeSidebar({
                       <FiMessageCircle size={12} className="text-primary" />
                       <div>
                         <p className="text-[10px] text-text-tertiary">
-                          대화 수
+                          {t("visualize.conversations")}
                         </p>
                         <p className="text-[12px] font-medium text-text-primary">
-                          {DUMMY_GRAPH_SUMMARY.overview.total_conversations}
+                          {graphSummary.overview.total_conversations}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg">
                       <FiActivity size={12} className="text-node-focus" />
                       <div>
-                        <p className="text-[10px] text-text-tertiary">스타일</p>
+                        <p className="text-[10px] text-text-tertiary">
+                          {t("visualize.style")}
+                        </p>
                         <p className="text-[12px] font-medium text-text-primary">
-                          {DUMMY_GRAPH_SUMMARY.overview.conversation_style}
+                          {graphSummary.overview.conversation_style}
                         </p>
                       </div>
                     </div>
@@ -306,10 +334,10 @@ export default function VisualizeSidebar({
                   {/* 주요 관심사 - 전체 표시 */}
                   <div className="mb-1">
                     <p className="text-[10px] text-text-tertiary mb-1">
-                      주요 관심사
+                      {t("visualize.primaryInterests")}
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {DUMMY_GRAPH_SUMMARY.overview.primary_interests.map(
+                      {graphSummary.overview.primary_interests.map(
                         (interest, idx) => (
                           <span
                             key={idx}
@@ -343,10 +371,10 @@ export default function VisualizeSidebar({
                 )}
                 <FiLayers size={14} />
                 <span className="text-[13px] font-normal font-noto-sans-kr">
-                  그래프 구조
+                  {t("visualize.graphStructure")}
                 </span>
                 <span className="text-[10px] text-text-tertiary ml-auto">
-                  {clusterGroups.length}개 클러스터
+                  {clusterGroups.length} {t("visualize.clusters")}
                 </span>
               </div>
               <div
@@ -562,10 +590,10 @@ export default function VisualizeSidebar({
                 )}
                 <FiZap size={14} />
                 <span className="text-[13px] font-normal font-noto-sans-kr">
-                  발견된 패턴
+                  {t("visualize.patterns")}
                 </span>
                 <span className="text-[10px] text-text-tertiary ml-auto">
-                  {DUMMY_GRAPH_SUMMARY.patterns.length}
+                  {graphSummary.patterns.length}
                 </span>
               </div>
               <div
@@ -576,7 +604,7 @@ export default function VisualizeSidebar({
                 }`}
               >
                 <div className="px-[6px] space-y-1.5 pt-1">
-                  {DUMMY_GRAPH_SUMMARY.patterns.map((pattern, idx) => {
+                  {graphSummary.patterns.map((pattern, idx) => {
                     const config = PATTERN_CONFIG[pattern.pattern_type];
                     return (
                       <div
@@ -585,12 +613,13 @@ export default function VisualizeSidebar({
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${config.color}`}
+                            className={`text-[11px] px-1.5 py-0.5 rounded ${config.color}`}
                           >
-                            {config.icon} {config.label}
+                            {config.icon}{" "}
+                            {t(`visualize.patternType.${pattern.pattern_type}`)}
                           </span>
                           <span
-                            className={`text-[10px] ${
+                            className={`text-[11px] ${
                               pattern.significance === "high"
                                 ? "text-red-500"
                                 : pattern.significance === "medium"
@@ -598,14 +627,10 @@ export default function VisualizeSidebar({
                                   : "text-green-500"
                             }`}
                           >
-                            {pattern.significance === "high"
-                              ? "높음"
-                              : pattern.significance === "medium"
-                                ? "중간"
-                                : "낮음"}
+                            {t(`visualize.priority.${pattern.significance}`)}
                           </span>
                         </div>
-                        <p className="text-[11px] text-text-tertiary leading-relaxed">
+                        <p className="text-[12px] text-text-tertiary leading-relaxed">
                           {pattern.description}
                         </p>
                       </div>
@@ -633,10 +658,10 @@ export default function VisualizeSidebar({
                 )}
                 <FiStar size={14} />
                 <span className="text-[13px] font-normal font-noto-sans-kr">
-                  추천 사항
+                  {t("visualize.recommendations")}
                 </span>
                 <span className="text-[10px] text-text-tertiary ml-auto">
-                  {DUMMY_GRAPH_SUMMARY.recommendations.length}
+                  {graphSummary.recommendations.length}
                 </span>
               </div>
               <div
@@ -647,7 +672,7 @@ export default function VisualizeSidebar({
                 }`}
               >
                 <div className="px-[6px] space-y-1.5 pt-1">
-                  {DUMMY_GRAPH_SUMMARY.recommendations.map((rec, idx) => {
+                  {graphSummary.recommendations.map((rec, idx) => {
                     const config = RECOMMENDATION_CONFIG[rec.type];
                     return (
                       <div
@@ -656,24 +681,21 @@ export default function VisualizeSidebar({
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${config.color}`}
+                            className={`text-[11px] px-1.5 py-0.5 rounded ${config.color}`}
                           >
-                            {config.icon} {config.label}
+                            {config.icon}{" "}
+                            {t(`visualize.recommendationType.${rec.type}`)}
                           </span>
                           <span
-                            className={`text-[10px] ${PRIORITY_CONFIG[rec.priority]}`}
+                            className={`text-[11px] ${PRIORITY_CONFIG[rec.priority]}`}
                           >
-                            {rec.priority === "high"
-                              ? "높음"
-                              : rec.priority === "medium"
-                                ? "중간"
-                                : "낮음"}
+                            {t(`visualize.priority.${rec.priority}`)}
                           </span>
                         </div>
-                        <p className="text-[11px] font-medium text-text-primary mb-0.5">
+                        <p className="text-[12px] font-medium text-text-primary mb-0.5">
                           {rec.title}
                         </p>
-                        <p className="text-[10px] text-text-tertiary leading-relaxed">
+                        <p className="text-[12px] text-text-tertiary leading-relaxed">
                           {rec.description}
                         </p>
                       </div>
@@ -684,16 +706,40 @@ export default function VisualizeSidebar({
             </div>
           </div>
         )}
+
+        {/* 그래프 업데이트 버튼 - 하단 고정 */}
+        {isExpanded && (
+          <div className="absolute bottom-0 left-0 right-0 p-3 bg-sidebar-expanded-background border-t border-base-border">
+            <button
+              onClick={onUpdateGraph}
+              disabled={isUpdating}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-[13px] transition-all duration-200 ${
+                isUpdating
+                  ? "bg-primary/50 text-white cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-primary/90 active:scale-[0.98]"
+              }`}
+            >
+              <FiRefreshCw
+                size={14}
+                className={isUpdating ? "animate-spin" : ""}
+              />
+              {isUpdating
+                ? t("visualize.updating")
+                : t("visualize.updateGraph")}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 접힌 상태에서 열기 버튼 */}
-      {!isExpanded && (
+      {/* 리사이즈 핸들 - 열린 상태에서만 표시 */}
+      {isExpanded && (
         <div
-          className="absolute left-0 top-4 w-8 h-8 flex items-center justify-center bg-sidebar-expanded-background border border-base-border rounded-r-md cursor-pointer hover:bg-sidebar-button-hover transition-colors z-10"
-          onClick={() => setIsExpanded(true)}
-        >
-          <FiChevronRight size={16} className="text-text-secondary" />
-        </div>
+          className={`absolute top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10 ${
+            isDragging ? "bg-primary/50" : ""
+          }`}
+          style={{ left: sidebarWidth - 2 }}
+          onMouseDown={handleMouseDown}
+        />
       )}
     </div>
   );

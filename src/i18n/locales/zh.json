@@ -64,6 +64,25 @@
   },
   "visualize": {
     "loading": "正在构建图结构…",
+    "updateGraph": "更新图结构",
+    "updating": "更新中...",
+    "overview": "概述",
+    "graphStructure": "图结构",
+    "clusters": "集群",
+    "conversations": "对话数",
+    "style": "风格",
+    "primaryInterests": "主要兴趣",
+    "patterns": "发现的模式",
+    "recommendations": "建议",
+    "expand": "查看更多",
+    "collapse": "收起",
+    "chatPreview": {
+      "title": "对话预览",
+      "viewDetail": "查看详情",
+      "noData": "暂无数据",
+      "hardcodedTitle": "示例对话",
+      "hardcodedContent": "这是示例对话内容。加载实际数据后将在此处显示。"
+    },
     "error": {
       "title": "无法加载图结构",
       "description": "加载图数据时出现问题。请稍后再试。",
@@ -78,6 +97,23 @@
       "generating": "生成中...",
       "generatingNotice": "生成完成后会通知您。请不要关闭应用程序。",
       "notice": "图结构基于您保存的聊天记录和笔记生成。如果没有任何聊天或笔记记录，则无法生成图结构。"
+    },
+    "patternType": {
+      "repetition": "重复",
+      "progression": "进展",
+      "gap": "空缺",
+      "bridge": "桥接"
+    },
+    "recommendationType": {
+      "consolidate": "整合",
+      "explore": "探索",
+      "review": "审查",
+      "connect": "连接"
+    },
+    "priority": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
     }
   },
   "search": {
@@ -133,7 +169,8 @@
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
-      "ja": "🇯🇵 日本語"
+      "ja": "🇯🇵 日本語",
+      "saveFailed": "无法保存语言设置。重新启动应用后将恢复为之前的设置。"
     },
     "timeFormat": {
       "title": "时间格式",
@@ -153,6 +190,7 @@
       "keybinds": "快捷键",
       "language-time": "语言和时间"
     },
+    "feedback": "发送反馈",
     "logout": "登出",
     "dropJsonZone": {
       "title": "拖拽 & 上传 JSON 文件",

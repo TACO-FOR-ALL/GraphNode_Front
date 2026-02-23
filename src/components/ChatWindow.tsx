@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import MarkdownBubble from "./MarkdownBubble";
+import { useEffect, useMemo, useRef, useState } from "react";
+import StreamingMarkdownBubble from "./StreamingMarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
@@ -8,31 +8,50 @@ import { useTranslation } from "react-i18next";
 import logo from "@/assets/icons/logo.svg";
 
 const PAGE = 10;
-const BOTTOM_PADDING = 200; // ChatSendBox 높이만큼 하단 여백
 
 export default function ChatWindow({
   avatarUrl,
   threadId,
   isTyping,
-  isPinned,
-  onPinComplete,
 }: {
   threadId?: string;
   isTyping: boolean;
   avatarUrl: string | null;
-  isPinned: boolean;
-  onPinComplete: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
-  const turnRef = useRef<HTMLDivElement>(null);
+  const lastUserMessageRef = useRef<HTMLDivElement>(null);
+  const aiTurnRef = useRef<HTMLDivElement>(null);
 
   const [visibleCount, setVisibleCount] = useState(PAGE);
-  const [spacerHeight, setSpacerHeight] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [userMessageHeight, setUserMessageHeight] = useState(0);
+  const [aiResponseHeight, setAiResponseHeight] = useState(0);
 
-  const { threads, refreshThread } = useThreadsStore();
+  // 컨테이너 높이 측정
+  useEffect(() => {
+    const updateHeight = () => {
+      if (wrapRef.current) {
+        setContainerHeight(wrapRef.current.clientHeight);
+      }
+    };
+
+    updateHeight();
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    if (wrapRef.current) {
+      resizeObserver.observe(wrapRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Selector를 사용하여 특정 thread만 구독 (성능 최적화)
+  const thread = useThreadsStore((state) =>
+    threadId ? state.threads[threadId] : null,
+  );
+  const refreshThread = useThreadsStore((state) => state.refreshThread);
   const { isExpanded } = useSidebarExpandStore();
-  const thread = threadId ? threads[threadId] : null;
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
@@ -59,14 +78,19 @@ export default function ChatWindow({
   const total = allMessages.length;
   const startIndex = Math.max(0, total - visibleCount);
   const visible = total ? allMessages.slice(startIndex) : [];
+  const lastVisibleMessage = visible.length > 0 ? visible[visible.length - 1] : null;
+  const hasActiveTurn =
+    !!lastVisibleMessage &&
+    (isTyping ||
+      lastVisibleMessage.role === "user" ||
+      (lastVisibleMessage.role === "assistant" && lastVisibleMessage.content === ""));
 
-  // 이전 메시지(history)와 현재 턴(턴 => 가장 최근의 유저와 에이전트의 질문, 응답) 분리
+  // 이전 메시지(history)와 현재 활성 턴(가장 최근 user + 그 이후 assistant들) 분리
   const { history, currentTurn } = useMemo(() => {
-    if (!isPinned || visible.length === 0) {
+    if (visible.length === 0 || !hasActiveTurn) {
       return { history: visible, currentTurn: [] as ChatMessage[] };
     }
 
-    // 가장 마지막 user 메시지의 인덱스 찾기
     let lastUserIdx = -1;
     for (let i = visible.length - 1; i >= 0; i--) {
       if (visible[i].role === "user") {
@@ -75,7 +99,6 @@ export default function ChatWindow({
       }
     }
 
-    // 실제로 일어날 가능성은 없는데 (방어적 코드)
     if (lastUserIdx === -1) {
       return { history: visible, currentTurn: [] as ChatMessage[] };
     }
@@ -84,126 +107,102 @@ export default function ChatWindow({
       history: visible.slice(0, lastUserIdx),
       currentTurn: visible.slice(lastUserIdx),
     };
-  }, [visible, isPinned]);
+  }, [visible, hasActiveTurn]);
 
-  // 현재 턴을 상단에 보이게 스크롤바 위치 조절
-  const scrollTurnToTop = () => {
+  const shouldUseTopAnchoredTurn = currentTurn.length > 0;
+  const turnUserMessage = currentTurn[0]?.role === "user" ? currentTurn[0] : null;
+  const turnAssistantMessages = turnUserMessage ? currentTurn.slice(1) : [];
+  const lastUserMessage = turnUserMessage;
+  const lastUserMessageId = lastUserMessage?.id;
+
+  const spacerHeight = useMemo(() => {
+    if (!shouldUseTopAnchoredTurn) return 0;
+    return Math.max(0, containerHeight - (userMessageHeight + aiResponseHeight));
+  }, [shouldUseTopAnchoredTurn, containerHeight, userMessageHeight, aiResponseHeight]);
+
+  const alignCurrentTurnToTop = () => {
     const scroller = wrapRef.current;
-    const turn = turnRef.current;
-    if (!scroller || !turn) return;
+    const userMessageEl = lastUserMessageRef.current;
+    if (!scroller || !userMessageEl) return;
 
-    scroller.scrollTop = turn.offsetTop;
+    const scrollerRect = scroller.getBoundingClientRect();
+    const userRect = userMessageEl.getBoundingClientRect();
+    const targetTop = userRect.top - scrollerRect.top + scroller.scrollTop;
+
+    if (Math.abs(scroller.scrollTop - targetTop) > 1) {
+      scroller.scrollTop = targetTop;
+    }
   };
 
-  // 현재 턴이 채팅방 가장 상단에 보일 수 있게 하단 스페이서 높이 계산
-  const recomputeSpacer = () => {
-    const scroller = wrapRef.current;
-    const turn = turnRef.current;
-    if (!scroller || !turn) {
-      setSpacerHeight(0);
+  // 유저/AI 영역 높이 측정 (스트리밍 중 지속 갱신)
+  useEffect(() => {
+    if (!shouldUseTopAnchoredTurn) {
+      setUserMessageHeight(0);
+      setAiResponseHeight(0);
       return;
     }
 
-    const scrollerH = scroller.clientHeight;
-    const turnH = turn.offsetHeight;
+    const measureHeights = () => {
+      const userHeight = lastUserMessageRef.current?.offsetHeight ?? 0;
+      const aiHeight = aiTurnRef.current?.offsetHeight ?? 0;
+      setUserMessageHeight((prev) => (Math.abs(prev - userHeight) > 1 ? userHeight : prev));
+      setAiResponseHeight((prev) => (Math.abs(prev - aiHeight) > 1 ? aiHeight : prev));
+    };
 
-    // ChatSendBox 높이(BOTTOM_PADDING)를 고려하여 스페이서 계산
-    const next = Math.max(0, scrollerH - turnH - BOTTOM_PADDING);
-    setSpacerHeight(next);
-  };
+    measureHeights();
 
-  // 핀 모드일 때 메시지 변경 시 스페이서 재계산 및 스크롤 조정
-  useLayoutEffect(() => {
-    if (!isPinned) {
-      setSpacerHeight(0);
-      return;
+    const resizeObserver = new ResizeObserver(measureHeights);
+    if (lastUserMessageRef.current) {
+      resizeObserver.observe(lastUserMessageRef.current);
+    }
+    if (aiTurnRef.current) {
+      resizeObserver.observe(aiTurnRef.current);
     }
 
-    // DOM이 완전히 렌더링된 후 스페이서 계산 및 스크롤 조정
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [
+    shouldUseTopAnchoredTurn,
+    lastUserMessageId,
+    turnAssistantMessages.length,
+    total,
+  ]);
+
+  // 유저 메시지 추가/스트리밍 높이 변경 시 상단 정렬 유지
+  useEffect(() => {
+    if (!shouldUseTopAnchoredTurn) return;
+    if (spacerHeight <= 0) return;
+
     requestAnimationFrame(() => {
-      recomputeSpacer();
-      scrollTurnToTop();
+      alignCurrentTurnToTop();
     });
-  }, [isPinned, currentTurn.length, total]);
+  }, [
+    shouldUseTopAnchoredTurn,
+    lastUserMessageId,
+    spacerHeight,
+    userMessageHeight,
+    aiResponseHeight,
+  ]);
 
-  // 핀 모드 활성화 시 즉시 스크롤 조정 (별도 effect)
+  // AI 응답 스트리밍 중일 때 하단 자동 스크롤
   useEffect(() => {
-    if (!isPinned) return;
-
-    // 약간의 지연 후 스크롤 조정 (store 업데이트 및 렌더링 완료 대기)
-    const timer = setTimeout(() => {
-      recomputeSpacer();
-      scrollTurnToTop();
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [isPinned]);
-
-  // 핀 모드일 때 ResizeObserver로 턴 높이 변화 감지
-  useEffect(() => {
-    if (!isPinned) return;
-
-    const turn = turnRef.current;
-    if (!turn) return;
-
-    const ro = new ResizeObserver(() => {
-      recomputeSpacer();
-      scrollTurnToTop();
-    });
-    ro.observe(turn);
-
-    return () => ro.disconnect();
-  }, [isPinned]);
-
-  // 핀 모드일 때 윈도우 리사이즈 대응
-  useEffect(() => {
-    if (!isPinned) return;
-
-    const onResize = () => {
-      recomputeSpacer();
-      scrollTurnToTop();
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [isPinned]);
-
-  // 핀 모드일 때 사용자가 위로 스크롤하면 핀 해제 (wheel 이벤트 사용)
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el || !isPinned) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // 위로 스크롤 (deltaY < 0)하면 핀 해제
-      if (e.deltaY < -10) {
-        onPinComplete();
-        setSpacerHeight(0);
-      }
-    };
-
-    el.addEventListener("wheel", handleWheel);
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [isPinned, onPinComplete]);
-
-  // 핀 모드가 아닐 때 기존 스크롤 동작 (하단 근처일 때 자동 스크롤)
-  useEffect(() => {
-    if (isPinned) return;
+    if (!isTyping) return;
+    if (shouldUseTopAnchoredTurn) return;
     const el = wrapRef.current;
     if (!el) return;
-    const distanceFromBottom =
-      el.scrollHeight - (el.scrollTop + el.clientHeight);
-    const nearBottom = distanceFromBottom < 120;
-    if (nearBottom) {
-      requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight;
-      });
-    }
-  }, [total, isPinned]);
+
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [isTyping, total, shouldUseTopAnchoredTurn]);
 
   // 상단 sentinel로 이전 메시지 로드
   useEffect(() => {
     const el = wrapRef.current;
     const sentinel = topSentinelRef.current;
     if (!el || !sentinel) return;
+    if (shouldUseTopAnchoredTurn) return;
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -225,15 +224,40 @@ export default function ChatWindow({
 
     io.observe(sentinel);
     return () => io.disconnect();
-  }, [startIndex, threadId]);
+  }, [startIndex, threadId, shouldUseTopAnchoredTurn]);
+
+  // 전체 visible 배열에서 마지막 메시지 ID 확인
+  const lastMessageId = visible.length > 0 ? visible[visible.length - 1]?.id : null;
+  const lastMessageRole = visible.length > 0 ? visible[visible.length - 1]?.role : null;
 
   // 메시지 버블 렌더링 함수
-  const renderMessage = (m: ChatMessage) => {
+  const renderMessage = (m: ChatMessage, isInCurrentTurn: boolean = false) => {
     const isUser = m.role === "user";
+
+    // 전체 visible 배열에서 마지막 어시스턴트 메시지인지 확인 (스트리밍 중인 메시지)
+    const isLastAssistantMessage =
+      !isUser &&
+      m.id === lastMessageId &&
+      lastMessageRole === "assistant";
+
+    // currentTurn의 마지막 유저 메시지인지 확인
+    const isLastUserInTurn = isInCurrentTurn && isUser && lastUserMessage?.id === m.id;
+
+    // Assistant 메시지가 빈 문자열이면 TypingBubble 표시
+    if (!isUser && m.content === "") {
+      return (
+        <div key={m.id} className="mb-10 flex justify-start">
+          <div style={{ maxWidth: assistantMaxWidth }}>
+            <TypingBubble />
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
         key={m.id}
+        ref={isLastUserInTurn ? lastUserMessageRef : null}
         className={`flex ${isUser ? "justify-end" : "justify-start"} items-start mb-10`}
         title={new Date(m.ts).toLocaleString()}
       >
@@ -265,7 +289,10 @@ export default function ChatWindow({
               style={{ marginTop: 0 }}
             />
             <div className="flex flex-col min-w-0 overflow-hidden">
-              <MarkdownBubble text={m.content} />
+              <StreamingMarkdownBubble
+                text={m.content}
+                isStreaming={isLastAssistantMessage && isTyping}
+              />
             </div>
           </div>
         )}
@@ -298,41 +325,23 @@ export default function ChatWindow({
           display: none;
         }
       `}</style>
-      <div
-        className="min-h-full flex flex-col p-4"
-        style={{ paddingBottom: BOTTOM_PADDING }}
-      >
+      <div className="p-4">
         <div ref={topSentinelRef} />
 
         {/* 이전 메시지들 (history) */}
-        <div>{history.map(renderMessage)}</div>
+        <div>{history.map((msg) => renderMessage(msg, false))}</div>
 
-        {/* 현재 턴 (핀 모드일 때만 분리) */}
-        {isPinned && currentTurn.length > 0 ? (
+        {/* 현재 턴 (가장 최근 user 턴) */}
+        {shouldUseTopAnchoredTurn && (
           <>
-            <div ref={turnRef}>
-              {currentTurn.map(renderMessage)}
-              {isTyping && (
-                <div className="mb-2 flex justify-start">
-                  <div style={{ maxWidth: assistantMaxWidth }}>
-                    <TypingBubble />
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* 동적 스페이서 */}
-            <div style={{ height: spacerHeight }} className="bg-transparent" />
-          </>
-        ) : (
-          /* 핀 모드가 아닐 때는 모든 메시지를 일반적으로 렌더링 */
-          <>
-            {isTyping && (
-              <div className="mb-2 flex justify-start">
-                <div style={{ maxWidth: assistantMaxWidth }}>
-                  <TypingBubble />
-                </div>
+            <div>
+              {turnUserMessage ? renderMessage(turnUserMessage, true) : null}
+              <div ref={aiTurnRef}>
+                {turnAssistantMessages.map((msg) => renderMessage(msg, true))}
               </div>
-            )}
+            </div>
+            {/* 동적 여백 - AI 응답이 길어질수록 줄어듦 */}
+            <div style={{ height: `${spacerHeight}px` }} />
           </>
         )}
       </div>

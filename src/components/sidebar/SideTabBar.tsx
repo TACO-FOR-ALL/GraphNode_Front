@@ -28,7 +28,7 @@ export default function SideTabBar({
       path.includes("/chat") ||
       path.includes("/note") ||
       path.includes("/settings"),
-    [path]
+    [path],
   );
 
   // URL에서 현재 선택된 ID 추출

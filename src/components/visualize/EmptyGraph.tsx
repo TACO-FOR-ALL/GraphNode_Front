@@ -15,7 +15,7 @@ export default function EmptyGraph() {
     if (!onRequestGenerate || isGenerating) return;
     setIsGenerating(true);
     try {
-      await onRequestGenerate();
+      await api.graphAi.generateGraph();
     } finally {
       setIsGenerating(false);
     }

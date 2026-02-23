@@ -1,55 +1,477 @@
 import threadRepo from "@/managers/threadRepo";
-import * as d3Force from "d3-force";
 import {
-  GraphEdgeDto,
-  GraphNodeDto,
-} from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import NodeChatPreview from "./NodeChatPreview";
-import {
-  PositionedEdge,
   ClusterCircle,
+  PositionedEdge,
+  PositionedNode,
   Subcluster,
-  DisplayNode,
 } from "@/types/GraphData";
+import * as d3Force from "d3-force";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import NodeChatPreview from "./NodeChatPreview";
+import ZoomControls from "./ZoomControls";
 
-// ===== 노드 크기 설정 =====
-// 중분류 노드 반지름
-// - 값 증가: 중분류 노드가 커짐 (더 눈에 띔)
-// - 값 감소: 중분류 노드가 작아짐
-const SUBCLUSTER_NODE_RADIUS = 7;
-
-// 일반 노드 기본/최대 반지름
-// - BASE_NODE_RADIUS: 엣지가 0개인 노드의 크기
-// - MAX_NODE_RADIUS: 엣지가 가장 많은 노드의 크기
-// - 두 값의 차이가 크면 노드 크기 변화가 극적임
-const BASE_NODE_RADIUS = 3;
-const MAX_NODE_RADIUS = 5;
-
-type SimNode = d3Force.SimulationNodeDatum & {
+// Graph2D에서 사용하는 노드 타입 (PositionedNode 기반)
+type GraphNode = {
   id: number;
-  x: number;
-  y: number;
-  vx?: number;
-  vy?: number;
-  edgeCount: number;
-  isSubcluster: boolean;
-  subclusterId?: string;
-  subclusterSize?: number;
-  containedNodeIds?: number[];
-  clusterName: string;
-  clusterId: string;
-  origId: string;
   userId: string;
-  timestamp: string | null;
+  origId: string;
+  clusterId: string;
+  clusterName: string;
+  timestamp: number | null;
   numMessages: number;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
-// ===== 일반 노드 크기 계산 함수 =====
-// 노드의 엣지 수에 따라 크기가 결정됨
-// - 엣지가 많은 노드: MAX_NODE_RADIUS에 가까워짐
-// - 엣지가 적은 노드: BASE_NODE_RADIUS에 가까워짐
-// - Math.sqrt 사용: 크기 변화가 완만하게 적용됨
+// Graph2D에서 사용하는 엣지 타입 (PositionedEdge 기반)
+type GraphEdge = {
+  userId: string;
+  id?: string;
+  source: number;
+  target: number;
+  weight: number;
+  type: "hard" | "insight";
+  intraCluster: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+type SimNode = d3Force.SimulationNodeDatum &
+  GraphNode & {
+    x: number;
+    y: number;
+    vx?: number;
+    vy?: number;
+    edgeCount: number;
+  };
+
+type DisplayNode = {
+  id: string | number;
+  isGroupNode?: boolean;
+  subcluster_id?: string | null;
+  x: number;
+  y: number;
+  size?: number;
+  color?: string;
+  label?: string;
+  edgeCount?: number;
+  cluster_name?: string;
+  orig_node?: PositionedNode;
+};
+
+type DisplayEdge = {
+  source: string | number;
+  target: string | number;
+  isIntraCluster: boolean;
+  id?: string;
+};
+
+function classifyEdges(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+): {
+  edges: PositionedEdge[];
+  edgeCounts: Map<number, number>;
+} {
+  const nodeMap = new Map<number, GraphNode>();
+  nodes.forEach((n) => nodeMap.set(n.id, n));
+
+  // 노드별 엣지 수 계산
+  const edgeCounts = new Map<number, number>();
+  nodes.forEach((n) => edgeCounts.set(n.id, 0));
+
+  edges.forEach((e) => {
+    edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
+    edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
+  });
+
+  const positionedEdges = edges.map((e) => {
+    const s = nodeMap.get(e.source);
+    const t = nodeMap.get(e.target);
+    const isIntra = s && t && s.clusterName === t.clusterName;
+    return { ...e, isIntraCluster: !!isIntra };
+  });
+
+  return { edges: positionedEdges, edgeCounts };
+}
+
+// 클러스터별로 서브클러스터 그룹화
+function groupSubclustersByCluster(
+  subclusters: Subcluster[],
+): Map<string, Subcluster[]> {
+  const subclustersByCluster = new Map<string, Subcluster[]>();
+  subclusters.forEach((sc) => {
+    const list = subclustersByCluster.get(sc.cluster_id) ?? [];
+    list.push(sc);
+    subclustersByCluster.set(sc.cluster_id, list);
+  });
+  return subclustersByCluster;
+}
+
+// 노드 -> 서브클러스터 매핑 생성
+function createNodeToSubclusterMap(
+  subclusters: Subcluster[],
+): Map<number, string> {
+  const nodeToSubcluster = new Map<number, string>();
+  subclusters.forEach((sc) => {
+    sc.node_ids.forEach((nodeId) => {
+      nodeToSubcluster.set(nodeId, sc.id);
+    });
+  });
+  return nodeToSubcluster;
+}
+
+function getVisibleGraph(
+  allNodes: PositionedNode[],
+  allEdges: GraphEdge[],
+  subclusters: Subcluster[],
+  collapsedSet: Set<string>,
+): { visibleNodes: DisplayNode[]; visibleEdges: DisplayEdge[] } {
+  const nodeToSubcluster = createNodeToSubclusterMap(subclusters);
+  const scMap = new Map(subclusters.map((sc) => [sc.id, sc]));
+
+  const nodeMap = new Map<number, DisplayNode>();
+  const visibleNodes: DisplayNode[] = [];
+
+  // 그룹 노드 생성 (접힌 서브클러스터)
+  collapsedSet.forEach((scId) => {
+    const sc = scMap.get(scId);
+    if (!sc) return;
+
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    let clusterName: string | undefined;
+
+    const memberNodeIds = new Set(sc.node_ids);
+    allNodes.forEach((n) => {
+      if (!memberNodeIds.has(n.id)) return;
+      sumX += n.x;
+      sumY += n.y;
+      count += 1;
+      if (!clusterName) clusterName = n.clusterName;
+    });
+
+    const groupNodeId = `__group_${scId}`;
+    const groupNode: DisplayNode = {
+      id: groupNodeId,
+      isGroupNode: true,
+      subcluster_id: scId,
+      label: sc.top_keywords?.[0] || `Group ${scId}`,
+      x: count > 0 ? sumX / count : 0,
+      y: count > 0 ? sumY / count : 0,
+      size: sc.size,
+      color: "var(--color-node-focus)",
+      edgeCount: 0,
+      cluster_name: clusterName,
+    };
+
+    visibleNodes.push(groupNode);
+    sc.node_ids.forEach((nodeId) => {
+      nodeMap.set(nodeId, groupNode);
+    });
+  });
+
+  // 일반 노드 처리
+  allNodes.forEach((node) => {
+    const subclusterId =
+      (node as GraphNode & { subclusterId?: string | null }).subclusterId ??
+      nodeToSubcluster.get(node.id) ??
+      null;
+    if (subclusterId && collapsedSet.has(subclusterId)) return;
+
+    const displayNode: DisplayNode = {
+      id: node.id,
+      isGroupNode: false,
+      subcluster_id: subclusterId,
+      label: node.origId,
+      x: node.x,
+      y: node.y,
+      edgeCount: node.edgeCount,
+      cluster_name: node.clusterName,
+      orig_node: node,
+    };
+
+    visibleNodes.push(displayNode);
+    nodeMap.set(node.id, displayNode);
+  });
+
+  const visibleEdges: DisplayEdge[] = [];
+  const edgeKeys = new Set<string>();
+  const edgeCounts = new Map<string | number, number>();
+
+  allEdges.forEach((e) => {
+    const sNode = nodeMap.get(e.source);
+    const tNode = nodeMap.get(e.target);
+    if (!sNode || !tNode) return;
+    if (sNode.id === tNode.id) return;
+
+    const key = [String(sNode.id), String(tNode.id)].sort().join("-");
+    if (edgeKeys.has(key)) return;
+
+    edgeKeys.add(key);
+    visibleEdges.push({
+      source: sNode.id,
+      target: tNode.id,
+      isIntraCluster: !!(
+        sNode.cluster_name &&
+        tNode.cluster_name &&
+        sNode.cluster_name === tNode.cluster_name
+      ),
+      id: key,
+    });
+
+    edgeCounts.set(sNode.id, (edgeCounts.get(sNode.id) ?? 0) + 1);
+    edgeCounts.set(tNode.id, (edgeCounts.get(tNode.id) ?? 0) + 1);
+  });
+
+  const nodesWithEdgeCounts = visibleNodes.map((n) => ({
+    ...n,
+    edgeCount: edgeCounts.get(n.id) ?? n.edgeCount ?? 0,
+  }));
+
+  return { visibleNodes: nodesWithEdgeCounts, visibleEdges };
+}
+
+function layoutWithBoundedForce(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  width: number,
+  height: number,
+): {
+  nodes: PositionedNode[];
+  edges: PositionedEdge[];
+  circles: ClusterCircle[];
+} {
+  const { edges: classifiedEdges, edgeCounts } = classifyEdges(nodes, edges);
+
+  // 클러스터별 노드 그룹화
+  const clusterGroups = new Map<string, GraphNode[]>();
+  nodes.forEach((n) => {
+    // clusterName을 기준으로 그룹화
+    const list = clusterGroups.get(n.clusterName) ?? [];
+    list.push(n);
+    clusterGroups.set(n.clusterName, list);
+  });
+
+  const clusterNames = Array.from(clusterGroups.keys());
+  const K = clusterNames.length;
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // 1단계: 각 클러스터의 크기(radius) 먼저 계산
+  const clusterRadii = new Map<string, number>();
+  const clusterNodeCounts = new Map<string, number>();
+
+  clusterNames.forEach((clusterName) => {
+    const clusterNodes = clusterGroups.get(clusterName)!;
+    const n = clusterNodes.length;
+    const tempNodeMap = new Map(clusterNodes.map((node) => [node.id, node]));
+    const intraEdges = classifiedEdges.filter(
+      (e) =>
+        e.isIntraCluster &&
+        tempNodeMap.has(e.source) &&
+        tempNodeMap.has(e.target),
+    );
+    const edgeCount = intraEdges.length;
+
+    const baseRadius = 15;
+    const nodeScaleFactor = 8;
+    const edgeScaleFactor = 4;
+    const radius =
+      baseRadius +
+      nodeScaleFactor * Math.sqrt(n) +
+      edgeScaleFactor * Math.sqrt(edgeCount);
+
+    clusterRadii.set(clusterName, radius);
+    clusterNodeCounts.set(clusterName, n);
+  });
+
+  // 2단계: 클러스터 중심들을 force simulation으로 배치
+  type ClusterCenter = {
+    id: string;
+    x: number;
+    y: number;
+    radius: number;
+  };
+
+  const clusterCenters: ClusterCenter[] = clusterNames.map((name, idx) => {
+    // 초기 위치: 랜덤하게 화면 중앙 근처에 배치
+    const angle = (2 * Math.PI * idx) / K + (Math.random() - 0.5) * 0.5;
+    const dist = Math.min(width, height) * 0.2 * Math.random();
+    return {
+      id: name,
+      x: centerX + dist * Math.cos(angle),
+      y: centerY + dist * Math.sin(angle),
+      radius: clusterRadii.get(name)!,
+    };
+  });
+
+  // 클러스터 중심들에 대한 force simulation
+  const clusterSim = d3Force
+    .forceSimulation<ClusterCenter>(clusterCenters)
+    .force("center", d3Force.forceCenter(centerX, centerY).strength(0.05))
+    .force("charge", d3Force.forceManyBody().strength(-100))
+    .force(
+      "collision",
+      d3Force
+        .forceCollide<ClusterCenter>()
+        .radius((d) => d.radius + 20) // 클러스터 간 여유 공간
+        .strength(1)
+        .iterations(3),
+    )
+    .stop();
+
+  // 클러스터 중심 시뮬레이션 실행
+  for (let i = 0; i < 100; i++) {
+    clusterSim.tick();
+
+    // 화면 경계 내로 제한
+    const padding = 50;
+    clusterCenters.forEach((c) => {
+      const r = c.radius;
+      c.x = Math.max(r + padding, Math.min(width - r - padding, c.x));
+      c.y = Math.max(r + padding, Math.min(height - r - padding, c.y));
+    });
+  }
+
+  // 클러스터 중심 위치 맵
+  const clusterCenterMap = new Map(clusterCenters.map((c) => [c.id, c]));
+
+  const allSimNodes: SimNode[] = [];
+  const circles: ClusterCircle[] = [];
+
+  clusterNames.forEach((clusterName) => {
+    const clusterNodes = clusterGroups.get(clusterName)!;
+    const center = clusterCenterMap.get(clusterName)!;
+    const cx = center.x;
+    const cy = center.y;
+    const clusterRadius = center.radius;
+
+    const n = clusterNodes.length;
+
+    const tempNodeMap = new Map(clusterNodes.map((node) => [node.id, node]));
+    const intraClusterEdges = classifiedEdges.filter(
+      (e) =>
+        e.isIntraCluster &&
+        tempNodeMap.has(e.source) &&
+        tempNodeMap.has(e.target),
+    );
+    const edgeCount = intraClusterEdges.length;
+
+    // clusterRadius는 이미 위에서 계산되어 center.radius로 전달됨
+    const simNodes: SimNode[] = clusterNodes.map((node, i) => {
+      const angle = (2 * Math.PI * i) / n;
+      const r = clusterRadius * 0.3;
+      const jitter = 5;
+      return {
+        ...node,
+        x: cx + r * Math.cos(angle) + (Math.random() - 0.5) * jitter,
+        y: cy + r * Math.sin(angle) + (Math.random() - 0.5) * jitter,
+        edgeCount: edgeCounts.get(node.id) ?? 0,
+      };
+    });
+
+    const nodeMap = new Map(simNodes.map((node) => [node.id, node]));
+
+    const simClusterEdges = intraClusterEdges.map((e) => ({
+      source: nodeMap.get(e.source)!,
+      target: nodeMap.get(e.target)!,
+    }));
+
+    const density = edgeCount / Math.max(n, 1);
+
+    const chargeStrength = -20 - Math.sqrt(n) * 3 - density * 2;
+    const collideRadius = 12 + Math.min(10, density * 1.5);
+    const boundaryRadius = clusterRadius * 0.9;
+
+    const simulation = d3Force
+      .forceSimulation<SimNode>(simNodes)
+      .force("center", d3Force.forceCenter(cx, cy))
+      .force("radial", d3Force.forceRadial(0, cx, cy).strength(0.06))
+      .force("charge", d3Force.forceManyBody().strength(chargeStrength))
+      .force(
+        "link",
+        d3Force
+          .forceLink<SimNode, any>(simClusterEdges)
+          .id((d: any) => d.id)
+          .distance(20 + Math.min(15, density * 1.2))
+          .strength(0.5),
+      )
+      .force("collision", d3Force.forceCollide(collideRadius).iterations(3))
+      .stop();
+
+    for (let i = 0; i < 150; i++) {
+      simulation.tick();
+
+      simNodes.forEach((node) => {
+        const dx = node.x! - cx;
+        const dy = node.y! - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > boundaryRadius) {
+          const k = boundaryRadius / dist;
+          node.x = cx + dx * k;
+          node.y = cy + dy * k;
+        }
+      });
+    }
+
+    allSimNodes.push(...simNodes);
+
+    if (clusterNodes.length === 0) return;
+
+    circles.push({
+      clusterId: clusterName, // clusterName을 ID로 사용
+      clusterName: clusterName,
+      centerX: cx,
+      centerY: cy,
+      radius: clusterRadius,
+    });
+  });
+
+  const positionedNodes: PositionedNode[] = allSimNodes.map((sn) => ({
+    id: sn.id,
+    userId: sn.userId,
+    timestamp: sn.timestamp,
+    origId: sn.origId,
+    clusterId: sn.clusterId,
+    clusterName: sn.clusterName,
+    numMessages: sn.numMessages,
+    x: sn.x!,
+    y: sn.y!,
+    edgeCount: sn.edgeCount,
+  }));
+
+  // 클러스터별 원형 아웃라인 계산
+  return {
+    nodes: positionedNodes,
+    edges: classifiedEdges,
+    circles,
+  };
+}
+
+// 노드 크기 계산 (엣지 수 기반)
+const BASE_NODE_RADIUS = 3;
+const MAX_NODE_RADIUS = 5;
+const SUBCLUSTER_FOCUS_COLORS = [
+  "#4aa8c0",
+  "#e74c3c",
+  "#2ecc71",
+  "#f39c12",
+  "#9b59b6",
+  "#16a085",
+  "#e84393",
+  "#2d98da",
+  "#ff9f43",
+];
+
 function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
   if (maxEdgeCount === 0) return BASE_NODE_RADIUS;
   const scale = edgeCount / maxEdgeCount;
@@ -59,9 +481,9 @@ function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
 }
 
 type GraphProps = {
-  rawNodes: GraphNodeDto[];
-  rawEdges: GraphEdgeDto[];
-  subclusters: Subcluster[];
+  rawNodes: GraphNode[];
+  rawEdges: GraphEdge[];
+  rawSubclusters?: Subcluster[];
   width: number;
   height: number;
   avatarUrl: string | null;
@@ -71,43 +493,40 @@ type GraphProps = {
     edges: PositionedEdge[],
   ) => void;
   zoomToClusterId?: string | null;
-  onNodeClick?: (nodeId: number) => void;
-  onSubclusterClick?: (subclusterId: string) => void;
-  externalFocusNodeId?: number | null;
-  expandedSubclusters: Set<string>;
-  onToggleSubcluster: (subclusterId: string) => void;
-  onClusterClick?: (clusterName: string) => void;
 };
+
+const EMPTY_SUBCLUSTERS: Subcluster[] = [];
 
 export default function Graph2D({
   rawNodes,
   rawEdges,
-  subclusters,
+  rawSubclusters,
   width,
   height,
   avatarUrl,
   onClustersReady,
   zoomToClusterId,
-  onNodeClick,
-  externalFocusNodeId,
-  expandedSubclusters,
-  onToggleSubcluster,
-  onClusterClick,
 }: GraphProps) {
+  const subclustersInput = rawSubclusters ?? EMPTY_SUBCLUSTERS;
+  const subclusters = subclustersInput;
+  const [positionedNodes, setPositionedNodes] = useState<PositionedNode[]>([]);
   const [displayNodes, setDisplayNodes] = useState<DisplayNode[]>([]);
-  const [edges, setEdges] = useState<PositionedEdge[]>([]);
+  const [displayEdges, setDisplayEdges] = useState<DisplayEdge[]>([]);
   const [circles, setCircles] = useState<ClusterCircle[]>([]);
   const [maxEdgeCount, setMaxEdgeCount] = useState(0);
-  const [isSimulating, setIsSimulating] = useState(false);
 
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [hoveredSubclusterId, setHoveredSubclusterId] = useState<string | null>(
-    null,
+  // 서브클러스터 관련 상태
+  const [collapsedSubclusters, setCollapsedSubclusters] = useState<Set<string>>(
+    () => new Set(subclustersInput.map((sc) => sc.id)),
   );
+
+  const [hoveredId, setHoveredId] = useState<string | number | null>(null);
   const [hoveredThreadTitle, setHoveredThreadTitle] = useState<string | null>(
     null,
   );
+
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
+  const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -122,591 +541,195 @@ export default function Graph2D({
     null,
   );
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
+  const lastPointerWasDraggingRef = useRef(false);
+  const collapsedSnapshotRef = useRef<Set<string> | null>(null);
+  const focusFetchIdRef = useRef(0);
+  const [focusLayoutMap, setFocusLayoutMap] = useState<Map<
+    number,
+    { x: number; y: number }
+  > | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const isAnimatingRef = useRef(false);
-  const simulationRef = useRef<d3Force.Simulation<SimNode, undefined> | null>(
+
+  // 서브클러스터 펼치기 애니메이션 관련
+  const [expandingSubcluster, setExpandingSubcluster] = useState<string | null>(
     null,
   );
-  const animationFrameRef = useRef<number | null>(null);
-  const previousPositionsRef = useRef<Map<number, { x: number; y: number }>>(
-    new Map(),
+  const [animatedPositions, setAnimatedPositions] = useState<
+    Map<number, { x: number; y: number }>
+  >(new Map());
+  const simulationRef = useRef<d3Force.Simulation<any, any> | null>(null);
+  // 펼치기 시작 시 그룹 노드의 중심 위치를 저장
+  const expandingGroupCenterRef = useRef<{ x: number; y: number } | null>(null);
+
+  const positionedNodeMap = useMemo(
+    () => new Map(positionedNodes.map((n) => [n.id, n])),
+    [positionedNodes],
   );
-  const previousExpandedSubclustersRef = useRef<Set<string>>(new Set());
-  const isInitialLayoutRef = useRef(true);
+  const nodeClusterNameById = useMemo(
+    () => new Map(positionedNodes.map((n) => [n.id, n.clusterName])),
+    [positionedNodes],
+  );
 
-  const onClustersReadyRef = useRef(onClustersReady);
-  useEffect(() => {
-    onClustersReadyRef.current = onClustersReady;
-  }, [onClustersReady]);
+  const isSubclusterInFocus = useCallback(
+    (sc: Subcluster) =>
+      !!focusedClusterId &&
+      (sc.cluster_id === focusedClusterId ||
+        sc.node_ids.some(
+          (nodeId) => nodeClusterNameById.get(nodeId) === focusedClusterId,
+        )),
+    [focusedClusterId, nodeClusterNameById],
+  );
 
-  // 노드를 subcluster별로 그룹화하는 맵 생성
-  const nodeToSubclusterMap = useCallback(() => {
-    const map = new Map<number, Subcluster>();
-    subclusters.forEach((sc) => {
-      sc.node_ids.forEach((nodeId) => {
-        map.set(nodeId, sc);
-      });
+  const clusterFocusActive = focusedClusterId !== null;
+  const focusCircle = useMemo(() => {
+    if (!clusterFocusActive) return null;
+    return circles.find((c) => c.clusterId === focusedClusterId) ?? null;
+  }, [clusterFocusActive, circles, focusedClusterId]);
+
+  const focusExplode = useMemo(() => {
+    if (!focusCircle) return null;
+    const targetRadius = Math.min(width, height) * 0.35;
+    const baseRadius = Math.max(focusCircle.radius, 1);
+    // Reduced explode factor for more natural organic layout
+    const factor = Math.min(1.5, Math.max(1.1, targetRadius / baseRadius));
+    return {
+      centerX: focusCircle.centerX,
+      centerY: focusCircle.centerY,
+      factor,
+    };
+  }, [focusCircle, width, height]);
+
+  const applyExplode = useCallback(
+    (x: number, y: number) => {
+      if (!focusExplode) return { x, y };
+      return {
+        x:
+          focusExplode.centerX +
+          (x - focusExplode.centerX) * focusExplode.factor,
+        y:
+          focusExplode.centerY +
+          (y - focusExplode.centerY) * focusExplode.factor,
+      };
+    },
+    [focusExplode],
+  );
+
+  const removeExplode = useCallback(
+    (x: number, y: number) => {
+      if (!focusExplode) return { x, y };
+      return {
+        x:
+          focusExplode.centerX +
+          (x - focusExplode.centerX) / focusExplode.factor,
+        y:
+          focusExplode.centerY +
+          (y - focusExplode.centerY) / focusExplode.factor,
+      };
+    },
+    [focusExplode],
+  );
+
+  const focusedDisplayNodes = useMemo(() => {
+    if (!clusterFocusActive) return displayNodes;
+    return displayNodes.filter((n) => n.cluster_name === focusedClusterId);
+  }, [clusterFocusActive, displayNodes, focusedClusterId]);
+
+  const focusedDisplayNodeMap = useMemo(
+    () => new Map(focusedDisplayNodes.map((n) => [n.id, n])),
+    [focusedDisplayNodes],
+  );
+
+  const focusedDisplayEdges = useMemo(() => {
+    if (!clusterFocusActive) return displayEdges;
+    return displayEdges.filter(
+      (e) =>
+        focusedDisplayNodeMap.has(e.source) &&
+        focusedDisplayNodeMap.has(e.target),
+    );
+  }, [clusterFocusActive, displayEdges, focusedDisplayNodeMap]);
+
+  const subclusterColorMap = useMemo(() => {
+    if (!clusterFocusActive) return new Map<string, string>();
+    const candidates = subclusters
+      .filter((sc) => isSubclusterInFocus(sc))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const map = new Map<string, string>();
+    candidates.forEach((sc, idx) => {
+      map.set(
+        sc.id,
+        SUBCLUSTER_FOCUS_COLORS[idx % SUBCLUSTER_FOCUS_COLORS.length],
+      );
     });
     return map;
-  }, [subclusters]);
+  }, [clusterFocusActive, isSubclusterInFocus, subclusters]);
 
-  // 레이아웃 계산 및 시뮬레이션
-  const runLayout = useCallback(() => {
-    if (rawNodes.length === 0 || width === 0 || height === 0) return;
-
-    const nodeSubclusterMap = nodeToSubclusterMap();
-
-    // 변경된 subcluster 찾기
-    const prevExpanded = previousExpandedSubclustersRef.current;
-    const changedSubclusterIds = new Set<string>();
-    expandedSubclusters.forEach((id) => {
-      if (!prevExpanded.has(id)) changedSubclusterIds.add(id);
-    });
-    prevExpanded.forEach((id) => {
-      if (!expandedSubclusters.has(id)) changedSubclusterIds.add(id);
-    });
-
-    // 영향받는 클러스터 찾기
-    const affectedClusterIds = new Set<string>();
-    changedSubclusterIds.forEach((scId) => {
-      const sc = subclusters.find((s) => s.id === scId);
-      if (sc) affectedClusterIds.add(sc.cluster_id);
-    });
-
-    // 이전 상태 업데이트
-    previousExpandedSubclustersRef.current = new Set(expandedSubclusters);
-
-    // 노드 분류: 어떤 노드가 표시되고 어떤 노드가 숨겨지는지
-    const visibleNodes: SimNode[] = [];
-    const nodeMap = new Map<number, GraphNodeDto>();
-    rawNodes.forEach((n) => nodeMap.set(n.id, n));
-
-    // 엣지 카운트 계산
-    const edgeCounts = new Map<number, number>();
-    rawNodes.forEach((n) => edgeCounts.set(n.id, 0));
-    rawEdges.forEach((e) => {
-      edgeCounts.set(e.source, (edgeCounts.get(e.source) ?? 0) + 1);
-      edgeCounts.set(e.target, (edgeCounts.get(e.target) ?? 0) + 1);
-    });
-
-    // 처리된 subcluster 추적
-    const processedSubclusters = new Set<string>();
-
-    // 이전 위치 맵
-    const prevPositions = previousPositionsRef.current;
-
-    rawNodes.forEach((node) => {
-      const subcluster = nodeSubclusterMap.get(node.id);
-
-      if (subcluster) {
-        if (expandedSubclusters.has(subcluster.id)) {
-          // 펼쳐진 subcluster: 개별 노드로 표시
-          const prevPos = prevPositions.get(node.id);
-          // ===== 펼쳐진 중분류 노드들의 초기 배치 반경 (spreadRadius) =====
-          // 중분류를 클릭해서 펼칠 때 하위 노드들이 원형으로 배치되는 반경
-          // - 기본값(25) 증가: 펼쳐진 노드들의 초기 원 크기 증가
-          // - 계수(3) 증가: 노드 수가 많을수록 더 넓게 펼쳐짐
-          const scRepId = -subcluster.representative_node_id;
-          const scPrevPos = prevPositions.get(scRepId);
-          const nodeIndex = subcluster.node_ids.indexOf(node.id);
-          const totalNodes = subcluster.node_ids.length;
-          const spreadRadius = 25 + totalNodes * 7;
-          const angle = (5 * Math.PI * nodeIndex) / totalNodes;
-
-          visibleNodes.push({
-            ...node,
-            x:
-              prevPos?.x ??
-              (scPrevPos?.x ?? 0) +
-                spreadRadius * Math.cos(angle) +
-                (Math.random() - 0.5) * 8,
-            y:
-              prevPos?.y ??
-              (scPrevPos?.y ?? 0) +
-                spreadRadius * Math.sin(angle) +
-                (Math.random() - 0.5) * 8,
-            edgeCount: edgeCounts.get(node.id) ?? 0,
-            isSubcluster: false,
-            timestamp: node.timestamp ?? null,
-          });
-        } else {
-          // 접힌 subcluster: 대표 노드 하나만 표시
-          if (!processedSubclusters.has(subcluster.id)) {
-            processedSubclusters.add(subcluster.id);
-            const repNode =
-              nodeMap.get(subcluster.representative_node_id) || node;
-            const scId = -subcluster.representative_node_id;
-
-            // 접힌 subcluster의 총 엣지 수 계산
-            let totalEdgeCount = 0;
-            subcluster.node_ids.forEach((nid) => {
-              totalEdgeCount += edgeCounts.get(nid) ?? 0;
-            });
-
-            // 이전 위치 찾기 (subcluster 자체 또는 포함된 노드들의 중심)
-            let initX = 0,
-              initY = 0;
-            const scPrevPos = prevPositions.get(scId);
-            if (scPrevPos) {
-              initX = scPrevPos.x;
-              initY = scPrevPos.y;
-            } else {
-              // 포함된 노드들의 평균 위치
-              let count = 0;
-              subcluster.node_ids.forEach((nid) => {
-                const pos = prevPositions.get(nid);
-                if (pos) {
-                  initX += pos.x;
-                  initY += pos.y;
-                  count++;
-                }
-              });
-              if (count > 0) {
-                initX /= count;
-                initY /= count;
-              }
-            }
-
-            visibleNodes.push({
-              id: scId,
-              userId: repNode.userId,
-              origId: repNode.origId,
-              clusterId: subcluster.cluster_id,
-              clusterName: repNode.clusterName,
-              timestamp: repNode.timestamp ?? null,
-              numMessages: 0,
-              x: initX,
-              y: initY,
-              edgeCount: totalEdgeCount,
-              isSubcluster: true,
-              subclusterId: subcluster.id,
-              subclusterSize: subcluster.size,
-              containedNodeIds: subcluster.node_ids,
-            });
-          }
+  const renderedDisplayNodes = useMemo(() => {
+    // 서브클러스터 펼치기 애니메이션 중이면 animatedPositions 사용
+    if (expandingSubcluster && animatedPositions.size > 0) {
+      return focusedDisplayNodes.map((n) => {
+        if (typeof n.id === "number" && animatedPositions.has(n.id)) {
+          const pos = animatedPositions.get(n.id)!;
+          return { ...n, x: pos.x, y: pos.y };
         }
-      } else {
-        // subcluster에 속하지 않는 일반 노드
-        const prevPos = prevPositions.get(node.id);
-        visibleNodes.push({
-          ...node,
-          x: prevPos?.x ?? 0,
-          y: prevPos?.y ?? 0,
-          edgeCount: edgeCounts.get(node.id) ?? 0,
-          isSubcluster: false,
-          timestamp: node.timestamp ?? null,
-        });
-      }
-    });
-
-    // 클러스터별 그룹화
-    const clusterGroups = new Map<string, SimNode[]>();
-    visibleNodes.forEach((n) => {
-      const list = clusterGroups.get(n.clusterName) ?? [];
-      list.push(n);
-      clusterGroups.set(n.clusterName, list);
-    });
-
-    const clusterNames = Array.from(clusterGroups.keys());
-    const K = clusterNames.length;
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    // ===== 클러스터 간 거리 (bigRadius) =====
-    // 클러스터들이 화면 중앙에서 얼마나 떨어져 배치되는지 결정
-    // - 계수(0.15) 증가: 클러스터들이 더 멀리 퍼짐 (클러스터 간 거리 증가)
-    // - 계수(0.15) 감소: 클러스터들이 중앙에 더 모임 (클러스터 간 거리 감소)
-    // - K(클러스터 개수) 추가: 클러스터가 많을수록 자동으로 더 퍼짐
-    // - 최소값 100 보장: 작은 화면에서도 충분한 간격 확보
-    const bigRadius = Math.max(100, Math.min(width, height) * 0.15 + K * 20);
-
-    const newCircles: ClusterCircle[] = [];
-
-    // 클러스터별 초기 위치 설정
-    clusterNames.forEach((clusterName, idx) => {
-      const clusterNodes = clusterGroups.get(clusterName)!;
-      const theta = (2 * Math.PI * idx) / K;
-      const n = clusterNodes.length;
-
-      // ===== 클러스터 원 크기 (clusterRadius) =====
-      // 각 클러스터의 배경 원 크기 결정
-      // - 기본값(35) 증가: 모든 클러스터의 최소 크기 증가
-      // - 계수(10) 증가: 노드 수에 따른 크기 증가 폭이 커짐 (큰 클러스터가 더 커짐)
-      // - Math.sqrt 사용: 노드 수가 많아도 크기가 급격히 커지지 않도록 완화
-      // - 최대값 제한: 클러스터가 너무 커지는 것을 방지
-      const clusterRadius = Math.min(120, 35 + Math.sqrt(n) * 10);
-
-      const cx = centerX + bigRadius * Math.cos(theta);
-      const cy = centerY + bigRadius * Math.sin(theta);
-
-      // ===== 초기 노드 배치 =====
-      // 클러스터 내 노드들의 초기 위치 설정
-      // - 계수(0.4): 클러스터 반경의 몇 %에 노드 배치 (값 증가 → 더 바깥에 배치)
-      // - 랜덤값(8): 노드 위치에 약간의 랜덤성 추가 (자연스러운 배치)
-      if (isInitialLayoutRef.current) {
-        clusterNodes.forEach((node, i) => {
-          if (node.x === 0 && node.y === 0) {
-            const angle = (2 * Math.PI * i) / n;
-            const r = clusterRadius * 0.7;
-            node.x = cx + r * Math.cos(angle) + (Math.random() - 0.5) * 8;
-            node.y = cy + r * Math.sin(angle) + (Math.random() - 0.5) * 8;
-          }
-        });
-      }
-
-      newCircles.push({
-        clusterId: clusterName,
-        clusterName: clusterName,
-        centerX: cx,
-        centerY: cy,
-        radius: clusterRadius,
-      });
-    });
-
-    // 엣지 처리: 접힌 subcluster는 대표 노드로 연결
-    const nodeIdToVisibleId = new Map<number, number>();
-
-    visibleNodes.forEach((vn) => {
-      if (vn.isSubcluster && vn.containedNodeIds) {
-        vn.containedNodeIds.forEach((nid) => {
-          nodeIdToVisibleId.set(nid, vn.id);
-        });
-      } else {
-        nodeIdToVisibleId.set(vn.id, vn.id);
-      }
-    });
-
-    const processedEdges: PositionedEdge[] = [];
-    const edgeSet = new Set<string>();
-
-    rawEdges.forEach((e) => {
-      const sourceId = nodeIdToVisibleId.get(e.source);
-      const targetId = nodeIdToVisibleId.get(e.target);
-
-      if (
-        sourceId !== undefined &&
-        targetId !== undefined &&
-        sourceId !== targetId
-      ) {
-        const edgeKey = `${Math.min(sourceId, targetId)}-${Math.max(sourceId, targetId)}`;
-        if (!edgeSet.has(edgeKey)) {
-          edgeSet.add(edgeKey);
-          const sourceNode = visibleNodes.find((n) => n.id === sourceId);
-          const targetNode = visibleNodes.find((n) => n.id === targetId);
-          const isIntra =
-            sourceNode &&
-            targetNode &&
-            sourceNode.clusterName === targetNode.clusterName;
-
-          processedEdges.push({
-            ...e,
-            source: sourceId,
-            target: targetId,
-            isIntraCluster: !!isIntra,
-          });
-        }
-      }
-    });
-
-    // Force simulation
-    const simEdges = processedEdges
-      .map((e) => ({
-        source: visibleNodes.find((n) => n.id === e.source)!,
-        target: visibleNodes.find((n) => n.id === e.target)!,
-      }))
-      .filter((e) => e.source && e.target);
-
-    // 기존 시뮬레이션 중지
-    if (simulationRef.current) {
-      simulationRef.current.stop();
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    // 영향받지 않는 클러스터의 노드 위치 고정 (첫 레이아웃 제외)
-    const isSubclusterToggle =
-      !isInitialLayoutRef.current && affectedClusterIds.size > 0;
-
-    if (isSubclusterToggle) {
-      visibleNodes.forEach((node) => {
-        if (!affectedClusterIds.has(node.clusterId)) {
-          // 이 노드는 영향받지 않음 - 위치 고정
-          (node as any).fx = node.x;
-          (node as any).fy = node.y;
-        }
+        return n;
       });
     }
 
-    // ===== Force Simulation 설정 =====
-    const simulation = d3Force
-      .forceSimulation<SimNode>(visibleNodes)
-
-      // ----- 중앙으로 당기는 힘 (초기 레이아웃에만 적용) -----
-      // strength(0.02): 값 증가 → 노드들이 중앙에 더 강하게 모임
-      .force(
-        "center",
-        isInitialLayoutRef.current
-          ? d3Force.forceCenter(centerX, centerY).strength(0.02)
-          : null,
-      )
-
-      // ----- 노드 간 척력 (charge) -----
-      // 음수 값: 노드끼리 서로 밀어냄
-      // - 절대값 증가 (예: -10 → -30): 노드들이 더 멀리 퍼짐 (척력 증가)
-      // - 절대값 감소 (예: -30 → -10): 노드들이 더 가까이 모임 (척력 감소)
-      // - 중분류 노드(-15/-30)가 일반 노드(-10)보다 더 큰 척력을 가짐
-      .force(
-        "charge",
-        d3Force.forceManyBody<SimNode>().strength((d) => {
-          if (isSubclusterToggle) return d.isSubcluster ? -15 : -10;
-          return d.isSubcluster ? -30 : -10;
-        }),
-      )
-
-      // ----- 연결된 노드 간 인력 (link) -----
-      // distance: 연결된 노드 사이의 목표 거리
-      //   - 값 증가 (30): 연결된 노드들 사이 거리 증가
-      //   - 값 감소 (25): 연결된 노드들 사이 거리 감소
-      // strength: 목표 거리를 유지하려는 힘의 세기
-      //   - 값 증가 (0.2): 연결된 노드들이 더 강하게 서로 끌림 (인력 증가)
-      //   - 값 감소 (0.15): 연결된 노드들이 약하게 끌림 (인력 감소)
-      .force(
-        "link",
-        d3Force
-          .forceLink(simEdges)
-          .id((d: any) => d.id)
-          .distance(isSubclusterToggle ? 30 : 25)
-          .strength(isSubclusterToggle ? 0.15 : 0.2),
-      )
-
-      // ----- 노드 충돌 방지 (collision) -----
-      // radius: 각 노드 주변의 충돌 방지 영역 크기
-      // - 값 증가: 노드들이 서로 더 멀리 떨어짐 (최소 거리 증가)
-      // - 값 감소: 노드들이 더 가깝게 붙을 수 있음
-      .force(
-        "collision",
-        d3Force
-          .forceCollide<SimNode>()
-          .radius((d) => (d.isSubcluster ? SUBCLUSTER_NODE_RADIUS + 3 : 5)),
-      )
-
-      // ----- 클러스터 중심으로 당기는 힘 (cluster force) -----
-      // 노드들을 각자 속한 클러스터 중심으로 끌어당김
-      // strength: 클러스터 중심으로 당기는 힘의 세기
-      //   - 값 증가 (0.15): 노드들이 클러스터 중심에 더 밀집 (응집력 증가)
-      //   - 값 감소 (0.08): 노드들이 클러스터 내에서 더 퍼짐 (응집력 감소)
-      .force("cluster", (alpha) => {
-        visibleNodes.forEach((node) => {
-          if ((node as any).fx !== undefined) return;
-          const circle = newCircles.find(
-            (c) => c.clusterName === node.clusterName,
-          );
-          if (circle) {
-            const dx = circle.centerX - node.x;
-            const dy = circle.centerY - node.y;
-            const strength = isSubclusterToggle ? 0.15 : 0.08;
-            node.vx = (node.vx ?? 0) + dx * alpha * strength;
-            node.vy = (node.vy ?? 0) + dy * alpha * strength;
-          }
-        });
-      })
-
-      // ----- 시뮬레이션 감쇠 설정 -----
-      // alphaDecay: 시뮬레이션이 멈추는 속도
-      //   - 값 증가 (0.04): 시뮬레이션이 빨리 멈춤 (빠른 안정화)
-      //   - 값 감소 (0.02): 시뮬레이션이 오래 지속 (더 정교한 배치)
-      // velocityDecay: 노드 이동 속도 감쇠
-      //   - 값 증가 (0.4): 노드가 빨리 멈춤 (덜 튀어다님)
-      //   - 값 감소 (0.3): 노드가 더 오래 움직임
-      .alphaDecay(isSubclusterToggle ? 0.08 : 0.02)
-      .velocityDecay(isSubclusterToggle ? 0.3 : 0.3);
-
-    simulationRef.current = simulation;
-
-    // 애니메이션 루프
-    setIsSimulating(true);
-
-    const updateState = () => {
-      // 클러스터 중심만 업데이트, 반경은 고정 (초기값 유지)
-      clusterNames.forEach((clusterName) => {
-        const clusterNodes = visibleNodes.filter(
-          (n) => n.clusterName === clusterName,
-        );
-        if (clusterNodes.length > 0) {
-          const circle = newCircles.find((c) => c.clusterName === clusterName);
-          if (circle) {
-            // 중심 계산
-            const sumX = clusterNodes.reduce((s, n) => s + n.x, 0);
-            const sumY = clusterNodes.reduce((s, n) => s + n.y, 0);
-            circle.centerX = sumX / clusterNodes.length;
-            circle.centerY = sumY / clusterNodes.length;
-            // 반경은 초기값 유지 (동적으로 커지지 않음)
-          }
-        }
-      });
-
-      // 상태 업데이트
-      const finalNodes: DisplayNode[] = visibleNodes.map((sn) => ({
-        id: sn.id,
-        userId: sn.userId,
-        origId: sn.origId,
-        clusterId: sn.clusterId,
-        clusterName: sn.clusterName,
-        timestamp: sn.timestamp,
-        numMessages: sn.numMessages,
-        x: sn.x,
-        y: sn.y,
-        edgeCount: sn.edgeCount,
-        isSubcluster: sn.isSubcluster,
-        subclusterId: sn.subclusterId,
-        subclusterSize: sn.subclusterSize,
-        containedNodeIds: sn.containedNodeIds,
-      }));
-
-      // 위치 저장 (다음 레이아웃용)
-      finalNodes.forEach((n) => {
-        previousPositionsRef.current.set(n.id, { x: n.x, y: n.y });
-      });
-
-      setDisplayNodes(finalNodes);
-      setEdges(processedEdges);
-      setCircles([...newCircles]);
-
-      const max = Math.max(...finalNodes.map((n) => n.edgeCount), 1);
-      setMaxEdgeCount(max);
-    };
-
-    // 첫 레이아웃: 빠르게 계산
-    if (isInitialLayoutRef.current) {
-      for (let i = 0; i < 150; i++) {
-        simulation.tick();
-      }
-      updateState();
-      isInitialLayoutRef.current = false;
-      setIsSimulating(false);
-
-      if (onClustersReadyRef.current) {
-        const finalNodes: DisplayNode[] = visibleNodes.map((sn) => ({
-          id: sn.id,
-          userId: sn.userId,
-          origId: sn.origId,
-          clusterId: sn.clusterId,
-          clusterName: sn.clusterName,
-          timestamp: sn.timestamp,
-          numMessages: sn.numMessages,
-          x: sn.x,
-          y: sn.y,
-          edgeCount: sn.edgeCount,
-          isSubcluster: sn.isSubcluster,
-          subclusterId: sn.subclusterId,
-          subclusterSize: sn.subclusterSize,
-          containedNodeIds: sn.containedNodeIds,
-        }));
-        onClustersReadyRef.current(newCircles, finalNodes, processedEdges);
-      }
-    } else {
-      // 후속 레이아웃: 애니메이션으로 실행
-      simulation.alpha(0.8).restart();
-
-      const animate = () => {
-        if (simulation.alpha() > 0.01) {
-          updateState();
-          animationFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          simulation.stop();
-          setIsSimulating(false);
-          updateState();
-
-          if (onClustersReadyRef.current) {
-            const finalNodes: DisplayNode[] = visibleNodes.map((sn) => ({
-              id: sn.id,
-              userId: sn.userId,
-              origId: sn.origId,
-              clusterId: sn.clusterId,
-              clusterName: sn.clusterName,
-              timestamp: sn.timestamp,
-              numMessages: sn.numMessages,
-              x: sn.x,
-              y: sn.y,
-              edgeCount: sn.edgeCount,
-              isSubcluster: sn.isSubcluster,
-              subclusterId: sn.subclusterId,
-              subclusterSize: sn.subclusterSize,
-              containedNodeIds: sn.containedNodeIds,
-            }));
-            onClustersReadyRef.current(newCircles, finalNodes, processedEdges);
-          }
-        }
-      };
-
-      animationFrameRef.current = requestAnimationFrame(animate);
-    }
-
-    // 정리
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
+    if (!focusExplode && !focusLayoutMap) return focusedDisplayNodes;
+    return focusedDisplayNodes.map((n) => {
+      const base = focusLayoutMap?.get(n.id as number) ?? { x: n.x, y: n.y };
+      const pos = focusExplode ? applyExplode(base.x, base.y) : base;
+      return { ...n, x: pos.x, y: pos.y };
+    });
   }, [
-    rawNodes,
-    rawEdges,
-    subclusters,
-    width,
-    height,
-    expandedSubclusters,
-    nodeToSubclusterMap,
+    applyExplode,
+    focusExplode,
+    focusLayoutMap,
+    focusedDisplayNodes,
+    expandingSubcluster,
+    animatedPositions,
   ]);
 
-  // 레이아웃 실행
-  useEffect(() => {
-    runLayout();
+  const renderedDisplayNodeMap = useMemo(
+    () => new Map(renderedDisplayNodes.map((n) => [n.id, n])),
+    [renderedDisplayNodes],
+  );
 
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (simulationRef.current) {
-        simulationRef.current.stop();
-      }
-    };
-  }, [runLayout]);
+  const focusActive =
+    focusNodeId !== null && focusedDisplayNodeMap.has(focusNodeId);
 
   // 엣지 분류
-  const normalIntraEdges = edges.filter((e) => {
+  const normalIntraEdges = focusedDisplayEdges.filter((e) => {
     if (!e.isIntraCluster) return false;
-    if (!focusNodeId) return true;
+    if (!focusActive) return true;
     return e.source !== focusNodeId && e.target !== focusNodeId;
   });
 
-  const focusedIntraEdges = edges.filter((e) => {
-    if (!focusNodeId) return false;
+  const focusedIntraEdges = focusedDisplayEdges.filter((e) => {
+    if (!focusActive) return false;
     if (!e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const focusedInterEdges = edges.filter((e) => {
-    if (!focusNodeId) return false;
+  const focusedInterEdges = focusedDisplayEdges.filter((e) => {
+    if (!focusActive) return false;
     if (e.isIntraCluster) return false;
     return e.source === focusNodeId || e.target === focusNodeId;
   });
 
-  const normalInterEdges = edges.filter((e) => {
-    if (e.isIntraCluster) return false;
-    return true;
-  });
+  const normalInterEdges = focusedDisplayEdges.filter((e) => !e.isIntraCluster);
 
   // hoveredId가 변경될 때 thread title 가져오기
   useEffect(() => {
-    if (hoveredId == null || hoveredSubclusterId != null) {
+    if (hoveredId == null || typeof hoveredId !== "number") {
       setHoveredThreadTitle(null);
       return;
     }
 
-    const n = displayNodes.find((node) => node.id === hoveredId);
-    if (!n || n.isSubcluster) {
+    const n = positionedNodeMap.get(hoveredId);
+    if (!n) {
       setHoveredThreadTitle(null);
       return;
     }
@@ -719,35 +742,78 @@ export default function Graph2D({
       .catch(() => {
         setHoveredThreadTitle(null);
       });
-  }, [hoveredId, hoveredSubclusterId, displayNodes]);
+  }, [hoveredId, positionedNodeMap]);
 
-  // 외부에서 전달받은 focusNodeId 동기화 및 줌인
+  const onClustersReadyRef = useRef(onClustersReady);
+
+  // onClustersReady ref를 최신으로 유지
   useEffect(() => {
-    if (
-      externalFocusNodeId == null ||
-      displayNodes.length === 0 ||
-      isAnimatingRef.current
-    )
-      return;
+    onClustersReadyRef.current = onClustersReady;
+  }, [onClustersReady]);
 
-    const targetNode = displayNodes.find((n) => n.id === externalFocusNodeId);
-    if (!targetNode || !svgRef.current) return;
+  useEffect(() => {
+    if (rawNodes.length === 0) return;
 
-    setFocusNodeId(externalFocusNodeId);
+    const {
+      nodes,
+      edges: newEdges,
+      circles,
+    } = layoutWithBoundedForce(rawNodes, rawEdges, width, height);
+    setPositionedNodes(nodes);
+    setCircles(circles);
+
+    const max = Math.max(...nodes.map((n) => n.edgeCount), 1);
+    setMaxEdgeCount(max);
+
+    // 클러스터 정보와 노드 위치, 엣지를 부모 컴포넌트에 전달 (ref를 통해 호출하여 무한 루프 방지)
+    if (onClustersReadyRef.current) {
+      onClustersReadyRef.current(circles, nodes, newEdges);
+    }
+  }, [rawNodes, rawEdges, width, height]);
+
+  // 서브클러스터 초기화 (초기에는 모두 접힌 상태)
+  useEffect(() => {
+    setCollapsedSubclusters(new Set(subclustersInput.map((sc) => sc.id)));
+  }, [subclustersInput]);
+
+  useEffect(() => {
+    if (positionedNodes.length === 0) return;
+    const { visibleNodes, visibleEdges } = getVisibleGraph(
+      positionedNodes,
+      rawEdges,
+      subclusters,
+      collapsedSubclusters,
+    );
+    setDisplayNodes(visibleNodes);
+    setDisplayEdges(visibleEdges);
+
+    const max = Math.max(...visibleNodes.map((n) => n.edgeCount ?? 0), 1);
+    setMaxEdgeCount(max);
+  }, [positionedNodes, rawEdges, subclusters, collapsedSubclusters]);
+
+  const nodeToSubclusterMap = useMemo(
+    () => createNodeToSubclusterMap(subclusters),
+    [subclusters],
+  );
+
+  const subclusterMap = useMemo(
+    () => new Map(subclusters.map((sc) => [sc.id, sc])),
+    [subclusters],
+  );
+
+  const animateZoomOut = useCallback(() => {
+    if (isAnimatingRef.current || !svgRef.current) return;
+
     isAnimatingRef.current = true;
-
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
-    const svgCenterX = rect.width / 2;
-    const svgCenterY = rect.height / 2;
-
-    const targetScale = 2.5;
-    const targetOffsetX = svgCenterX - targetNode.x * targetScale;
-    const targetOffsetY = svgCenterY - targetNode.y * targetScale;
 
     const startScale = scale;
     const startOffsetX = offset.x;
     const startOffsetY = offset.y;
+
+    // Reset to initial view
+    const targetScale = 1;
+    const targetOffsetX = 0;
+    const targetOffsetY = 0;
 
     const duration = 600;
     const startTime = performance.now();
@@ -755,6 +821,7 @@ export default function Graph2D({
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
+      // Cubic ease-out for smooth deceleration
       const easeOut = 1 - Math.pow(1 - progress, 3);
 
       const newScale = startScale + (targetScale - startScale) * easeOut;
@@ -774,62 +841,248 @@ export default function Graph2D({
     };
 
     requestAnimationFrame(animate);
-  }, [externalFocusNodeId, displayNodes]);
+  }, [offset, scale]);
 
-  // 클러스터로 줌인
+  const animateZoomToCluster = useCallback(
+    (clusterId: string, focusAfter: boolean = false) => {
+      if (!clusterId || circles.length === 0 || isAnimatingRef.current) return;
+
+      const circle = circles.find((c) => c.clusterId === clusterId);
+      if (!circle || !svgRef.current) return;
+
+      if (focusAfter && focusedClusterId === clusterId) return;
+
+      if (focusedClusterId && focusedClusterId !== clusterId) {
+        setFocusedClusterId(null);
+      }
+
+      isAnimatingRef.current = true;
+
+      const svg = svgRef.current;
+      const rect = svg.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // Reduced zoom level to show more of the graph
+      const targetScale = Math.min(2, Math.max(1.2, 150 / circle.radius));
+      const targetOffsetX = centerX - circle.centerX * targetScale;
+      const targetOffsetY = centerY - circle.centerY * targetScale;
+
+      const startScale = scale;
+      const startOffsetX = offset.x;
+      const startOffsetY = offset.y;
+
+      const duration = 900;
+      const startTime = performance.now();
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Smoother cubic ease-in-out
+        const easeInOut =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        const newScale = startScale + (targetScale - startScale) * easeInOut;
+        const newOffsetX =
+          startOffsetX + (targetOffsetX - startOffsetX) * easeInOut;
+        const newOffsetY =
+          startOffsetY + (targetOffsetY - startOffsetY) * easeInOut;
+
+        setScale(newScale);
+        setOffset({ x: newOffsetX, y: newOffsetY });
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isAnimatingRef.current = false;
+          if (focusAfter) {
+            setFocusedClusterId(clusterId);
+          }
+        }
+      };
+
+      requestAnimationFrame(animate);
+    },
+    [circles, focusedClusterId, offset, scale],
+  );
+
+  const [nodeTitleMap, setNodeTitleMap] = useState<Map<number, string>>(
+    () => new Map(),
+  );
+
   useEffect(() => {
-    if (!zoomToClusterId || circles.length === 0 || isAnimatingRef.current)
+    if (!focusedClusterId) return;
+    if (!collapsedSnapshotRef.current) {
+      collapsedSnapshotRef.current = new Set(collapsedSubclusters);
+    }
+    setCollapsedSubclusters((prev) => {
+      const next = new Set(prev);
+      subclusters.forEach((sc) => {
+        if (isSubclusterInFocus(sc)) {
+          next.delete(sc.id);
+        }
+      });
+      return next;
+    });
+  }, [
+    focusedClusterId,
+    subclusters,
+    isSubclusterInFocus,
+    collapsedSubclusters,
+  ]);
+
+  useEffect(() => {
+    if (!focusedClusterId) {
+      setNodeTitleMap(new Map());
       return;
+    }
+    const requestId = ++focusFetchIdRef.current;
+    const focusNodes = focusedDisplayNodes.filter(
+      (n) => !n.isGroupNode && typeof n.id === "number",
+    );
 
-    const circle = circles.find((c) => c.clusterId === zoomToClusterId);
-    if (!circle || !svgRef.current) return;
+    Promise.all(
+      focusNodes.map(async (n) => {
+        const nodeId = n.id as number;
+        const pos = positionedNodeMap.get(nodeId);
+        const threadId =
+          pos?.origId ?? (typeof n.label === "string" ? n.label : null);
+        if (!threadId) return null;
+        try {
+          const thread = await threadRepo.getThreadById(threadId);
+          return { id: nodeId, title: thread?.title || threadId };
+        } catch {
+          return { id: nodeId, title: threadId };
+        }
+      }),
+    ).then((results) => {
+      if (focusFetchIdRef.current !== requestId) return;
+      const map = new Map<number, string>();
+      results.forEach((res) => {
+        if (!res) return;
+        map.set(res.id, res.title);
+      });
+      setNodeTitleMap(map);
+    });
+  }, [focusedClusterId, focusedDisplayNodes, positionedNodeMap]);
 
-    isAnimatingRef.current = true;
+  useEffect(() => {
+    if (!focusedClusterId) {
+      setFocusLayoutMap(null);
+      return;
+    }
 
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
-    const svgCenterX = rect.width / 2;
-    const svgCenterY = rect.height / 2;
+    const focusNodes = positionedNodes.filter(
+      (n) => n.clusterName === focusedClusterId,
+    );
+    if (focusNodes.length === 0) {
+      setFocusLayoutMap(null);
+      return;
+    }
 
-    const targetScale = Math.min(3, Math.max(1.5, 200 / circle.radius));
-    const targetOffsetX = svgCenterX - circle.centerX * targetScale;
-    const targetOffsetY = svgCenterY - circle.centerY * targetScale;
+    const nodeById = new Map<number, PositionedNode>();
+    focusNodes.forEach((n) => nodeById.set(n.id, n));
+    const focusEdges = rawEdges.filter(
+      (e) => nodeById.has(e.source) && nodeById.has(e.target),
+    );
 
-    const startScale = scale;
-    const startOffsetX = offset.x;
-    const startOffsetY = offset.y;
+    const centerX = focusCircle?.centerX ?? width / 2;
+    const centerY = focusCircle?.centerY ?? height / 2;
 
-    const duration = 800;
-    const startTime = performance.now();
+    // Calculate degree (edge count) for each node
+    const degreeMap = new Map<number, number>();
+    focusNodes.forEach((n) => degreeMap.set(n.id, 0));
+    focusEdges.forEach((e) => {
+      degreeMap.set(e.source, (degreeMap.get(e.source) ?? 0) + 1);
+      degreeMap.set(e.target, (degreeMap.get(e.target) ?? 0) + 1);
+    });
+    const maxDegree = Math.max(...Array.from(degreeMap.values()), 1);
 
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeInOut =
-        progress < 0.5
-          ? 2 * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    const simNodes = focusNodes.map((n) => ({
+      id: n.id,
+      x: n.x,
+      y: n.y,
+      degree: degreeMap.get(n.id) ?? 0,
+    }));
 
-      const newScale = startScale + (targetScale - startScale) * easeInOut;
-      const newOffsetX =
-        startOffsetX + (targetOffsetX - startOffsetX) * easeInOut;
-      const newOffsetY =
-        startOffsetY + (targetOffsetY - startOffsetY) * easeInOut;
+    const simLinks = focusEdges.map((e) => ({
+      source: e.source,
+      target: e.target,
+    }));
 
-      setScale(newScale);
-      setOffset({ x: newOffsetX, y: newOffsetY });
+    const baseRadius = Math.min(width, height) * 0.15;
 
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        isAnimatingRef.current = false;
+    const simulation = d3Force
+      .forceSimulation(simNodes as any)
+      .force(
+        "link",
+        d3Force
+          .forceLink(simLinks)
+          .id((d: any) => d.id)
+          .distance(50)
+          .strength(0.1),
+      )
+      .force("charge", d3Force.forceManyBody().strength(-5))
+      .force("collide", d3Force.forceCollide(12).iterations(3))
+      .force("center", d3Force.forceCenter(centerX, centerY).strength(2))
+      .force(
+        "radial",
+        d3Force
+          .forceRadial(
+            (d: any) => {
+              // Nodes with fewer connections get pushed further out
+              // Highly connected nodes stay near center
+              const degreeRatio = (d.degree ?? 0) / maxDegree;
+              return baseRadius * (1.1 - degreeRatio);
+            },
+            centerX,
+            centerY,
+          )
+          .strength(0.01),
+      )
+      .stop();
+
+    for (let i = 0; i < 200; i += 1) {
+      simulation.tick();
+    }
+
+    const map = new Map<number, { x: number; y: number }>();
+    simNodes.forEach((n) => {
+      map.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
+    });
+    setFocusLayoutMap(map);
+  }, [focusedClusterId, positionedNodes, rawEdges, width, height, focusCircle]);
+
+  useEffect(() => {
+    if (focusedClusterId) return;
+    if (!collapsedSnapshotRef.current) return;
+    const snapshot = collapsedSnapshotRef.current;
+    collapsedSnapshotRef.current = null;
+    setCollapsedSubclusters(new Set(snapshot));
+  }, [focusedClusterId]);
+
+  // 클러스터로 줌인 (애니메이션)
+  useEffect(() => {
+    if (!zoomToClusterId) return;
+    animateZoomToCluster(zoomToClusterId, true);
+  }, [zoomToClusterId, animateZoomToCluster]);
+
+  useEffect(() => {
+    setHoveredId(null);
+  }, [focusedClusterId]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && focusedClusterId) {
+        animateZoomOut();
+        setFocusedClusterId(null);
       }
     };
-
-    requestAnimationFrame(animate);
-  }, [zoomToClusterId, circles]);
-
-  const nodeById = (id: number) => displayNodes.find((n) => n.id === id);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusedClusterId, animateZoomOut]);
 
   const screenToWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current!;
@@ -841,38 +1094,27 @@ export default function Graph2D({
     return { worldX, worldY };
   };
 
-  // wheel 이벤트
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    const zoomIntensity = 0.003;
+    const { clientX, clientY, deltaY } = e;
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const zoomIntensity = 0.003;
-      const { clientX, clientY, deltaY } = e;
+    const svg = svgRef.current!;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
 
-      const rect = svg.getBoundingClientRect();
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
+    const worldX = (mouseX - offset.x) / scale;
+    const worldY = (mouseY - offset.y) / scale;
 
-      const worldX = (mouseX - offset.x) / scale;
-      const worldY = (mouseY - offset.y) / scale;
+    const newScale = scale * (1 - deltaY * zoomIntensity);
+    const clampedScale = Math.min(Math.max(newScale, 0.1), 5);
 
-      const newScale = scale * (1 - deltaY * zoomIntensity);
-      const clampedScale = Math.min(Math.max(newScale, 0.1), 5);
+    const newOffsetX = mouseX - worldX * clampedScale;
+    const newOffsetY = mouseY - worldY * clampedScale;
 
-      const newOffsetX = mouseX - worldX * clampedScale;
-      const newOffsetY = mouseY - worldY * clampedScale;
-
-      setScale(clampedScale);
-      setOffset({ x: newOffsetX, y: newOffsetY });
-    };
-
-    svg.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      svg.removeEventListener("wheel", handleWheel);
-    };
-  }, [offset, scale]);
+    setScale(clampedScale);
+    setOffset({ x: newOffsetX, y: newOffsetY });
+  };
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (draggingNodeId !== null) return;
@@ -881,6 +1123,7 @@ export default function Graph2D({
       x: e.clientX - offset.x,
       y: e.clientY - offset.y,
     };
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -905,7 +1148,7 @@ export default function Graph2D({
         ),
       );
 
-      setDisplayNodes((prev) =>
+      setPositionedNodes((prev) =>
         prev.map((n) =>
           n.clusterName === draggingClusterId
             ? { ...n, x: n.x + dx, y: n.y + dy }
@@ -918,14 +1161,25 @@ export default function Graph2D({
 
     if (draggingNodeId !== null && dragNodeOffset.current) {
       const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-      const newX = worldX + dragNodeOffset.current.dx;
-      const newY = worldY + dragNodeOffset.current.dy;
 
-      setDisplayNodes((prev) =>
-        prev.map((n) =>
-          n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n,
-        ),
-      );
+      const displayX = worldX + dragNodeOffset.current.dx;
+      const displayY = worldY + dragNodeOffset.current.dy;
+      const basePos = removeExplode(displayX, displayY);
+
+      if (clusterFocusActive) {
+        setFocusLayoutMap((prev) => {
+          if (!prev) return prev;
+          const next = new Map(prev);
+          next.set(draggingNodeId, { x: basePos.x, y: basePos.y });
+          return next;
+        });
+      } else {
+        setPositionedNodes((prev) =>
+          prev.map((n) =>
+            n.id === draggingNodeId ? { ...n, x: basePos.x, y: basePos.y } : n,
+          ),
+        );
+      }
       return;
     }
 
@@ -940,6 +1194,7 @@ export default function Graph2D({
     setIsPanning(false);
     panStart.current = null;
 
+    // 드래그가 발생했는지 확인 (5px 이상 이동했으면 드래그로 간주)
     const wasDragging =
       dragStartPos.current &&
       (() => {
@@ -948,6 +1203,11 @@ export default function Graph2D({
         return Math.sqrt(dx * dx + dy * dy) > 5;
       })();
 
+    lastPointerWasDraggingRef.current = !!wasDragging;
+    window.setTimeout(() => {
+      lastPointerWasDraggingRef.current = false;
+    }, 0);
+
     const prevDraggingNodeId = draggingNodeId;
     setDraggingNodeId(null);
     setDraggingClusterId(null);
@@ -955,9 +1215,10 @@ export default function Graph2D({
     dragClusterOffset.current = null;
     dragStartPos.current = null;
 
+    // 드래그가 아니고 노드를 클릭한 경우에만 채팅 미리보기 표시
     if (!wasDragging && prevDraggingNodeId) {
-      const node = nodeById(prevDraggingNodeId);
-      if (node && !node.isSubcluster) {
+      const node = positionedNodeMap.get(prevDraggingNodeId);
+      if (node) {
         setSelectedNodeId(node.origId);
       }
     }
@@ -970,23 +1231,29 @@ export default function Graph2D({
     setDraggingClusterId(null);
     dragNodeOffset.current = null;
     dragClusterOffset.current = null;
+    dragStartPos.current = null;
+    lastPointerWasDraggingRef.current = false;
   };
 
   const handleNodeMouseDown = (
-    e: React.MouseEvent<SVGCircleElement | SVGGElement>,
-    nodeId: number,
+    e: React.MouseEvent<SVGElement>,
+    node: DisplayNode,
   ) => {
     e.stopPropagation();
+    if (node.isGroupNode || typeof node.id !== "number") return;
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
-    const node = nodeById(nodeId);
-    if (!node) return;
+    const basePos =
+      (clusterFocusActive ? focusLayoutMap?.get(node.id) : null) ??
+      positionedNodeMap.get(node.id);
+    if (!basePos) return;
 
+    const displayPos = applyExplode(basePos.x, basePos.y);
     dragNodeOffset.current = {
-      dx: node.x - worldX,
-      dy: node.y - worldY,
+      dx: displayPos.x - worldX,
+      dy: displayPos.y - worldY,
     };
     dragStartPos.current = { x: e.clientX, y: e.clientY };
-    setDraggingNodeId(nodeId);
+    setDraggingNodeId(node.id);
   };
 
   const handleClusterLabelMouseDown = (
@@ -994,6 +1261,7 @@ export default function Graph2D({
     clusterId: string,
   ) => {
     e.stopPropagation();
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
     const { worldX, worldY } = screenToWorld(e.clientX, e.clientY);
     const circle = circles.find((c) => c.clusterId === clusterId);
     if (!circle) return;
@@ -1005,61 +1273,237 @@ export default function Graph2D({
     setDraggingClusterId(clusterId);
   };
 
-  // Subcluster 노드 클릭 핸들러
-  const handleSubclusterClick = (e: React.MouseEvent, subclusterId: string) => {
+  const handleClusterLabelClick = (
+    e: React.MouseEvent<SVGTextElement>,
+    clusterId: string,
+  ) => {
     e.stopPropagation();
-    onToggleSubcluster(subclusterId);
+    if (lastPointerWasDraggingRef.current) {
+      lastPointerWasDraggingRef.current = false;
+      return;
+    }
+    // 클러스터 줌인
+    animateZoomToCluster(clusterId, true);
+  };
+
+  const handleBackgroundClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!focusedClusterId) return;
+    if (lastPointerWasDraggingRef.current) {
+      lastPointerWasDraggingRef.current = false;
+      return;
+    }
+    const target = e.target as Element;
+    const tag = target.tagName.toLowerCase();
+    if (tag === "circle" || tag === "text" || tag === "line") return;
+    animateZoomOut();
+    setFocusedClusterId(null);
+  };
+
+  // 서브클러스터 클릭 핸들러 - 접기/펴기 토글
+  const handleSubclusterClick = useCallback(
+    (subclusterId: string) => {
+      const isCurrentlyCollapsed = collapsedSubclusters.has(subclusterId);
+
+      if (isCurrentlyCollapsed) {
+        // 펼치기: 애니메이션 시작
+        const sc = subclusters.find((s) => s.id === subclusterId);
+        if (!sc) return;
+
+        // 그룹 노드의 중심 위치 찾기 (collapsed 상태가 바뀌기 전에 찾아야 함)
+        const groupNode = displayNodes.find(
+          (n) => n.isGroupNode && n.subcluster_id === subclusterId,
+        );
+        const centerX = groupNode?.x ?? 0;
+        const centerY = groupNode?.y ?? 0;
+
+        // 그룹 중심 위치를 ref에 저장 (useEffect에서 사용)
+        expandingGroupCenterRef.current = { x: centerX, y: centerY };
+
+        // 멤버 노드들의 초기 위치를 중심으로 설정
+        const initialPositions = new Map<number, { x: number; y: number }>();
+        sc.node_ids.forEach((nodeId) => {
+          initialPositions.set(nodeId, { x: centerX, y: centerY });
+        });
+        setAnimatedPositions(initialPositions);
+        setExpandingSubcluster(subclusterId);
+
+        // collapsed 상태 해제
+        setCollapsedSubclusters((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(subclusterId);
+          return newSet;
+        });
+      } else {
+        // 접기
+        setExpandingSubcluster(null);
+        setAnimatedPositions(new Map());
+        setCollapsedSubclusters((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(subclusterId);
+          return newSet;
+        });
+      }
+    },
+    [collapsedSubclusters, subclusters, displayNodes],
+  );
+
+  // 서브클러스터 펼치기 애니메이션 effect
+  useEffect(() => {
+    if (!expandingSubcluster) {
+      if (simulationRef.current) {
+        simulationRef.current.stop();
+        simulationRef.current = null;
+      }
+      return;
+    }
+
+    // 이미 시뮬레이션이 실행 중이면 무시
+    if (simulationRef.current) return;
+
+    const sc = subclusters.find((s) => s.id === expandingSubcluster);
+    if (!sc) return;
+
+    // 저장된 그룹 중심 위치 사용 (handleSubclusterClick에서 저장됨)
+    const groupCenter = expandingGroupCenterRef.current;
+    if (!groupCenter) return;
+
+    const groupCenterX = groupCenter.x;
+    const groupCenterY = groupCenter.y;
+
+    // 노드들의 원래 위치 계산 (그룹 중심 기준 상대 위치)
+    type ExpandingNode = {
+      id: number;
+      targetX: number;
+      targetY: number;
+    };
+    const expandingNodes: ExpandingNode[] = [];
+
+    sc.node_ids.forEach((nodeId) => {
+      const originalNode = positionedNodeMap.get(nodeId);
+      if (originalNode) {
+        expandingNodes.push({
+          id: nodeId,
+          targetX: originalNode.x,
+          targetY: originalNode.y,
+        });
+      }
+    });
+
+    // 애니메이션으로 그룹 중심에서 원래 위치로 펼쳐지기
+    const duration = 600; // ms (더 부드러운 효과를 위해 증가)
+    const startTime = performance.now();
+
+    // Back ease-out: 살짝 오버슈팅 후 정착
+    const backEaseOut = (t: number): number => {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    };
+
+    // Smooth ease-in-out-back: 부드럽게 시작하고 살짝 오버슈팅 후 정착
+    const smoothEase = (t: number): number => {
+      // 0~0.5: ease-in, 0.5~1: back ease-out
+      if (t < 0.5) {
+        return 2 * t * t;
+      } else {
+        return backEaseOut((t - 0.5) * 2) * 0.5 + 0.5;
+      }
+    };
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Smooth ease with slight overshoot for natural spring feel
+      const eased = smoothEase(progress);
+
+      const newPositions = new Map<number, { x: number; y: number }>();
+      expandingNodes.forEach((node) => {
+        // 그룹 중심에서 원래 위치로 보간
+        const x = groupCenterX + (node.targetX - groupCenterX) * eased;
+        const y = groupCenterY + (node.targetY - groupCenterY) * eased;
+        newPositions.set(node.id, { x, y });
+      });
+      setAnimatedPositions(newPositions);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 애니메이션 완료
+        setExpandingSubcluster(null);
+        setAnimatedPositions(new Map());
+        expandingGroupCenterRef.current = null;
+      }
+    };
+
+    requestAnimationFrame(animate);
+
+    return () => {
+      // cleanup not needed for requestAnimationFrame based animation
+    };
+  }, [expandingSubcluster, subclusters, positionedNodeMap]);
+
+  // 노드 클릭 핸들러 - 서브클러스터에 속한 경우 서브클러스터 접기
+  const handleNodeClick = (e: React.MouseEvent, node: DisplayNode) => {
+    e.stopPropagation();
+
+    if (node.isGroupNode) {
+      if (node.subcluster_id) {
+        handleSubclusterClick(node.subcluster_id);
+      }
+      return;
+    }
+
+    if (typeof node.id === "number") {
+      const numericId = node.id;
+      setFocusNodeId((prev) => (prev === numericId ? null : numericId));
+    }
+
+    if (e.altKey) {
+      const subclusterId =
+        node.subcluster_id ?? nodeToSubclusterMap.get(node.id as number);
+      if (subclusterId) {
+        setCollapsedSubclusters((prev) => {
+          const next = new Set(prev);
+          next.add(subclusterId);
+          return next;
+        });
+      }
+    }
   };
 
   return (
     <div style={{ position: "relative", overflow: "hidden" }}>
       {/* 툴팁 */}
       {hoveredId != null &&
-        hoveredThreadTitle != null &&
-        !hoveredSubclusterId &&
         (() => {
-          const n = nodeById(hoveredId);
-          if (!n || n.isSubcluster) return null;
+          const n = renderedDisplayNodeMap.get(hoveredId);
+          if (!n) return null;
           const left = n.x * scale + offset.x;
           const top = n.y * scale + offset.y - 24;
+          const sc =
+            n.isGroupNode && n.subcluster_id
+              ? subclusterMap.get(n.subcluster_id)
+              : null;
+
+          const label = n.isGroupNode
+            ? (n.label ?? String(n.id))
+            : (hoveredThreadTitle ?? n.label ?? String(n.id));
 
           return (
             <div
               className="absolute -translate-x-1/2 -translate-y-full py-0.5 px-1.5 text-[10px] bg-sidebar-button-hover text-primary rounded pointer-events-none whitespace-nowrap z-10"
-              style={{ left, top }}
+              style={{
+                left,
+                top,
+              }}
             >
-              {hoveredThreadTitle}
-            </div>
-          );
-        })()}
-
-      {/* Subcluster 툴팁 */}
-      {hoveredSubclusterId &&
-        (() => {
-          const n = displayNodes.find(
-            (node) => node.subclusterId === hoveredSubclusterId,
-          );
-          if (!n) return null;
-          const sc = subclusters.find((s) => s.id === hoveredSubclusterId);
-          const left = n.x * scale + offset.x;
-          const top = n.y * scale + offset.y - 30;
-
-          return (
-            <div
-              className="absolute -translate-x-1/2 -translate-y-full py-1 px-2 text-[10px] bg-sidebar-button-hover text-text-primary rounded pointer-events-none whitespace-nowrap z-10"
-              style={{ left, top }}
-            >
-              <div className="font-medium text-node-focus">
-                {n.subclusterSize}개 노드
-              </div>
-              {sc && sc.top_keywords.length > 0 && (
-                <div className="text-text-tertiary mt-0.5 max-w-[150px] truncate">
-                  {sc.top_keywords[0]}
+              <div className="font-semibold">{label}</div>
+              {sc && (
+                <div className="text-[9px] opacity-80">
+                  Size: {sc.size} | Density: {sc.density.toFixed(2)}
                 </div>
               )}
-              <div className="text-text-tertiary text-[9px] mt-0.5">
-                클릭하여 펼치기
-              </div>
             </div>
           );
         })()}
@@ -1069,7 +1513,6 @@ export default function Graph2D({
         width={width}
         height={height}
         style={{
-          border: "1px solid var(--color-base-border)",
           cursor:
             draggingNodeId !== null
               ? "grabbing"
@@ -1084,237 +1527,219 @@ export default function Graph2D({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+        onClick={handleBackgroundClick}
       >
         <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
           {/* 클러스터 원형 아웃라인 */}
-          {circles.map((circle) => (
-            <g key={`circle-${circle.clusterId}`}>
-              <circle
-                cx={circle.centerX}
-                cy={circle.centerY}
-                r={circle.radius}
-                fill="var(--color-cluster-default)"
-                stroke="var(--color-edge-default)"
-                strokeWidth={1}
-                style={{ pointerEvents: "none" }}
-              />
-            </g>
-          ))}
+          {!clusterFocusActive &&
+            circles.map((circle) => (
+              <g key={`circle-${circle.clusterId}`}>
+                <circle
+                  cx={circle.centerX}
+                  cy={circle.centerY}
+                  r={circle.radius}
+                  fill="var(--color-cluster-default)"
+                  stroke="var(--color-edge-default)"
+                  strokeWidth={1}
+                  style={{ pointerEvents: "none" }}
+                />
+              </g>
+            ))}
 
           {/* 클러스터 라벨 */}
-          {circles.map((circle) => (
-            <text
-              key={`label-${circle.clusterId}`}
-              x={circle.centerX}
-              y={circle.centerY - circle.radius - 12}
-              textAnchor="middle"
-              fontSize={16}
-              fontWeight={600}
-              fill="var(--color-text-secondary)"
-              style={{
-                cursor: "pointer",
-                pointerEvents: "all",
-                userSelect: "none",
-              }}
-              className="hover:fill-primary transition-colors"
-              onMouseDown={(e) =>
-                handleClusterLabelMouseDown(e, circle.clusterId)
-              }
-              onClick={(e) => {
-                e.stopPropagation();
-                onClusterClick?.(circle.clusterName);
-              }}
-            >
-              {circle.clusterName}
-            </text>
-          ))}
+          {!clusterFocusActive &&
+            circles.map((circle) => (
+              <text
+                key={`label-${circle.clusterId}`}
+                x={circle.centerX}
+                y={circle.centerY - circle.radius - 12}
+                textAnchor="middle"
+                fontSize={16}
+                fontWeight={600}
+                fill="var(--color-text-secondary)"
+                style={{
+                  cursor:
+                    draggingClusterId === circle.clusterId
+                      ? "grabbing"
+                      : "grab",
+                  pointerEvents: "all",
+                  userSelect: "none",
+                }}
+                onMouseDown={(e) =>
+                  handleClusterLabelMouseDown(e, circle.clusterId)
+                }
+                onClick={(e) => handleClusterLabelClick(e, circle.clusterId)}
+              >
+                {circle.clusterName}
+              </text>
+            ))}
 
-          {/* Inter-cluster 엣지 (클러스터 간) */}
+          {/* Inter-cluster 엣지 (일반) */}
           {normalInterEdges.map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`inter-normal-${idx}`}
+                key={e.id ?? `inter-normal-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
                 stroke="var(--color-edge-default)"
-                strokeWidth={1.2}
+                strokeWidth={0.5}
+                strokeOpacity={0.7}
               />
             );
           })}
 
-          {/* Intra-cluster 엣지 (클러스터 내) */}
+          {/* Intra-cluster 엣지 (일반) */}
           {normalIntraEdges.map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`intra-normal-${idx}`}
+                key={e.id ?? `intra-normal-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
                 stroke="var(--color-edge-default)"
-                strokeWidth={1}
+                strokeWidth={0.5}
               />
             );
           })}
 
           {/* 포커스된 노드의 엣지 */}
           {[...focusedIntraEdges, ...focusedInterEdges].map((e, idx) => {
-            const s = nodeById(e.source);
-            const t = nodeById(e.target);
+            const s = renderedDisplayNodeMap.get(e.source);
+            const t = renderedDisplayNodeMap.get(e.target);
             if (!s || !t) return null;
             return (
               <line
-                key={`focus-${idx}`}
+                key={e.id ?? `focus-${idx}`}
                 x1={s.x}
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="var(--color-node-focus)"
-                strokeWidth={2}
+                stroke="var(--color-primary)"
+                strokeWidth={1.5}
               />
             );
           })}
 
-          {/* 노드 렌더링 */}
-          {displayNodes.map((n) => {
-            const isHovered =
-              hoveredId === n.id || hoveredSubclusterId === n.subclusterId;
-            const isFocused = focusNodeId === n.id;
+          {/* 노드 (그룹/일반 통합) */}
+          {renderedDisplayNodes.map((n) => {
+            const isHovered = hoveredId === n.id;
+            const isFocused =
+              !n.isGroupNode &&
+              typeof n.id === "number" &&
+              focusNodeId === n.id;
 
-            if (n.isSubcluster) {
-              // 접힌 중분류 노드 렌더링
-              const radius = isHovered
-                ? SUBCLUSTER_NODE_RADIUS + 2
-                : SUBCLUSTER_NODE_RADIUS;
-
+            if (n.isGroupNode) {
+              const baseRadius = 10;
+              const radius = Math.max(baseRadius, Math.sqrt(n.size ?? 0) * 1.8);
+              const displayRadius = isHovered ? radius + 1.5 : radius;
+              const groupFill =
+                (clusterFocusActive && n.subcluster_id
+                  ? subclusterColorMap.get(n.subcluster_id)
+                  : undefined) ??
+                n.color ??
+                "var(--color-node-focus)";
               return (
                 <g
-                  key={`subcluster-${n.subclusterId}`}
+                  key={n.id}
+                  transform={`translate(${n.x}, ${n.y})`}
                   style={{ cursor: "pointer" }}
-                  onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
-                  onMouseEnter={() => {
-                    setHoveredId(n.id);
-                    setHoveredSubclusterId(n.subclusterId!);
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredId(null);
-                    setHoveredSubclusterId(null);
-                  }}
-                  onClick={(e) => handleSubclusterClick(e, n.subclusterId!)}
+                  onMouseDown={(e) => handleNodeMouseDown(e, n)}
+                  onMouseEnter={() => setHoveredId(n.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={(e) => handleNodeClick(e, n)}
                 >
-                  {/* 메인 원 */}
-                  <circle
-                    cx={n.x}
-                    cy={n.y}
-                    r={radius}
-                    fill="var(--color-node-focus)"
-                    style={{
-                      filter: isHovered
-                        ? "drop-shadow(0 0 6px var(--color-node-focus))"
-                        : undefined,
-                    }}
-                  />
-                  {/* 숫자 표시 */}
+                  <circle r={displayRadius} fill={groupFill} />
                   <text
-                    x={n.x}
-                    y={n.y}
                     textAnchor="middle"
-                    dominantBaseline="central"
+                    dominantBaseline="middle"
                     fontSize={9}
-                    fontWeight={600}
-                    fill="var(--color-bg-primary)"
-                    style={{ pointerEvents: "none" }}
+                    fontWeight="bold"
+                    fill="white"
+                    style={{ pointerEvents: "none", userSelect: "none" }}
                   >
-                    {n.subclusterSize}
+                    {n.size}
                   </text>
                 </g>
               );
-            } else {
-              // 일반 노드 렌더링
-              const baseRadius = getNodeRadius(n.edgeCount, maxEdgeCount);
-              const radius = isHovered
-                ? baseRadius + 2
-                : isFocused
-                  ? baseRadius + 1
-                  : baseRadius;
-
-              const fill = isFocused
-                ? "var(--color-node-focus)"
-                : isHovered
-                  ? "var(--color-node-focus)"
-                  : "var(--color-node-default)";
-
-              return (
-                <g key={n.id}>
-                  <circle
-                    cx={n.x}
-                    cy={n.y}
-                    r={radius}
-                    fill={fill}
-                    className="cursor-pointer"
-                    style={{
-                      filter: isFocused
-                        ? "drop-shadow(0 0 8px var(--color-node-focus))"
-                        : undefined,
-                    }}
-                    onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
-                    onMouseEnter={() => setHoveredId(n.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // 이미 포커싱된 노드를 다시 클릭하면 디테일 페이지로 이동
-                      if (focusNodeId === n.id) {
-                        onNodeClick?.(n.id);
-                      } else {
-                        // 첫 번째 클릭: 포커싱만
-                        setFocusNodeId(n.id);
-                      }
-                    }}
-                  />
-                </g>
-              );
             }
+
+            const baseRadius = getNodeRadius(n.edgeCount ?? 0, maxEdgeCount);
+            const radius = isHovered ? baseRadius + 2 : baseRadius;
+            const subclusterFill =
+              clusterFocusActive && n.subcluster_id
+                ? subclusterColorMap.get(n.subcluster_id)
+                : undefined;
+            // 엣지 수가 많은 노드는 중첩 노드와 같은 색상 사용
+            const isHighlyConnected =
+              maxEdgeCount > 0 && (n.edgeCount ?? 0) >= maxEdgeCount * 0.5;
+            const baseFill =
+              subclusterFill ??
+              (isHighlyConnected
+                ? "var(--color-node-focus)"
+                : "var(--color-node-default)");
+            const fill =
+              isFocused || isHovered ? "var(--color-node-focus)" : baseFill;
+            const title =
+              clusterFocusActive && typeof n.id === "number"
+                ? (nodeTitleMap.get(n.id) ?? n.label ?? String(n.id))
+                : null;
+            const displayTitle =
+              title && title.length > 12 ? title.slice(0, 12) + "…" : title;
+
+            return (
+              <g
+                key={n.id}
+                transform={`translate(${n.x}, ${n.y})`}
+                className="cursor-pointer"
+                onMouseDown={(e) => handleNodeMouseDown(e, n)}
+                onMouseEnter={() => setHoveredId(n.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={(e) => handleNodeClick(e, n)}
+              >
+                <circle
+                  r={radius}
+                  fill={fill}
+                  className="shadow-[0_2px_20px_#BADAFF]"
+                />
+                {displayTitle && (
+                  <text
+                    x={0}
+                    y={-(radius + 4)}
+                    textAnchor="middle"
+                    fontSize={6}
+                    fontWeight={500}
+                    fill="var(--color-text-secondary)"
+                    style={{ pointerEvents: "none", userSelect: "none" }}
+                  >
+                    {displayTitle}
+                  </text>
+                )}
+              </g>
+            );
           })}
         </g>
       </svg>
 
       {/* 줌 컨트롤 */}
-      <div className="absolute bottom-20 right-6 flex items-center gap-1 bg-bg-secondary/90 backdrop-blur rounded-xl p-1 shadow-lg border border-base-border">
-        <button
-          onClick={() => setScale((s) => Math.min(s * 1.2, 5))}
-          className="w-8 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-text-primary transition-colors text-lg"
-        >
-          +
-        </button>
-        <button
-          onClick={() => setScale((s) => Math.max(s / 1.2, 0.1))}
-          className="w-8 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-text-primary transition-colors text-lg"
-        >
-          −
-        </button>
-        <div className="w-px h-6 bg-base-border mx-1" />
-        <span className="px-2 text-xs text-text-secondary min-w-[45px] text-center">
-          {Math.round(scale * 100)}%
-        </span>
-        <div className="w-px h-6 bg-base-border mx-1" />
-        <button
-          onClick={() => {
-            setScale(1);
-            setOffset({ x: 0, y: 0 });
-          }}
-          className="px-3 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-xs text-text-secondary transition-colors"
-        >
-          초기화
-        </button>
-      </div>
+      <ZoomControls
+        scale={scale}
+        onZoomIn={() => setScale((s) => Math.min(s * 1.2, 5))}
+        onZoomOut={() => setScale((s) => Math.max(s / 1.2, 0.1))}
+        onReset={() => {
+          setScale(1);
+          setOffset({ x: 0, y: 0 });
+        }}
+      />
 
       {/* 노드 클릭 시 채팅 미리보기 */}
       {selectedNodeId && (

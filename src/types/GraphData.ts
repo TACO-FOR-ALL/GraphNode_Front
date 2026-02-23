@@ -32,10 +32,10 @@ export type PositionedNode = {
   origId: string;
   clusterId: string;
   clusterName: string;
-  timestamp: string | null;
+  timestamp: number | null;
   numMessages: number;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
   x: number;
   y: number;
   edgeCount: number;
@@ -49,8 +49,8 @@ export type PositionedEdge = {
   weight: number;
   type: "hard" | "insight";
   intraCluster: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
   isIntraCluster: boolean;
 };
 
@@ -81,4 +81,49 @@ export type DisplayNode = PositionedNode & {
   subclusterId?: string;
   subclusterSize?: number;
   containedNodeIds?: number[];
+};
+
+// SDK GraphClusterDto 대응
+export type GraphCluster = {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  size: number;
+  themes: string[];
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+// SDK GraphStatsDto 대응
+export type GraphStats = {
+  userId: string;
+  nodes: number;
+  edges: number;
+  clusters: number;
+  generatedAt?: number;
+  metadata?: Record<string, unknown>;
+};
+
+// SDK GraphSubclusterDto 대응 (기존 Subcluster와 별도로 camelCase 버전)
+export type GraphSubcluster = {
+  id: string;
+  userId: string;
+  clusterId: string;
+  nodeIds: number[];
+  representativeNodeId: number;
+  size: number;
+  density: number;
+  topKeywords: string[];
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+// SDK GraphSnapshotDto 대응
+export type GraphSnapshot = {
+  nodes: PositionedNode[];
+  edges: PositionedEdge[];
+  clusters: GraphCluster[];
+  subclusters?: GraphSubcluster[];
+  stats: Omit<GraphStats, "userId">;
 };

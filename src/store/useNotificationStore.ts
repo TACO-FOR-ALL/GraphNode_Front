@@ -126,6 +126,11 @@ function getNotificationContent(notification: Notification): {
         title: "그래프 요약 실패",
         body: `그래프 요약에 실패했습니다: ${notification.payload.error}`,
       };
+    case "TEST_NOTIFICATION":
+      return {
+        title: "테스트 알림",
+        body: (notification.payload.message as string) || "테스트 알림이 도착했습니다.",
+      };
     default:
       return {
         title: "알림",

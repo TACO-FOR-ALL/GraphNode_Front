@@ -21,7 +21,8 @@ export type NotificationType =
   | "GRAPH_GENERATION_COMPLETED" // 그래프 생성 완료
   | "GRAPH_GENERATION_FAILED" // 그래프 생성 실패
   | "GRAPH_SUMMARY_COMPLETED" // 그래프 요약 완료
-  | "GRAPH_SUMMARY_FAILED"; // 그래프 요약 실패
+  | "GRAPH_SUMMARY_FAILED" // 그래프 요약 실패
+  | "TEST_NOTIFICATION"; // 테스트 알림
 
 // 서버에서 전송하는 알림 이벤트 구조
 export interface NotificationEvent {

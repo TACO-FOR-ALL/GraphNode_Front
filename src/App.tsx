@@ -186,7 +186,10 @@ function MainLayout() {
               element={<Chat avatarUrl={me?.profile?.avatarUrl ?? null} />}
             />
             <Route path="/visualize" element={<Visualize />} />
-            <Route path="/visualize/:nodeId" element={<VisualizeDetail />} />
+            <Route
+              path="/visualize/detail/:nodeId"
+              element={<VisualizeDetail />}
+            />
             <Route
               path="/settings"
               element={<Settings userInfo={me as Me} />}

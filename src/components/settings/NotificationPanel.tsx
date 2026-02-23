@@ -4,6 +4,9 @@ import SettingCategoryTitle from "./SettingCategoryTitle";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import ToggleSettingItem from "./ToggleSettingItem";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { FiBell } from "react-icons/fi";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 interface LocalNotificationSettings {
   newMessageSound: boolean;
@@ -12,13 +15,20 @@ interface LocalNotificationSettings {
 
 export default function NotificationPanel() {
   const { t } = useTranslation();
-  const desktopNotification = useSettingsStore((state) => state.desktopNotification);
-  const setDesktopNotification = useSettingsStore((state) => state.setDesktopNotification);
+  const desktopNotification = useSettingsStore(
+    (state) => state.desktopNotification,
+  );
+  const setDesktopNotification = useSettingsStore(
+    (state) => state.setDesktopNotification,
+  );
 
-  const [localSettings, setLocalSettings] = useState<LocalNotificationSettings>({
-    newMessageSound: false,
-    appNotificationSound: false,
-  });
+  const [localSettings, setLocalSettings] = useState<LocalNotificationSettings>(
+    {
+      newMessageSound: false,
+      appNotificationSound: false,
+    },
+  );
+  // const [isSendingTest, setIsSendingTest] = useState(false);
 
   const updateLocalSetting = <K extends keyof LocalNotificationSettings>(
     key: K,
@@ -26,6 +36,24 @@ export default function NotificationPanel() {
   ) => {
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
   };
+
+  // const handleSendTestNotification = async () => {
+  //   setIsSendingTest(true);
+  //   try {
+  //     const response = await fetch(`${API_BASE}/v1/notifications/test`, {
+  //       method: "POST",
+  //       credentials: "include",
+  //     });
+  //     if (!response.ok) {
+  //       throw new Error("Failed to send test notification");
+  //     }
+  //     console.log("[NotificationPanel] Test notification sent");
+  //   } catch (error) {
+  //     console.error("[NotificationPanel] Error sending test notification:", error);
+  //   } finally {
+  //     setIsSendingTest(false);
+  //   }
+  // };
 
   return (
     <SettingsPanelLayout>
@@ -52,6 +80,30 @@ export default function NotificationPanel() {
         isActive={localSettings.appNotificationSound}
         onChange={(value) => updateLocalSetting("appNotificationSound", value)}
       />
+
+      {/* 테스트 알림 섹션
+      <SettingCategoryTitle
+        title="테스트"
+        subtitle="알림 연결이 정상 작동하는지 확인합니다"
+      />
+      <div className="flex items-center justify-between py-3">
+        <div>
+          <p className="text-[14px] font-medium text-text-primary">
+            테스트 알림 보내기
+          </p>
+          <p className="text-[12px] text-text-tertiary mt-0.5">
+            SSE 연결을 통해 테스트 알림을 받아봅니다
+          </p>
+        </div>
+        <button
+          onClick={handleSendTestNotification}
+          disabled={isSendingTest}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiBell size={16} />
+          {isSendingTest ? "전송 중..." : "테스트 알림"}
+        </button>
+      </div> */}
     </SettingsPanelLayout>
   );
 }

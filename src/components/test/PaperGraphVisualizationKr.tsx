@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import * as d3Force from "d3-force";
+import ZoomControls from "@/components/visualize/ZoomControls";
 
 // 타입 정의
 interface RawNode {
@@ -719,7 +720,7 @@ export default function PaperGraphVisualizationKr({
                 클러스터
               </div>
               <div
-                className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
+                className={`absolute top-[2px] h-[28px] bg-bg-primary border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
                   viewMode === "cluster" ? "left-[87px]" : "left-[2px]"
                 }`}
               ></div>
@@ -936,34 +937,15 @@ export default function PaperGraphVisualizationKr({
           </svg>
 
           {/* 줌 컨트롤 */}
-          <div className="absolute bottom-20 right-4 flex items-center gap-1 bg-bg-secondary/90 backdrop-blur rounded-xl p-1 shadow-lg border border-text-tertiary/10">
-            <button
-              onClick={() => setScale((s) => Math.min(s * 1.2, 3))}
-              className="w-8 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-text-primary transition-colors text-lg"
-            >
-              +
-            </button>
-            <button
-              onClick={() => setScale((s) => Math.max(s / 1.2, 0.3))}
-              className="w-8 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-text-primary transition-colors text-lg"
-            >
-              −
-            </button>
-            <div className="w-px h-6 bg-text-tertiary/20 mx-1" />
-            <span className="px-2 text-xs text-text-secondary min-w-[45px] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <div className="w-px h-6 bg-text-tertiary/20 mx-1" />
-            <button
-              onClick={() => {
-                setScale(1);
-                setOffset({ x: 0, y: 0 });
-              }}
-              className="px-3 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-xs text-text-secondary transition-colors"
-            >
-              초기화
-            </button>
-          </div>
+          <ZoomControls
+            scale={scale}
+            onZoomIn={() => setScale((s) => Math.min(s * 1.2, 3))}
+            onZoomOut={() => setScale((s) => Math.max(s / 1.2, 0.3))}
+            onReset={() => {
+              setScale(1);
+              setOffset({ x: 0, y: 0 });
+            }}
+          />
         </div>
 
         {/* 상세 정보 패널 - 선택된 노드가 있을 때만 표시, 애니메이션으로 등장 */}

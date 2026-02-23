@@ -1,9 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Graph3D from "./Graph3D";
-import {
-  GraphSnapshotDto,
-  GraphStatsDto,
-} from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
 import Graph2D from "./Graph2D";
 import ChevronsDown from "@/assets/icons/ChevronsDown.svg";
 import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
@@ -11,42 +7,57 @@ import {
   ClusterCircle,
   PositionedEdge,
   Subcluster,
-  DisplayNode,
+  GraphSnapshot,
 } from "@/types/GraphData";
 
-interface GraphData {
-  nodeData: GraphSnapshotDto;
-  statisticData: GraphStatsDto;
-}
+// Graph2D에서 전달되는 DisplayNode 타입 (로컬)
+type DisplayNode = {
+  id: string | number;
+  x: number;
+  y: number;
+  clusterName?: string;
+};
 
 export default function VisualizeToggle({
   graphData,
   avatarUrl,
-  onNodeClick,
-  focusedNodeId,
   subclusters,
-  expandedSubclusters,
-  onToggleSubcluster,
-  onClusterClick,
 }: {
-  graphData: GraphData;
+  graphData: GraphSnapshot;
   avatarUrl: string | null;
-  onNodeClick?: (nodeId: number) => void;
-  focusedNodeId?: number | null;
   subclusters: Subcluster[];
-  expandedSubclusters: Set<string>;
-  onToggleSubcluster: (subclusterId: string) => void;
-  onClusterClick?: (clusterName: string) => void;
 }) {
-  const statisticData = graphData.statisticData;
-  const nodeData = graphData.nodeData;
-
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
   const [clusters, setClusters] = useState<ClusterCircle[]>([]);
   const [nodes, setNodes] = useState<DisplayNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+
+  // 컨테이너 크기 측정
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateDimensions = () => {
+      setDimensions({
+        width: container.clientWidth,
+        height: container.clientHeight,
+      });
+    };
+
+    // 초기 크기 설정
+    updateDimensions();
+
+    // ResizeObserver로 크기 변경 감지
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const handleClustersReady = useCallback(
     (
@@ -62,7 +73,10 @@ export default function VisualizeToggle({
   );
 
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       {/* 2D 모드 클러스터 토글 패널 */}
       {mode === "2d" && (
         <>
@@ -215,7 +229,7 @@ export default function VisualizeToggle({
             3D
           </div>
           <div
-            className={`absolute top-[2px] h-[28px] bg-white border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
+            className={`absolute top-[2px] h-[28px] bg-bg-primary border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
               mode === "3d" ? "left-[87px]" : "left-[2px]"
             }`}
           ></div>
@@ -223,25 +237,22 @@ export default function VisualizeToggle({
       </div>
 
       {/* 그래프 렌더링 */}
-      {mode === "2d" ? (
-        <Graph2D
-          rawNodes={nodeData.nodes}
-          rawEdges={nodeData.edges}
-          subclusters={subclusters}
-          width={window.innerWidth}
-          height={window.innerHeight}
-          avatarUrl={avatarUrl}
-          onClustersReady={handleClustersReady}
-          zoomToClusterId={zoomToClusterId}
-          onNodeClick={onNodeClick}
-          externalFocusNodeId={focusedNodeId}
-          expandedSubclusters={expandedSubclusters}
-          onToggleSubcluster={onToggleSubcluster}
-          onClusterClick={onClusterClick}
-        />
-      ) : (
-        <Graph3D data={nodeData} />
-      )}
+      {dimensions.width > 0 &&
+        dimensions.height > 0 &&
+        (mode === "2d" ? (
+          <Graph2D
+            rawNodes={graphData.nodes}
+            rawEdges={graphData.edges}
+            rawSubclusters={subclusters}
+            width={dimensions.width}
+            height={dimensions.height}
+            avatarUrl={avatarUrl}
+            onClustersReady={handleClustersReady}
+            zoomToClusterId={zoomToClusterId}
+          />
+        ) : (
+          <Graph3D data={graphData} avatarUrl={avatarUrl} />
+        ))}
     </div>
   );
 }

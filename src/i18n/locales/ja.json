@@ -64,6 +64,25 @@
   },
   "visualize": {
     "loading": "グラフを構築中...",
+    "updateGraph": "グラフを更新",
+    "updating": "更新中...",
+    "overview": "概要",
+    "graphStructure": "グラフ構造",
+    "clusters": "クラスター",
+    "conversations": "会話数",
+    "style": "スタイル",
+    "primaryInterests": "主な関心事",
+    "patterns": "発見されたパターン",
+    "recommendations": "おすすめ",
+    "expand": "もっと見る",
+    "collapse": "折りたたむ",
+    "chatPreview": {
+      "title": "チャットプレビュー",
+      "viewDetail": "詳細を見る",
+      "noData": "データなし",
+      "hardcodedTitle": "サンプル会話",
+      "hardcodedContent": "これはサンプルの会話内容です。実際のデータが読み込まれるとここに表示されます。"
+    },
     "error": {
       "title": "グラフを読み込めません",
       "description": "グラフデータの読み込み中に問題が発生しました。後でもう一度お試しください。",
@@ -78,6 +97,23 @@
       "generating": "生成中...",
       "generatingNotice": "生成が完了したら通知します。アプリを閉じないでください。",
       "notice": "グラフは保存されたチャットとメモに基づいて生成されます。チャットまたはメモがない場合、グラフは生成できません。"
+    },
+    "patternType": {
+      "repetition": "反復",
+      "progression": "進行",
+      "gap": "空白",
+      "bridge": "連結"
+    },
+    "recommendationType": {
+      "consolidate": "統合",
+      "explore": "探索",
+      "review": "レビュー",
+      "connect": "接続"
+    },
+    "priority": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
     }
   },
   "search": {
@@ -133,7 +169,8 @@
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
-      "ja": "🇯🇵 日本語"
+      "ja": "🇯🇵 日本語",
+      "saveFailed": "言語設定を保存できませんでした。アプリを再起動すると以前の設定に戻ります。"
     },
     "timeFormat": {
       "title": "時刻形式",
@@ -153,6 +190,7 @@
       "keybinds": "キーバインド",
       "language-time": "言語と時刻"
     },
+    "feedback": "フィードバックを送る",
     "logout": "ログアウト",
     "dropJsonZone": {
       "title": "JSONファイルをドラッグ＆ドロップでアップロード",

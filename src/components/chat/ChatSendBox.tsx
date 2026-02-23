@@ -4,14 +4,8 @@ import { IoIosArrowDown } from "react-icons/io";
 import uuid from "../../utils/uuid";
 import threadRepo from "../../managers/threadRepo";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import {
-  OPENAI_MODEL,
-  OPENAI_MODEL_DEFAULT,
-  OpenAIModel,
-} from "@/constants/OPENAI_MODEL";
 import AutoResizeTextarea from "../AutoResizeTextArea";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { api } from "@/apiClient";
 import { MdAttachFile } from "react-icons/md";
 import FilePreviewList from "../FilePreviewList";
@@ -20,14 +14,10 @@ import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import { useToastStore } from "@/store/useToastStore";
 
-const HISTORY_LIMIT = 5;
-
 export default function ChatSendBox({
   setIsTyping,
-  setIsPinned,
 }: {
   setIsTyping: (v: boolean) => void;
-  setIsPinned: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
   const { addToast } = useToastStore();
@@ -35,10 +25,8 @@ export default function ChatSendBox({
   const navigate = useNavigate();
   const location = useLocation();
   const { threadId } = useParams<{ threadId?: string }>();
-  const { isExpanded } = useSidebarExpandStore();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [model, setModel] = useState<OpenAIModel>(OPENAI_MODEL_DEFAULT);
   const autoSendRef = useRef(false);
   const processedLocationKeyRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
@@ -72,9 +60,9 @@ export default function ChatSendBox({
   ) => {
     if (!messageText || sending || sendingRef.current) return;
 
-
     // 첨부파일 우선순위: filesOverride > attachedFiles
-    const filesToSend = (filesOverride && filesOverride.length > 0) ? filesOverride : attachedFiles;
+    const filesToSend =
+      filesOverride && filesOverride.length > 0 ? filesOverride : attachedFiles;
 
     // 중복 실행 방지
     sendingRef.current = true;
@@ -98,50 +86,195 @@ export default function ChatSendBox({
       //    - 일반적인 챗 기능 구현에는 1번(api.ai.chat)으로 충분합니다.
       // =========================================================================================
 
-      const result = await api.ai.chat(
-        targetThreadId,
-        {
-          model: "openai",
-          id: id,
-          chatContent: messageText,
-        },
-        filesToSend
-      );
+      // 어시스턴트 메시지 ID 생성 (스트리밍용)
+      const assistantMessageId = uuid();
+      let streamingText = "";
+      let lastUpdateTime = 0;
+      const THROTTLE_INTERVAL = 100; // 100ms마다 한 번만 DB 업데이트
 
-      // API키 미등록 응답 처리
-      if (!result.isSuccess && result.error.statusCode == 403) {
-        addToast({
-          message: t("toast.apiKeyRequired"),
-          type: "error",
-          action: {
-            label: t("toast.goToSettings"),
-            onClick: () => navigate("/settings"),
-          },
-        });
-        return;
-      }
-
-      // @ts-ignore
-      const messages = result.data.messages;
-      // @ts-ignore
-      const title = result.data.title ?? null;
-
-      const assistantText = result.isSuccess
-        ? (messages[1]?.content ?? "⚠️ 응답을 파싱할 수 없어요.")
-        : `❌ API 오류: ${result.error || "unknown_error"}`;
-
-      if (title) {
-        await threadRepo.updateThreadTitleById(targetThreadId, title);
-        queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
-      }
-
-      // 6) 어시스턴트 메시지 저장 및 기존 대화
+      // 스트리밍 시작 전 빈 어시스턴트 메시지 추가
       await threadRepo.addMessageToThreadById(targetThreadId, {
-        id: uuid(),
+        id: assistantMessageId,
         role: "assistant",
-        content: assistantText,
+        content: "",
         ts: Date.now(),
       });
+
+      try {
+        await api.ai.chatStream(
+          targetThreadId,
+          {
+            model: "openai",
+            id: id,
+            chatContent: messageText,
+          },
+          filesToSend,
+          async (event) => {
+            switch (event.event) {
+              case "chunk":
+                // 실시간 타이핑 효과 - 텍스트 청크 받을 때마다
+                streamingText += event.data.text;
+
+                // Throttling: 100ms마다 한 번만 DB 업데이트
+                const now = Date.now();
+                if (now - lastUpdateTime >= THROTTLE_INTERVAL) {
+                  lastUpdateTime = now;
+                  await threadRepo.updateMessageInThreadById(
+                    targetThreadId,
+                    assistantMessageId,
+                    streamingText,
+                  );
+                }
+                break;
+
+              case "result":
+                // 스트리밍 완료 - 최종 응답
+                const messages = event.data.messages;
+                const title = event.data.title ?? null;
+
+                const assistantText =
+                  messages[1]?.content ?? "⚠️ 응답을 파싱할 수 없어요.";
+
+                // 타이틀 업데이트
+                if (title) {
+                  await threadRepo.updateThreadTitleById(targetThreadId, title);
+                  queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+                }
+
+                // 최종 메시지로 업데이트
+                await threadRepo.updateMessageInThreadById(
+                  targetThreadId,
+                  assistantMessageId,
+                  assistantText,
+                );
+
+                // 스트리밍 완료 - 타이핑 상태 해제
+                setIsTyping(false);
+                setSending(false);
+                sendingRef.current = false;
+                break;
+
+              case "error":
+                // 에러 처리
+                console.error("SSE Error event:", event.data);
+
+                // API키 미등록 에러 (403) 처리
+                if (
+                  event.data.statusCode === 403 ||
+                  event.data.status === 403
+                ) {
+                  addToast({
+                    message: t("toast.apiKeyRequired"),
+                    type: "error",
+                    action: {
+                      label: t("toast.goToSettings"),
+                      onClick: () => navigate("/settings"),
+                    },
+                  });
+
+                  // 빈 메시지 삭제
+                  await threadRepo.deleteMessageFromThreadById(
+                    targetThreadId,
+                    assistantMessageId,
+                  );
+
+                  // 타이핑 상태 해제
+                  setIsTyping(false);
+                  setSending(false);
+                  sendingRef.current = false;
+                  return;
+                }
+
+                // 기타 에러는 에러 메시지로 업데이트
+                await threadRepo.updateMessageInThreadById(
+                  targetThreadId,
+                  assistantMessageId,
+                  `❌ API 오류: ${event.data.message || "unknown_error"}`,
+                );
+
+                // 타이핑 상태 해제
+                setIsTyping(false);
+                setSending(false);
+                sendingRef.current = false;
+                break;
+
+              case "status":
+                // 상태 업데이트
+                console.log("Status update:", event.data);
+
+                // phase가 'done'이면 스트리밍 완료
+                if (event.data.phase === "done") {
+                  // 마지막으로 누적된 텍스트로 최종 업데이트
+                  if (streamingText) {
+                    await threadRepo.updateMessageInThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                      streamingText,
+                    );
+                  }
+
+                  // 타이핑 상태 해제
+                  setIsTyping(false);
+                  setSending(false);
+                  sendingRef.current = false;
+                }
+                break;
+            }
+          },
+        );
+      } catch (streamError: any) {
+        // SSE 연결 자체가 실패한 경우 (예: 403 Forbidden)
+        console.error("SSE Connection failed:", streamError);
+        console.error("Error details:", {
+          message: streamError?.message,
+          status: streamError?.status,
+          statusCode: streamError?.statusCode,
+          fullError: streamError,
+        });
+
+        // 403 에러 확인 (fetch 레벨 에러) - 더 포괄적으로 체크
+        const errorString = String(streamError).toLowerCase();
+        const is403Error =
+          streamError?.message?.toLowerCase().includes("403") ||
+          streamError?.message?.toLowerCase().includes("forbidden") ||
+          streamError?.status === 403 ||
+          streamError?.statusCode === 403 ||
+          errorString.includes("403") ||
+          errorString.includes("forbidden");
+
+        console.log("Is 403 error:", is403Error);
+
+        if (is403Error) {
+          console.log("Attempting to show 403 toast...");
+          addToast({
+            message: t("toast.apiKeyRequired"),
+            type: "error",
+            action: {
+              label: t("toast.goToSettings"),
+              onClick: () => navigate("/settings"),
+            },
+          });
+          console.log("Toast added");
+
+          // 빈 메시지 삭제
+          await threadRepo.deleteMessageFromThreadById(
+            targetThreadId,
+            assistantMessageId,
+          );
+        } else {
+          // 기타 연결 실패 - 에러 메시지로 업데이트
+          await threadRepo.updateMessageInThreadById(
+            targetThreadId,
+            assistantMessageId,
+            `❌ 연결 실패: ${streamError?.message || "알 수 없는 오류"}`,
+          );
+        }
+
+        // 타이핑 상태 해제
+        setIsTyping(false);
+        setSending(false);
+        sendingRef.current = false;
+      }
     } catch (err: any) {
       await threadRepo.addMessageToThreadById(targetThreadId, {
         id: uuid(),
@@ -149,11 +282,12 @@ export default function ChatSendBox({
         content: `❌ 오류: ${err?.message || err}`,
         ts: Date.now(),
       });
-    } finally {
+      // 외부 에러 발생 시 상태 해제
       setIsTyping(false);
       setSending(false);
       sendingRef.current = false;
     }
+    // finally 블록 제거 - result/error 이벤트에서 개별적으로 처리
   };
 
   // 자동 전송 로직 (Home에서 ChatBox로부터 전달된 경우)
@@ -195,16 +329,15 @@ export default function ChatSendBox({
       return; // TODO: 에러 처리
     }
 
-    // Pin-to-Top 모드 활성화
-    setIsPinned(true);
-
     // 자동으로 메시지 전송 (비동기로 실행)
-    handleSendMessage(messageText, threadId, id, state.attachedFiles).catch((err) => {
-      console.error("Auto send failed:", err);
-      // 에러 발생 시 ref 리셋하여 재시도 가능하게
-      autoSendRef.current = false;
-      processedLocationKeyRef.current = null;
-    });
+    handleSendMessage(messageText, threadId, id, state.attachedFiles).catch(
+      (err) => {
+        console.error("Auto send failed:", err);
+        // 에러 발생 시 ref 리셋하여 재시도 가능하게
+        autoSendRef.current = false;
+        processedLocationKeyRef.current = null;
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, sending, location.key]);
 
@@ -233,19 +366,14 @@ export default function ChatSendBox({
     await threadRepo.addMessageToThreadById(tid!, userMsg);
     setInput("");
 
-    // 3) Pin-to-Top 모드 활성화
-    setIsPinned(true);
-
-    // 4) 메시지 전송 로직 실행
+    // 3) 메시지 전송 로직 실행
     await handleSendMessage(text, tid!, id);
   };
-
-  const width = isExpanded ? "744px" : "916px";
 
   return (
     <div
       {...dragProps}
-      className={`flex w-[${width}] absolute bottom-8 left-0 right-0 flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md`}
+      className="flex flex-col py-3 pl-3 items-center justify-center rounded-xl border-[1px] transition-all duration-500 border-[rgba(var(--color-chatbox-border-rgb),0.2)] border-solid shadow-[0_2px_20px_0_#badaff] bg-bg-primary/80 backdrop-blur-md"
     >
       <FilePreviewList
         files={attachedFiles}

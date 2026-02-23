@@ -104,9 +104,12 @@ export default function DataPrivacyPanel() {
       </div>
 
       {/* Dev Tools - 개발 테스트용 (주석 처리) */}
-      {/*
-      <div className="mt-8">
-        <SettingCategoryTitle title="Developer Tools" subtitle="For testing purposes only" />
+
+      {/* <div className="mt-8">
+        <SettingCategoryTitle
+          title="Developer Tools"
+          subtitle="For testing purposes only"
+        />
       </div>
       <div className="flex flex-col gap-3 w-full p-4 bg-bg-secondary rounded-lg border border-dashed border-text-tertiary">
         <div className="flex gap-4">
@@ -158,8 +161,25 @@ export default function DataPrivacyPanel() {
         >
           generate graph
         </button>
-      </div>
-      */}
+        <button
+          onClick={async () => {
+            const result = await api.graphAi.requestSummary();
+            console.log(result);
+          }}
+          className="px-3 py-2 text-sm text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded-lg transition-colors w-fit"
+        >
+          generate summar
+        </button>
+        <button
+          onClick={async () => {
+            const result = await api.graphAi.getSummary();
+            console.log(result);
+          }}
+          className="px-3 py-2 text-sm text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded-lg transition-colors w-fit"
+        >
+          get summary
+        </button>
+      </div> */}
     </SettingsPanelLayout>
   );
 }
