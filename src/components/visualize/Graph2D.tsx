@@ -3,7 +3,7 @@ import {
   ClusterCircle,
   PositionedEdge,
   PositionedNode,
-  Subcluster,
+  GraphSubcluster,
 } from "@/types/GraphData";
 import * as d3Force from "d3-force";
 import React, {
@@ -103,24 +103,24 @@ function classifyEdges(
 
 // 클러스터별로 서브클러스터 그룹화
 function groupSubclustersByCluster(
-  subclusters: Subcluster[],
-): Map<string, Subcluster[]> {
-  const subclustersByCluster = new Map<string, Subcluster[]>();
+  subclusters: GraphSubcluster[],
+): Map<string, GraphSubcluster[]> {
+  const subclustersByCluster = new Map<string, GraphSubcluster[]>();
   subclusters.forEach((sc) => {
-    const list = subclustersByCluster.get(sc.cluster_id) ?? [];
+    const list = subclustersByCluster.get(sc.clusterId) ?? [];
     list.push(sc);
-    subclustersByCluster.set(sc.cluster_id, list);
+    subclustersByCluster.set(sc.clusterId, list);
   });
   return subclustersByCluster;
 }
 
 // 노드 -> 서브클러스터 매핑 생성
 function createNodeToSubclusterMap(
-  subclusters: Subcluster[],
+  subclusters: GraphSubcluster[],
 ): Map<number, string> {
   const nodeToSubcluster = new Map<number, string>();
   subclusters.forEach((sc) => {
-    sc.node_ids.forEach((nodeId) => {
+    sc.nodeIds.forEach((nodeId) => {
       nodeToSubcluster.set(nodeId, sc.id);
     });
   });
@@ -130,7 +130,7 @@ function createNodeToSubclusterMap(
 function getVisibleGraph(
   allNodes: PositionedNode[],
   allEdges: GraphEdge[],
-  subclusters: Subcluster[],
+  subclusters: GraphSubcluster[],
   collapsedSet: Set<string>,
 ): { visibleNodes: DisplayNode[]; visibleEdges: DisplayEdge[] } {
   const nodeToSubcluster = createNodeToSubclusterMap(subclusters);
@@ -149,7 +149,7 @@ function getVisibleGraph(
     let count = 0;
     let clusterName: string | undefined;
 
-    const memberNodeIds = new Set(sc.node_ids);
+    const memberNodeIds = new Set(sc.nodeIds);
     allNodes.forEach((n) => {
       if (!memberNodeIds.has(n.id)) return;
       sumX += n.x;
@@ -163,7 +163,7 @@ function getVisibleGraph(
       id: groupNodeId,
       isGroupNode: true,
       subcluster_id: scId,
-      label: sc.top_keywords?.[0] || `Group ${scId}`,
+      label: sc.topKeywords?.[0] || `Group ${scId}`,
       x: count > 0 ? sumX / count : 0,
       y: count > 0 ? sumY / count : 0,
       size: sc.size,
@@ -173,7 +173,7 @@ function getVisibleGraph(
     };
 
     visibleNodes.push(groupNode);
-    sc.node_ids.forEach((nodeId) => {
+    sc.nodeIds.forEach((nodeId) => {
       nodeMap.set(nodeId, groupNode);
     });
   });
@@ -483,7 +483,7 @@ function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
 type GraphProps = {
   rawNodes: GraphNode[];
   rawEdges: GraphEdge[];
-  rawSubclusters?: Subcluster[];
+  rawSubclusters?: GraphSubcluster[];
   width: number;
   height: number;
   avatarUrl: string | null;
@@ -495,7 +495,7 @@ type GraphProps = {
   zoomToClusterId?: string | null;
 };
 
-const EMPTY_SUBCLUSTERS: Subcluster[] = [];
+const EMPTY_SUBCLUSTERS: GraphSubcluster[] = [];
 
 export default function Graph2D({
   rawNodes,
@@ -573,11 +573,12 @@ export default function Graph2D({
   );
 
   const isSubclusterInFocus = useCallback(
-    (sc: Subcluster) =>
+    (sc: GraphSubcluster) =>
       !!focusedClusterId &&
-      (sc.cluster_id === focusedClusterId ||
-        sc.node_ids.some(
-          (nodeId) => nodeClusterNameById.get(nodeId) === focusedClusterId,
+      (sc.clusterId === focusedClusterId ||
+        sc.nodeIds.some(
+          (nodeId: number) =>
+            nodeClusterNameById.get(nodeId) === focusedClusterId,
         )),
     [focusedClusterId, nodeClusterNameById],
   );
@@ -1321,7 +1322,7 @@ export default function Graph2D({
 
         // 멤버 노드들의 초기 위치를 중심으로 설정
         const initialPositions = new Map<number, { x: number; y: number }>();
-        sc.node_ids.forEach((nodeId) => {
+        sc.nodeIds.forEach((nodeId) => {
           initialPositions.set(nodeId, { x: centerX, y: centerY });
         });
         setAnimatedPositions(initialPositions);
@@ -1378,7 +1379,7 @@ export default function Graph2D({
     };
     const expandingNodes: ExpandingNode[] = [];
 
-    sc.node_ids.forEach((nodeId) => {
+    sc.nodeIds.forEach((nodeId) => {
       const originalNode = positionedNodeMap.get(nodeId);
       if (originalNode) {
         expandingNodes.push({

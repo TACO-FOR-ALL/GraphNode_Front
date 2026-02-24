@@ -6,7 +6,7 @@ import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
 import {
   ClusterCircle,
   PositionedEdge,
-  Subcluster,
+  GraphSubcluster,
   GraphSnapshot,
 } from "@/types/GraphData";
 
@@ -25,7 +25,7 @@ export default function VisualizeToggle({
 }: {
   graphData: GraphSnapshot;
   avatarUrl: string | null;
-  subclusters: Subcluster[];
+  subclusters: GraphSubcluster[];
 }) {
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);

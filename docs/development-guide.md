@@ -57,6 +57,28 @@ npm run dist        # electron-builder 패키징
 - 노트/스레드 변경은 가능하면 repository(`noteRepo`, `threadRepo`)를 통해 처리해 Outbox 동기화 일관성을 유지하세요.
 - 실시간 기능(알림/SSE, 그래프 생성)은 `VITE_API_BASE` 주입이 필요하므로 개발 실행은 Infisical 명령으로 고정하세요.
 
+## 코딩 컨벤션
+
+### TypeScript 타입 정의
+
+- **프론트엔드 타입은 camelCase를 사용합니다.**
+- 서버 API 응답이 snake_case인 경우, `dtoMappers.ts`에서 camelCase로 변환합니다.
+
+```ts
+// 서버 응답 (snake_case)
+{ cluster_id: "...", node_ids: [...], top_keywords: [...] }
+
+// 프론트엔드 타입 (camelCase)
+type GraphSubcluster = {
+  clusterId: string;
+  nodeIds: number[];
+  topKeywords: string[];
+};
+```
+
+> 변환 함수는 `src/utils/dtoMappers.ts`에 정의합니다.
+> SDK에서 제공하는 DTO 타입과 프론트엔드 타입을 분리하여 관리합니다.
+
 ## Zustand 사용 원칙
 
 ### 1) 기본 원칙: selector 패턴 우선

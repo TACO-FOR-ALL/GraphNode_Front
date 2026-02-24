@@ -12,7 +12,7 @@ import {
   FiStar,
   FiRefreshCw,
 } from "react-icons/fi";
-import { Subcluster, GraphSnapshot } from "@/types/GraphData";
+import { GraphSubcluster, GraphSnapshot } from "@/types/GraphData";
 import ToggleSidebarExpand from "../sidebar/ToggleSidebarExpand";
 import { GraphSummary } from "@/types/GraphSummary";
 
@@ -46,7 +46,7 @@ interface VisualizeSidebarProps {
   setIsExpanded: (expanded: boolean) => void;
   onNodeFocus?: (nodeId: number) => void;
   focusedNodeId?: number | null;
-  subclusters: Subcluster[];
+  subclusters: GraphSubcluster[];
   expandedSubclusters: Set<string>;
   onToggleSubcluster: (subclusterId: string) => void;
   onUpdateGraph?: () => void;
@@ -54,7 +54,7 @@ interface VisualizeSidebarProps {
 }
 
 interface SubclusterGroup {
-  subcluster: Subcluster;
+  subcluster: GraphSubcluster;
   nodes: Array<{
     id: number;
     origId: string;
@@ -150,9 +150,9 @@ export default function VisualizeSidebar({
     useState(false);
 
   // 노드가 어떤 subcluster에 속하는지 맵핑
-  const nodeToSubclusterMap = new Map<number, Subcluster>();
+  const nodeToSubclusterMap = new Map<number, GraphSubcluster>();
   subclusters.forEach((sc) => {
-    sc.node_ids.forEach((nodeId) => {
+    sc.nodeIds.forEach((nodeId) => {
       nodeToSubclusterMap.set(nodeId, sc);
     });
   });
@@ -476,7 +476,7 @@ export default function VisualizeSidebar({
                                       }}
                                     />
                                     <span className="truncate flex-1 text-[12px]">
-                                      {scGroup.subcluster.top_keywords[0] ||
+                                      {scGroup.subcluster.topKeywords[0] ||
                                         `중분류 ${scGroup.subcluster.id.slice(-4)}`}
                                     </span>
                                     <span className="text-[11px] text-text-tertiary ml-1">

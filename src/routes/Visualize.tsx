@@ -2,8 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import VisualizeToggle from "@/components/visualize/VisualizeToggle";
 import VisualizeSidebar from "@/components/visualize/VisualizeSidebar";
 import { Me } from "@/types/Me";
-import { DUMMY_GRAPH } from "@/constants/DUMMY_GRAPH";
-import { Subcluster, GraphSnapshot, GraphStats } from "@/types/GraphData";
+import { GraphSnapshot } from "@/types/GraphData";
 import { GraphSummary } from "@/types/GraphSummary";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/apiClient";
@@ -62,8 +61,8 @@ export default function Visualize() {
     });
   }, []);
 
-  // 중분류 데이터
-  const subclusters: Subcluster[] = DUMMY_GRAPH.subclusters;
+  // 서버에서 가져온 서브클러스터 데이터
+  const subclusters = graphData?.nodeEdgeData.subclusters ?? [];
 
   // 사이드바에서 노드 클릭 시 포커싱만 (줌인 + 시각적 효과)
   const handleNodeFocus = (nodeId: number) => {
