@@ -4,6 +4,7 @@ import type {
   NotificationType,
 } from "@/managers/notificationClient";
 import { useSettingsStore } from "./useSettingsStore";
+import { useGraphGenerationStore } from "./useGraphGenerationStore";
 
 export interface Notification {
   id: string;
@@ -35,6 +36,19 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     if (event.type === "CONNECTED") {
       set({ isConnected: true });
       return;
+    }
+
+    // 그래프 생성 상태 업데이트
+    if (event.type === "GRAPH_GENERATION_REQUESTED") {
+      useGraphGenerationStore.getState().setGenerating(true);
+      return; // 알림 목록에는 추가하지 않음
+    }
+
+    if (
+      event.type === "GRAPH_GENERATION_COMPLETED" ||
+      event.type === "GRAPH_GENERATION_FAILED"
+    ) {
+      useGraphGenerationStore.getState().setGenerating(false);
     }
 
     const notification: Notification = {

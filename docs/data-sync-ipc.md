@@ -46,6 +46,26 @@
 - 서버 노트를 가져와 로컬에 `bulkPut`
 - 단, outbox에 `pending/processing` 중인 noteId는 덮어쓰지 않음
 
+## 실시간 알림(SSE)과 그래프 생성 상태
+
+`src/managers/notificationClient.ts`:
+
+- `EventSource`로 `${VITE_API_BASE}/v1/notifications/stream` 구독
+- 쿠키 인증(`withCredentials: true`)
+- 연결 오류 시 지수 백오프 재연결(최대 5회)
+
+`src/store/useNotificationStore.ts`:
+
+- `GRAPH_GENERATION_REQUESTED` 수신 시 `useGraphGenerationStore.setGenerating(true)`
+- `GRAPH_GENERATION_COMPLETED` / `GRAPH_GENERATION_FAILED` 수신 시 `setGenerating(false)`
+- 일반 알림은 최대 50개 유지 + unread badge 업데이트
+
+`src/components/visualize/EmptyGraph.tsx`:
+
+- 생성 버튼 클릭 시 `api.graphAi.generateGraph()` 호출
+- `isGenerating`이 true면 버튼 비활성화 및 진행 UI 표시
+- 실패 케이스에서 로컬 상태를 false로 복구
+
 ## IPC 표면
 
 Main 등록 (`electron/main/ipc/index.ts`):

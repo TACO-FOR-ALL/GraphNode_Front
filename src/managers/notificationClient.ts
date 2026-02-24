@@ -18,6 +18,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 // 서버에서 전송하는 알림 타입 정의
 export type NotificationType =
   | "CONNECTED" // 연결 성공 확인용
+  | "GRAPH_GENERATION_REQUESTED" // 그래프 생성 요청됨
   | "GRAPH_GENERATION_COMPLETED" // 그래프 생성 완료
   | "GRAPH_GENERATION_FAILED" // 그래프 생성 실패
   | "GRAPH_SUMMARY_COMPLETED" // 그래프 요약 완료

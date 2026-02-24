@@ -40,6 +40,11 @@ Router는 `HashRouter` 기반입니다.
 - UI/설정 상태: Zustand (`src/store/*`)
 - 로컬 데이터 영속성: Dexie (`threads`, `notes`, `folders`, `outbox`)
 
+주요 Zustand 스토어:
+
+- `useGraphGenerationStore`: 그래프 생성 진행 상태(`isGenerating`)를 저장하며 `persist`로 유지
+- `useNotificationStore`: 알림 목록/읽음 상태/연결 상태 관리
+
 ## 보안 경계
 
 - Renderer는 Node API에 직접 접근하지 않습니다.
@@ -52,3 +57,4 @@ Router는 `HashRouter` 기반입니다.
 - 오프라인 우선 변경 기록: Outbox 패턴
 - DB 트랜잭션 기반 원자성 보장 (`db.transaction`)
 - 동기화 재시도(backoff) + coalescing으로 API 호출 수 절감
+- SSE 알림 이벤트를 UI 상태와 연결해 장시간 작업(그래프 생성) 진행 상태를 반영

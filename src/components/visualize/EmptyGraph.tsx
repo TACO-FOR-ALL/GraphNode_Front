@@ -1,23 +1,21 @@
 import { api } from "@/apiClient";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useGraphGenerationStore } from "@/store/useGraphGenerationStore";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/assets/lottie/loading.json";
 
-// TODO: 로직 수정 (useState라 생성 중 유지가 안됨. 생성 중일 때 Lottie View 추가)
 export default function EmptyGraph() {
   const { t } = useTranslation();
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const onRequestGenerate = async () => {
-    await api.graphAi.generateGraph();
-  };
+  const isGenerating = useGraphGenerationStore((state) => state.isGenerating);
+  const setGenerating = useGraphGenerationStore((state) => state.setGenerating);
 
   const handleGenerate = async () => {
-    if (!onRequestGenerate || isGenerating) return;
-    setIsGenerating(true);
+    if (isGenerating) return;
+    setGenerating(true);
     try {
       await api.graphAi.generateGraph();
-    } finally {
-      setIsGenerating(false);
+    } catch {
+      setGenerating(false);
     }
   };
 
@@ -87,19 +85,7 @@ export default function EmptyGraph() {
         {isGenerating && (
           <div className="mt-3 p-3 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/30 w-full">
             <div className="flex items-center gap-2">
-              <svg
-                className="w-4 h-4 text-primary flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
+              <Lottie animationData={loadingAnimation} loop={true} />
               <p className="text-xs text-primary font-medium">
                 {t("visualize.empty.generatingNotice")}
               </p>
