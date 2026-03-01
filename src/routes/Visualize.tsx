@@ -74,7 +74,7 @@ export default function Visualize() {
 
   if (isLoading || !graphData) return null;
 
-  if (graphData.nodeEdgeData.nodes.length === 0) return <EmptyGraph />;
+  if (graphData.nodeEdgeData.nodes.length === 0) return <EmptyGraph status={graphData.nodeEdgeData.stats?.status} />;
 
   return (
     <div className="flex w-full h-full overflow-hidden select-none">

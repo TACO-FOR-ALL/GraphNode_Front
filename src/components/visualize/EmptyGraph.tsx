@@ -4,10 +4,19 @@ import { useGraphGenerationStore } from "@/store/useGraphGenerationStore";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/assets/lottie/loading.json";
 
-export default function EmptyGraph() {
+import type { GraphStatus } from "@taco_tsinghua/graphnode-sdk";
+
+interface EmptyGraphProps {
+  status?: GraphStatus;
+}
+
+export default function EmptyGraph({ status }: EmptyGraphProps) {
   const { t } = useTranslation();
-  const isGenerating = useGraphGenerationStore((state) => state.isGenerating);
+  const isStoreGenerating = useGraphGenerationStore((state) => state.isGenerating);
   const setGenerating = useGraphGenerationStore((state) => state.setGenerating);
+
+  // 진행 중 상태는 클라이언트의 상태 혹은 서버의 상태 중 하나라도 CREATING/UPDATING이면 true
+  const isGenerating = isStoreGenerating || status === "CREATING" || status === "UPDATING";
 
   const handleGenerate = async () => {
     if (isGenerating) return;

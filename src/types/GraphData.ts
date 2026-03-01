@@ -1,3 +1,5 @@
+import { GraphStatus } from "@taco_tsinghua/graphnode-sdk";
+
 export type GraphNode = {
   id: string;
   clusterId?: string;
@@ -101,6 +103,7 @@ export type GraphStats = {
   nodes: number;
   edges: number;
   clusters: number;
+  status: GraphStatus;
   generatedAt?: number;
   metadata?: Record<string, unknown>;
 };
