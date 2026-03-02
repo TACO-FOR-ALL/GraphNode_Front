@@ -1,6 +1,8 @@
 import { api } from "@/apiClient";
 import { useTranslation } from "react-i18next";
 import { useGraphGenerationStore } from "@/store/useGraphGenerationStore";
+import { useToastStore } from "@/store/useToastStore";
+import { unwrapResponse } from "@/utils/httpResponse";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/assets/lottie/loading.json";
 
@@ -8,6 +10,7 @@ export default function EmptyGraph() {
   const { t } = useTranslation();
   const isGenerating = useGraphGenerationStore((state) => state.isGenerating);
   const setGenerating = useGraphGenerationStore((state) => state.setGenerating);
+  const addToast = useToastStore((state) => state.addToast);
 
   const handleGenerate = async () => {
     if (isGenerating) return;
@@ -18,6 +21,90 @@ export default function EmptyGraph() {
       setGenerating(false);
     }
   };
+
+  const handleCheckStatus = async () => {
+    try {
+      const { status } = unwrapResponse(await api.graph.getStats());
+      addToast({
+        message: t(`visualize.empty.status.${status}`),
+        type: status === "CREATING" || status === "UPDATING" ? "info" : "success",
+      });
+    } catch {
+      addToast({
+        message: t("visualize.empty.status.error"),
+        type: "error",
+      });
+    }
+  };
+
+  const handleRetry = async () => {
+    setGenerating(false);
+    // 약간의 딜레이 후 재요청
+    setTimeout(() => {
+      handleGenerate();
+    }, 100);
+  };
+
+  // 생성 중일 때는 생성 중 화면만 표시
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col w-full h-full items-center justify-center gap-4 p-6">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          {/* 생성 중 안내 메시지 */}
+          <div className="p-4 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/30 w-full">
+            <div className="flex flex-col items-center gap-2">
+              <Lottie
+                animationData={loadingAnimation}
+                loop={true}
+                className="w-24 h-24"
+              />
+              <p className="text-sm text-primary font-medium">
+                {t("visualize.empty.generatingNotice")}
+              </p>
+            </div>
+          </div>
+
+          {/* 주의 메시지 */}
+          <div className="mt-2 p-4 rounded-lg bg-bg-tertiary border border-base-border w-full">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-text-tertiary flex-shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <p className="text-xs text-text-tertiary text-left leading-relaxed">
+                {t("visualize.empty.generatingHelp")}
+              </p>
+            </div>
+            {/* 텍스트 버튼들 */}
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <button
+                onClick={handleCheckStatus}
+                className="text-xs text-primary hover:underline"
+              >
+                {t("visualize.empty.checkStatus")}
+              </button>
+              <span className="text-text-tertiary">|</span>
+              <button
+                onClick={handleRetry}
+                className="text-xs text-primary hover:underline"
+              >
+                {t("visualize.empty.retryGenerate")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full h-full items-center justify-center gap-4 p-6">
@@ -50,48 +137,11 @@ export default function EmptyGraph() {
         {/* 생성 버튼 */}
         <button
           onClick={handleGenerate}
-          disabled={isGenerating}
-          className="mt-2 px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          data-onboarding="generate-graph-button"
+          className="mt-2 px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2"
         >
-          {isGenerating ? (
-            <>
-              <svg
-                className="w-4 h-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              {t("visualize.empty.generating")}
-            </>
-          ) : (
-            t("visualize.empty.generate")
-          )}
+          {t("visualize.empty.generate")}
         </button>
-
-        {/* 생성 중 안내 메시지 */}
-        {isGenerating && (
-          <div className="mt-3 p-3 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/30 w-full">
-            <div className="flex items-center gap-2">
-              <Lottie animationData={loadingAnimation} loop={true} />
-              <p className="text-xs text-primary font-medium">
-                {t("visualize.empty.generatingNotice")}
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* 주의 메시지 */}
         <div className="mt-4 p-4 rounded-lg bg-bg-tertiary border border-base-border w-full">

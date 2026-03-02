@@ -95,12 +95,21 @@ export type GraphCluster = {
   updatedAt?: number;
 };
 
+type GraphStatus =
+  | "NOT_CREATED"
+  | "CREATING"
+  | "CREATED"
+  | "UPDATING"
+  | "UPDATED";
+
 // SDK GraphStatsDto 대응
 export type GraphStats = {
   userId: string;
   nodes: number;
   edges: number;
   clusters: number;
+  status: GraphStatus;
+  updatedAt?: number;
   generatedAt?: number;
   metadata?: Record<string, unknown>;
 };

@@ -3,6 +3,7 @@ import systemIPC from "./system";
 import windowIPC from "./window";
 import keytarIPC from "./keytar";
 import fileIPC from "./file";
+import mcpIPC from "./mcp";
 
 export default function ipc() {
   systemIPC();
@@ -10,4 +11,5 @@ export default function ipc() {
   openaiIPC();
   keytarIPC();
   fileIPC();
+  mcpIPC();
 }

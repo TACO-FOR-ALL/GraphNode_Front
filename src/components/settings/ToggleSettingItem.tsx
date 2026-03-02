@@ -1,23 +1,4 @@
-function Toggle({
-  isOn,
-  onChange,
-}: {
-  isOn: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div
-      onClick={() => onChange(!isOn)}
-      className={`relative w-[50px] h-[24px] rounded-full cursor-pointer transition-colors duration-300
-        ${isOn ? "bg-primary" : "bg-bg-tertiary"}`}
-    >
-      <div
-        className={`absolute top-1 w-[16px] h-[16px] rounded-full bg-white dark:bg-zinc-200 transition-all duration-300 shadow-sm
-          ${isOn ? "left-[29px]" : "left-1"}`}
-      />
-    </div>
-  );
-}
+import Toggle from "@/components/common/Toggle";
 
 export default function ToggleSettingItem({
   title,

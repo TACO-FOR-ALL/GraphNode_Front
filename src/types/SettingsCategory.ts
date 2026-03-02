@@ -5,5 +5,6 @@ export default interface SettingsCategory {
     | "appearance"
     | "notification"
     | "keybinds"
-    | "language-time";
+    | "language-time"
+    | "mcp";
 }

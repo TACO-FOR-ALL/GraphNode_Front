@@ -16,6 +16,37 @@
       "appleLoginFailed": "无法启动 Apple 登录。"
     }
   },
+  "onboarding": {
+    "skip": "跳过",
+    "next": "下一步",
+    "complete": "完成",
+    "intro": {
+      "title": "你的知识现在在哪里？",
+      "subtitle": "无论多努力地对话和记笔记，随着时间流逝都会消失无踪。",
+      "painPoint1": "在 ChatGPT、Claude、Gemini 中获得的洞察埋藏在滚动条的某处。",
+      "painPoint2": "Notion、Obsidian 笔记埋在文件夹里，彼此之间没有关联。",
+      "painPoint3": "明明在某处记录过，但搜索时因为没有上下文而找不到。"
+    },
+    "solution": {
+      "title": "将对话和笔记变成活的知识地图",
+      "subtitle": "GraphNode AI 阅读、分析内容，识别主题并自动连接。无需手动添加标签或链接。",
+      "start": "开始使用"
+    },
+    "apiKey": {
+      "title": "与 AI 对话",
+      "description": "如需与 AI 对话，请设置 API 密钥。没有密钥也可以使用图谱功能。",
+      "linkText": "了解如何获取 API 密钥"
+    },
+    "dataImport": {
+      "title": "导入数据",
+      "description": "将现有笔记（Markdown 文件）或 ChatGPT 对话记录拖放导入。",
+      "linkText": "了解如何导出对话"
+    },
+    "visualize": {
+      "title": "生成图谱",
+      "description": "现在点击「生成图谱」按钮，创建你的知识地图吧！"
+    }
+  },
   "toast": {
     "apiKeyRequired": "请先注册您的 API 密钥。",
     "goToSettings": "前往设置"
@@ -31,7 +62,21 @@
     "summary": "总结这个内容",
     "note": "将这个内容做成笔记",
     "placeholder": "问、搜索、或者告诉我任何事情",
-    "selectSourceFirst": "请先选择来源 (点击 @ 选择聊天或笔记)"
+    "selectSourceFirst": "请先选择来源 (点击 @ 选择聊天或笔记)",
+    "chatHistory": "聊天记录",
+    "newChat": "+ 新对话",
+    "noChatHistory": "没有聊天记录",
+    "newConversation": "新对话",
+    "noChats": "没有聊天",
+    "noNotes": "没有笔记",
+    "generatingResponse": "正在生成回复...",
+    "roleUser": "用户",
+    "roleAI": "AI",
+    "analyzing": "分析请求中...",
+    "done": "完成",
+    "noteCreated": "笔记已创建！",
+    "error": "错误",
+    "errorOccurred": "发生错误"
   },
   "home": {
     "title": "你好，{{provider}}。",
@@ -96,6 +141,17 @@
       "generate": "生成图结构",
       "generating": "生成中...",
       "generatingNotice": "生成完成后会通知您。请不要关闭应用程序。",
+      "generatingHelp": "没有收到图结构生成开始的通知，或者生成时间过长？根据数据量，通常需要10-30分钟。如果聊天记录超过100MB，可能需要1小时以上。",
+      "checkStatus": "查看我的图结构状态",
+      "retryGenerate": "重新请求",
+      "status": {
+        "NOT_CREATED": "图结构尚未创建。",
+        "CREATING": "图结构正在生成中，请稍候。",
+        "CREATED": "图结构已创建，请刷新页面。",
+        "UPDATING": "图结构正在更新中，请稍候。",
+        "UPDATED": "图结构已更新，请刷新页面。",
+        "error": "检查图结构状态时发生错误。"
+      },
       "notice": "图结构基于您保存的聊天记录和笔记生成。如果没有任何聊天或笔记记录，则无法生成图结构。"
     },
     "patternType": {
@@ -114,6 +170,9 @@
       "high": "高",
       "medium": "中",
       "low": "低"
+    },
+    "zoomControls": {
+      "reset": "重置"
     }
   },
   "search": {
@@ -122,6 +181,39 @@
     "notes": "笔记",
     "noResultFound": "未找到相关{{provider}}",
     "shortcut": "快捷键"
+  },
+  "changelog": {
+    "newFeatures": "新功能",
+    "improvements": "改进",
+    "gotIt": "知道了！"
+  },
+  "notification": {
+    "graphGeneration": {
+      "requestedTitle": "图结构生成开始",
+      "requestedBody": "图结构生成已开始。请稍候。",
+      "completedTitle": "图结构生成完成",
+      "completedBody": "图结构已成功生成。（节点: {{nodeCount}}，边: {{edgeCount}}）"
+    },
+    "graphGenerationFailed": {
+      "title": "图结构生成失败",
+      "body": "图结构生成失败: {{error}}"
+    },
+    "graphSummary": {
+      "completedTitle": "图结构摘要完成",
+      "completedBody": "图结构摘要已完成。"
+    },
+    "graphSummaryFailed": {
+      "title": "图结构摘要失败",
+      "body": "图结构摘要生成失败: {{error}}"
+    },
+    "test": {
+      "title": "测试通知",
+      "body": "已收到测试通知。"
+    },
+    "default": {
+      "title": "通知",
+      "body": "您有一条新通知。"
+    }
   },
   "settings": {
     "my": {
@@ -188,7 +280,8 @@
       "appearance": "外观",
       "notification": "通知",
       "keybinds": "快捷键",
-      "language-time": "语言和时间"
+      "language-time": "语言和时间",
+      "mcp": "MCP 服务器"
     },
     "feedback": "发送反馈",
     "logout": "登出",
@@ -243,6 +336,16 @@
         "title": "导入数据",
         "subtitle": "从外部来源导入您的数据"
       },
+      "trash": {
+        "title": "回收站",
+        "subtitle": "已删除的项目将保留30天",
+        "all": "全部",
+        "empty": "清空回收站",
+        "restore": "恢复",
+        "delete": "删除",
+        "expiresIn": "{{days}}天后删除",
+        "noItems": "回收站为空"
+      },
       "dangerZone": {
         "title": "危险区域",
         "subtitle": "不可逆操作，请谨慎操作。"
@@ -279,6 +382,123 @@
         "newNote": "新建笔记",
         "newFolder": "新建文件夹",
         "newChat": "新建聊天"
+      }
+    },
+    "developerMode": {
+      "title": "开发者模式",
+      "subtitle": "为开发者启用高级自定义功能",
+      "toggle": "启用开发者模式",
+      "toggleDescription": "激活开发者模式以使用高级功能自定义应用，如自定义 MCP 服务器和图表颜色。"
+    },
+    "graphColors": {
+      "title": "图表颜色",
+      "hint": "自定义图表节点和边缘颜色（Cmd/Ctrl + S 保存）",
+      "preview": "预览",
+      "reset": "重置",
+      "formatTitle": "JSON 格式",
+      "enableDevMode": "在我的账户设置中启用开发者模式以自定义图表颜色。",
+      "errorGraphObject": "\"graph\" 必须是对象",
+      "errorInvalidColor": "{{field}} 的颜色格式无效（使用 #RRGGBB）",
+      "errorPaletteArray": "\"clusterPalette\" 必须是数组",
+      "errorInvalidPaletteColor": "clusterPalette 中有无效的颜色"
+    },
+    "mcp": {
+      "title": "MCP 服务器",
+      "subtitle": "管理 Model Context Protocol 服务器以扩展 AI 功能",
+      "builtinSection": "内置服务器",
+      "customSection": "自定义服务器",
+      "enableDevMode": "在我的账户设置中启用开发者模式以添加自定义 MCP 服务器。",
+      "status": {
+        "connected": "已连接",
+        "connecting": "连接中...",
+        "disconnected": "未连接",
+        "error": "错误"
+      },
+      "toolsCount": "{{count}} 个工具可用",
+      "configure": "配置",
+      "delete": "删除",
+      "filesystem": {
+        "title": "文件系统设置",
+        "description": "添加 AI 可以访问的目录。只有这些目录中的文件可被读取。",
+        "placeholder": "输入目录路径（例如：/Users/name/Documents）",
+        "examplePaths": "路径示例",
+        "noPathsAdded": "尚未添加目录",
+        "securityWarning": "安全提示：只添加您信任的目录。AI 将能够读取这些位置的文件。",
+        "saved": "已保存并连接"
+      },
+      "custom": {
+        "addServer": "添加自定义服务器",
+        "addTitle": "添加自定义 MCP 服务器",
+        "noServers": "没有添加自定义服务器",
+        "name": "服务器名称",
+        "namePlaceholder": "我的自定义服务器",
+        "command": "命令",
+        "commandPlaceholder": "npx -y @example/mcp-server",
+        "args": "参数（空格分隔）",
+        "argsPlaceholder": "--port 3000 --verbose",
+        "env": "环境变量（每行 KEY=VALUE）",
+        "envPlaceholder": "API_KEY=your-key\nDEBUG=true",
+        "add": "添加服务器",
+        "confirmDelete": "确定要删除此服务器吗？",
+        "warning": "警告：自定义 MCP 服务器以您的系统权限运行。只添加来自可信来源的服务器。"
+      },
+      "notion": {
+        "title": "Notion 设置",
+        "description": "输入您的 Notion API 密钥以启用对 Notion 工作区的访问。",
+        "apiKeyLabel": "Notion API 密钥（内部集成令牌）",
+        "apiKeyPlaceholder": "secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "howToGetKey": "要获取 API 密钥，请在 Notion 中创建内部集成并复制内部集成令牌。",
+        "openIntegrations": "打开 Notion 集成页面",
+        "saved": "已保存并连接"
+      },
+      "google": {
+        "title": "{{service}} 设置",
+        "description": "连接您的 Google 账户以便 AI 助手访问 {{service}}。",
+        "credentialsFile": "OAuth 凭据文件",
+        "credentialsLoaded": "凭据文件已加载",
+        "clickToChange": "点击选择其他文件",
+        "dropOrClick": "拖放 JSON 文件或点击选择",
+        "uploadFirst": "请先上传凭据文件",
+        "credentialsPathLabel": "OAuth 凭据 JSON 文件路径",
+        "credentialsPathPlaceholder": "/path/to/credentials.json",
+        "credentialsPathHint": "从 Google Cloud Console 下载凭据 JSON 文件",
+        "howToGetCredentials": "认证前请先设置 OAuth 凭据：",
+        "step1": "前往 Google Cloud Console",
+        "step2": "创建或选择项目",
+        "step3": "启用所需的 API（Drive/Calendar）",
+        "step4": "创建 OAuth 2.0 桌面凭据并下载 JSON 文件",
+        "openConsole": "打开 Google Cloud Console",
+        "authenticated": "已连接",
+        "notAuthenticated": "未连接",
+        "authRequired": "使用此服务需要认证",
+        "connectedTo": "已成功连接到 {{service}}",
+        "authenticate": "使用 Google 连接",
+        "authenticating": "连接中...",
+        "disconnect": "断开连接"
+      },
+      "vscode": {
+        "title": "VS Code 设置",
+        "description": "VS Code MCP 服务器允许 AI 访问您的 VS Code 工作区和打开的文件。"
+      },
+      "developerMode": {
+        "title": "开发者模式",
+        "description": "启用开发者模式以添加自定义 MCP 服务器"
+      },
+      "json": {
+        "hint": "编辑 JSON 以配置自定义 MCP 服务器（Cmd/Ctrl + S 保存）",
+        "saved": "已保存",
+        "formatTitle": "JSON 格式",
+        "errorParse": "JSON 格式无效",
+        "errorMcpArray": "\"mcp\" 必须是数组",
+        "errorName": "服务器 {{index}}：需要 \"name\"",
+        "errorCommand": "服务器 {{index}}：需要 \"command\"",
+        "errorSave": "保存配置失败"
+      },
+      "about": {
+        "title": "关于 MCP",
+        "description": "Model Context Protocol（MCP）允许 AI 助手连接到外部工具和数据源，扩展其内置功能之外的能力。",
+        "docsLink": "查看 MCP 文档（GraphNode）",
+        "learnMore": "了解更多关于 MCP（官方）"
       }
     }
   }

@@ -7,6 +7,7 @@ import { IoMdColorPalette } from "react-icons/io";
 import { IoIosNotifications } from "react-icons/io";
 import { FaKeyboard } from "react-icons/fa";
 import { IoLanguageOutline } from "react-icons/io5";
+import { FiServer } from "react-icons/fi";
 import { IconType } from "react-icons/lib";
 
 export default function SideExpandBarSettings() {
@@ -28,6 +29,10 @@ export default function SideExpandBarSettings() {
     {
       id: "appearance",
       icon: IoMdColorPalette,
+    },
+    {
+      id: "mcp",
+      icon: FiServer,
     },
     {
       id: "notification",

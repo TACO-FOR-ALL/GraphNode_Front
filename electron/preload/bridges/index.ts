@@ -6,6 +6,7 @@ import exposeOpenAIBridge from "./openaiBridge";
 import exposeWindowBridge from "./window";
 import exposeFileBridge from "./file";
 import exposeNotificationBridge from "./notificationBridge";
+import exposeMCPBridge from "./mcpBridge";
 
 export function exposeAllBridges() {
   exposeAuthBridge();
@@ -15,4 +16,5 @@ export function exposeAllBridges() {
   exposeWindowBridge();
   exposeFileBridge();
   exposeNotificationBridge();
+  exposeMCPBridge();
 }

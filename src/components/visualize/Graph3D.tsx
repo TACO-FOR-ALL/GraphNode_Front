@@ -425,6 +425,18 @@ export default function Graph3D({
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
+    // 조명 추가 (입체감을 위해)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(100, 100, 100);
+    scene.add(directionalLight1);
+
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    directionalLight2.position.set(-100, -50, -100);
+    scene.add(directionalLight2);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -827,8 +839,12 @@ export default function Graph3D({
       const color = cluster.color;
       const radius = getNodeRadius(id);
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 12, 12),
-        new THREE.MeshBasicMaterial({ color }),
+        new THREE.SphereGeometry(radius, 32, 32),
+        new THREE.MeshStandardMaterial({
+          color,
+          metalness: 0.3,
+          roughness: 0.4,
+        }),
       );
       mesh.position.set(x, y, z);
       mesh.userData = { id, clusterId: cid, radius };
@@ -1214,7 +1230,7 @@ export default function Graph3D({
           // When a node is focused, other nodes now retain their original color
           // instead of turning gray, so the else statement is removed.
         }
-        (mesh.material as THREE.MeshBasicMaterial).color.setHex(c);
+        (mesh.material as THREE.MeshStandardMaterial).color.setHex(c);
       });
     };
     resetNodeColors();
@@ -1285,7 +1301,7 @@ export default function Graph3D({
       renderer.domElement.style.cursor = "pointer";
 
       if (!focusedNodeId) {
-        (mesh.material as THREE.MeshBasicMaterial).color.setHex(hoverColor);
+        (mesh.material as THREE.MeshStandardMaterial).color.setHex(hoverColor);
       }
 
       if (tooltipRef.current) {

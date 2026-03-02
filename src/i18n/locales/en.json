@@ -16,6 +16,37 @@
       "appleLoginFailed": "Failed to start Apple login."
     }
   },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "complete": "Complete",
+    "intro": {
+      "title": "Where is your knowledge right now?",
+      "subtitle": "No matter how much you chat and write notes, they fade away without a trace over time.",
+      "painPoint1": "Insights from ChatGPT, Claude, Gemini are buried somewhere down the scroll.",
+      "painPoint2": "Notion, Obsidian notes are buried in folders, left disconnected from each other.",
+      "painPoint3": "You know you recorded it somewhere, but you can't find it because there's no context."
+    },
+    "solution": {
+      "title": "Turn conversations and notes into a living knowledge map",
+      "subtitle": "GraphNode AI reads, analyzes, identifies topics, and auto-connects them. No need to tag or link manually.",
+      "start": "Get Started"
+    },
+    "apiKey": {
+      "title": "Chat with AI",
+      "description": "Set up your API key to chat with AI. You can still use graph features without a key.",
+      "linkText": "Learn how to get an API key"
+    },
+    "dataImport": {
+      "title": "Import your data",
+      "description": "Drag and drop your existing notes (markdown files) or ChatGPT conversation exports.",
+      "linkText": "Learn how to export conversations"
+    },
+    "visualize": {
+      "title": "Generate your graph",
+      "description": "Now press 'Generate Graph' to create your knowledge map!"
+    }
+  },
   "toast": {
     "apiKeyRequired": "Please register your API key first.",
     "goToSettings": "Go to Settings"
@@ -31,7 +62,21 @@
     "summary": "Summarize this content",
     "note": "Make a note of this content",
     "placeholder": "Ask, search, or tell me anything",
-    "selectSourceFirst": "Please select a source first (click @ to select a chat or note)"
+    "selectSourceFirst": "Please select a source first (click @ to select a chat or note)",
+    "chatHistory": "Chat History",
+    "newChat": "+ New Chat",
+    "noChatHistory": "No chat history",
+    "newConversation": "New Conversation",
+    "noChats": "No chats",
+    "noNotes": "No notes",
+    "generatingResponse": "Generating response...",
+    "roleUser": "User",
+    "roleAI": "AI",
+    "analyzing": "Analyzing request...",
+    "done": "Done",
+    "noteCreated": "Note has been created!",
+    "error": "Error",
+    "errorOccurred": "Error occurred"
   },
   "home": {
     "title": "Hello {{provider}}",
@@ -96,6 +141,17 @@
       "generate": "Generate Graph",
       "generating": "Generating...",
       "generatingNotice": "You will be notified when generation is complete. Please do not close the app.",
+      "generatingHelp": "Didn't receive the graph generation notification, or is it taking too long? Depending on the amount of data, it typically takes 10-30 minutes. For chat histories over 100MB, it may take more than 1 hour.",
+      "checkStatus": "Check my graph status",
+      "retryGenerate": "Request again",
+      "status": {
+        "NOT_CREATED": "Graph has not been created yet.",
+        "CREATING": "Graph is currently being generated. Please wait.",
+        "CREATED": "Graph has been created. Please refresh the page.",
+        "UPDATING": "Graph is currently being updated. Please wait.",
+        "UPDATED": "Graph has been updated. Please refresh the page.",
+        "error": "An error occurred while checking graph status."
+      },
       "notice": "Graphs are generated based on your saved chats and notes. If you have no chats or notes, graph generation is not possible."
     },
     "patternType": {
@@ -114,6 +170,9 @@
       "high": "High",
       "medium": "Medium",
       "low": "Low"
+    },
+    "zoomControls": {
+      "reset": "Reset"
     }
   },
   "search": {
@@ -122,6 +181,39 @@
     "notes": "Notes",
     "noResultFound": "No {{provider}} Found",
     "shortcut": "shortcut"
+  },
+  "changelog": {
+    "newFeatures": "New Features",
+    "improvements": "Improvements",
+    "gotIt": "Got it!"
+  },
+  "notification": {
+    "graphGeneration": {
+      "requestedTitle": "Graph Generation Started",
+      "requestedBody": "Graph generation has started. Please wait.",
+      "completedTitle": "Graph Generation Complete",
+      "completedBody": "Graph has been successfully generated. (Nodes: {{nodeCount}}, Edges: {{edgeCount}})"
+    },
+    "graphGenerationFailed": {
+      "title": "Graph Generation Failed",
+      "body": "Failed to generate graph: {{error}}"
+    },
+    "graphSummary": {
+      "completedTitle": "Graph Summary Complete",
+      "completedBody": "Graph summary has been completed."
+    },
+    "graphSummaryFailed": {
+      "title": "Graph Summary Failed",
+      "body": "Failed to generate graph summary: {{error}}"
+    },
+    "test": {
+      "title": "Test Notification",
+      "body": "Test notification received."
+    },
+    "default": {
+      "title": "Notification",
+      "body": "You have a new notification."
+    }
   },
   "settings": {
     "title": "Settings",
@@ -188,7 +280,8 @@
       "appearance": "Appearance",
       "notification": "Notification",
       "keybinds": "Keybinds",
-      "language-time": "Language & Time"
+      "language-time": "Language & Time",
+      "mcp": "MCP Servers"
     },
     "feedback": "Send Feedback",
     "logout": "Logout",
@@ -243,6 +336,16 @@
         "title": "Import Data",
         "subtitle": "Import your data from external sources"
       },
+      "trash": {
+        "title": "Trash",
+        "subtitle": "Deleted items are kept for 30 days",
+        "all": "All",
+        "empty": "Empty Trash",
+        "restore": "Restore",
+        "delete": "Delete",
+        "expiresIn": "Expires in {{days}} days",
+        "noItems": "Trash is empty"
+      },
       "dangerZone": {
         "title": "Danger Zone",
         "subtitle": "Irreversible actions. Please proceed with caution."
@@ -279,6 +382,123 @@
         "newNote": "Create New Note",
         "newFolder": "Create New Folder",
         "newChat": "Create New Chat"
+      }
+    },
+    "developerMode": {
+      "title": "Developer Mode",
+      "subtitle": "Enable advanced customization features for developers",
+      "toggle": "Enable Developer Mode",
+      "toggleDescription": "Activate developer mode to customize the app with advanced features like custom MCP servers and graph colors."
+    },
+    "graphColors": {
+      "title": "Graph Colors",
+      "hint": "Customize graph node and edge colors (Cmd/Ctrl + S to save)",
+      "preview": "Preview",
+      "reset": "Reset",
+      "formatTitle": "JSON Format",
+      "enableDevMode": "Enable Developer Mode in My Account settings to customize graph colors.",
+      "errorGraphObject": "\"graph\" must be an object",
+      "errorInvalidColor": "Invalid hex color format for {{field}} (use #RRGGBB)",
+      "errorPaletteArray": "\"clusterPalette\" must be an array",
+      "errorInvalidPaletteColor": "Invalid hex color in clusterPalette"
+    },
+    "mcp": {
+      "title": "MCP Servers",
+      "subtitle": "Manage Model Context Protocol servers to extend AI capabilities",
+      "builtinSection": "Built-in Servers",
+      "customSection": "Custom Servers",
+      "enableDevMode": "Enable Developer Mode in My Account settings to add custom MCP servers.",
+      "status": {
+        "connected": "Connected",
+        "connecting": "Connecting...",
+        "disconnected": "Disconnected",
+        "error": "Error"
+      },
+      "toolsCount": "{{count}} tools available",
+      "configure": "Configure",
+      "delete": "Delete",
+      "filesystem": {
+        "title": "Filesystem Settings",
+        "description": "Add directories that the AI can access. Only files within these directories will be readable.",
+        "placeholder": "Enter directory path (e.g., /Users/name/Documents)",
+        "examplePaths": "Example paths",
+        "noPathsAdded": "No directories added yet",
+        "securityWarning": "Security: Only add directories you trust. The AI will be able to read files in these locations.",
+        "saved": "Saved and connected"
+      },
+      "custom": {
+        "addServer": "Add Custom Server",
+        "addTitle": "Add Custom MCP Server",
+        "noServers": "No custom servers added",
+        "name": "Server Name",
+        "namePlaceholder": "My Custom Server",
+        "command": "Command",
+        "commandPlaceholder": "npx -y @example/mcp-server",
+        "args": "Arguments (space-separated)",
+        "argsPlaceholder": "--port 3000 --verbose",
+        "env": "Environment Variables (KEY=VALUE per line)",
+        "envPlaceholder": "API_KEY=your-key\nDEBUG=true",
+        "add": "Add Server",
+        "confirmDelete": "Are you sure you want to delete this server?",
+        "warning": "Warning: Custom MCP servers run with your system permissions. Only add servers from trusted sources."
+      },
+      "notion": {
+        "title": "Notion Settings",
+        "description": "Enter your Notion API key to enable access to your Notion workspace.",
+        "apiKeyLabel": "Notion API Key (Internal Integration Token)",
+        "apiKeyPlaceholder": "secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "howToGetKey": "To get your API key, create an internal integration in Notion and copy the Internal Integration Token.",
+        "openIntegrations": "Open Notion Integrations",
+        "saved": "Saved and connected"
+      },
+      "google": {
+        "title": "{{service}} Settings",
+        "description": "Connect your Google account to enable {{service}} access for the AI assistant.",
+        "credentialsFile": "OAuth Credentials File",
+        "credentialsLoaded": "Credentials file loaded",
+        "clickToChange": "Click to select a different file",
+        "dropOrClick": "Drop JSON file here or click to select",
+        "uploadFirst": "Upload credentials file first",
+        "credentialsPathLabel": "OAuth Credentials JSON File Path",
+        "credentialsPathPlaceholder": "/path/to/credentials.json",
+        "credentialsPathHint": "Download the credentials JSON file from Google Cloud Console",
+        "howToGetCredentials": "Before authenticating, set up OAuth credentials:",
+        "step1": "Go to Google Cloud Console",
+        "step2": "Create or select a project",
+        "step3": "Enable the required API (Drive/Calendar)",
+        "step4": "Create OAuth 2.0 Desktop credentials and download the JSON file",
+        "openConsole": "Open Google Cloud Console",
+        "authenticated": "Connected",
+        "notAuthenticated": "Not Connected",
+        "authRequired": "Authentication required to use this service",
+        "connectedTo": "Successfully connected to {{service}}",
+        "authenticate": "Connect with Google",
+        "authenticating": "Connecting...",
+        "disconnect": "Disconnect"
+      },
+      "vscode": {
+        "title": "VS Code Settings",
+        "description": "VS Code MCP server allows AI to access your VS Code workspace and open files."
+      },
+      "developerMode": {
+        "title": "Developer Mode",
+        "description": "Enable developer mode to add custom MCP servers"
+      },
+      "json": {
+        "hint": "Edit JSON to configure custom MCP servers (Cmd/Ctrl + S to save)",
+        "saved": "Saved",
+        "formatTitle": "JSON Format",
+        "errorParse": "Invalid JSON format",
+        "errorMcpArray": "\"mcp\" must be an array",
+        "errorName": "Server {{index}}: \"name\" is required",
+        "errorCommand": "Server {{index}}: \"command\" is required",
+        "errorSave": "Failed to save configuration"
+      },
+      "about": {
+        "title": "About MCP",
+        "description": "Model Context Protocol (MCP) allows AI assistants to connect to external tools and data sources, extending their capabilities beyond built-in features.",
+        "docsLink": "View MCP documentation (GraphNode)",
+        "learnMore": "Learn more about MCP (Official)"
       }
     }
   }

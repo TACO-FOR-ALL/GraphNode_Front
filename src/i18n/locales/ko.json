@@ -16,6 +16,37 @@
       "appleLoginFailed": "Apple 로그인 시작에 실패했습니다."
     }
   },
+  "onboarding": {
+    "skip": "건너뛰기",
+    "next": "다음",
+    "complete": "완료",
+    "intro": {
+      "title": "당신의 지식은 지금 어디에 있나요?",
+      "subtitle": "열심히 대화하고 노트를 써도, 시간이 지나면 흔적도 없이 사라지죠.",
+      "painPoint1": "ChatGPT, Claude, Gemini 등에서 나눈 인사이트는 스크롤 저 아래 어딘가에 묻혀 있어요.",
+      "painPoint2": "Notion, Obsidian 노트는 폴더 속에 묻혀 서로 연결되지 않은 채로 방치되어 있어요.",
+      "painPoint3": "분명 어딘가에서 기록했는데, 검색해도 맥락이 없어서 찾을 수가 없어요."
+    },
+    "solution": {
+      "title": "대화와 노트가 살아있는 지식 지도로",
+      "subtitle": "GraphNode AI가 내용을 읽고, 분석하여 주제를 파악하고 자동으로 연결해요. 직접 태그 달거나 연결할 필요 없어요.",
+      "start": "시작하기"
+    },
+    "apiKey": {
+      "title": "AI와 대화하기",
+      "description": "AI와 대화를 원하시면 API 키를 설정해주세요. 키가 없어도 그래프 기능은 사용할 수 있어요.",
+      "linkText": "API 키 발급 방법 알아보기"
+    },
+    "dataImport": {
+      "title": "기존 데이터 가져오기",
+      "description": "기존 노트(마크다운 파일)나 ChatGPT 대화 기록을 드래그 앤 드롭으로 가져올 수 있어요.",
+      "linkText": "대화 내보내기 방법 알아보기"
+    },
+    "visualize": {
+      "title": "그래프 생성하기",
+      "description": "이제 '그래프 생성' 버튼을 눌러서 당신의 지식 지도를 만들어보세요!"
+    }
+  },
   "toast": {
     "apiKeyRequired": "API 키를 먼저 등록해주세요.",
     "goToSettings": "설정으로 이동"
@@ -31,7 +62,21 @@
     "summary": "선택된 내용을 요약",
     "note": "선택된 내용을 노트로 정리",
     "placeholder": "무엇이든 묻거나, 검색하거나, 말해보세요...",
-    "selectSourceFirst": "먼저 소스를 선택해주세요 (@ 버튼을 눌러 채팅이나 노트를 선택하세요)"
+    "selectSourceFirst": "먼저 소스를 선택해주세요 (@ 버튼을 눌러 채팅이나 노트를 선택하세요)",
+    "chatHistory": "대화 기록",
+    "newChat": "+ 새 대화",
+    "noChatHistory": "대화 기록이 없습니다",
+    "newConversation": "새 대화",
+    "noChats": "채팅이 없습니다",
+    "noNotes": "노트가 없습니다",
+    "generatingResponse": "응답을 생성하고 있습니다...",
+    "roleUser": "사용자",
+    "roleAI": "AI",
+    "analyzing": "요청 분석 중...",
+    "done": "완료",
+    "noteCreated": "노트가 생성되었습니다!",
+    "error": "오류",
+    "errorOccurred": "오류 발생"
   },
   "home": {
     "title": "{{provider}}님 안녕하세요.",
@@ -96,6 +141,17 @@
       "generate": "그래프 생성",
       "generating": "생성 중...",
       "generatingNotice": "생성이 완료되면 알림을 보내드립니다. 앱을 종료하지 마세요.",
+      "generatingHelp": "그래프 생성 시작 알림을 못 받으셨거나, 생성에 너무 오랜 시간이 걸리나요? 일반적으로 데이터 양에 따라 10~30분, 100MB 이상의 채팅 내역이라면 1시간 이상이 소요될 수 있습니다.",
+      "checkStatus": "내 그래프 상태 확인하기",
+      "retryGenerate": "다시 요청하기",
+      "status": {
+        "NOT_CREATED": "그래프가 아직 생성되지 않았습니다.",
+        "CREATING": "그래프가 현재 생성 중입니다. 잠시만 기다려주세요.",
+        "CREATED": "그래프가 생성되었습니다. 페이지를 새로고침해주세요.",
+        "UPDATING": "그래프가 현재 업데이트 중입니다. 잠시만 기다려주세요.",
+        "UPDATED": "그래프가 업데이트되었습니다. 페이지를 새로고침해주세요.",
+        "error": "그래프 상태를 확인하는 중 오류가 발생했습니다."
+      },
       "notice": "그래프는 저장된 채팅과 노트를 기반으로 생성됩니다. 채팅이나 노트가 없으면 그래프를 생성할 수 없습니다."
     },
     "patternType": {
@@ -114,6 +170,9 @@
       "high": "높음",
       "medium": "중간",
       "low": "낮음"
+    },
+    "zoomControls": {
+      "reset": "초기화"
     }
   },
   "search": {
@@ -122,6 +181,39 @@
     "notes": "노트",
     "noResultFound": "{{provider}} 검색 결과 없음",
     "shortcut": "단축키"
+  },
+  "changelog": {
+    "newFeatures": "새로운 기능",
+    "improvements": "개선 사항",
+    "gotIt": "확인했어요!"
+  },
+  "notification": {
+    "graphGeneration": {
+      "requestedTitle": "그래프 생성 시작",
+      "requestedBody": "그래프 생성이 시작되었습니다. 잠시만 기다려주세요.",
+      "completedTitle": "그래프 생성 완료",
+      "completedBody": "그래프가 성공적으로 생성되었습니다. (노드: {{nodeCount}}, 엣지: {{edgeCount}})"
+    },
+    "graphGenerationFailed": {
+      "title": "그래프 생성 실패",
+      "body": "그래프 생성에 실패했습니다: {{error}}"
+    },
+    "graphSummary": {
+      "completedTitle": "그래프 요약 완료",
+      "completedBody": "그래프 요약이 완료되었습니다."
+    },
+    "graphSummaryFailed": {
+      "title": "그래프 요약 실패",
+      "body": "그래프 요약 생성에 실패했습니다: {{error}}"
+    },
+    "test": {
+      "title": "테스트 알림",
+      "body": "테스트 알림을 수신했습니다."
+    },
+    "default": {
+      "title": "알림",
+      "body": "새로운 알림이 있습니다."
+    }
   },
   "settings": {
     "title": "설정",
@@ -188,13 +280,14 @@
       "appearance": "디스플레이",
       "notification": "알림",
       "keybinds": "단축키",
-      "language-time": "언어 및 시간"
+      "language-time": "언어 및 시간",
+      "mcp": "MCP 서버"
     },
     "feedback": "피드백 보내기",
     "logout": "로그아웃",
     "dropJsonZone": {
       "title": "드래그 & 드롭으로 JSON 파일 업로드하기",
-      "description": "여기로 conversation.json 파일을 끌어다 놓으세요",
+      "description": "conversation.json 파일을 끌어다 놓으세요",
       "maxSize": "파일 하나만 드랍 (최대 512MB 권장)",
       "uploading": "업로드(읽는 중)… {progress}%",
       "parsing": "분석(파싱) 중…",
@@ -243,6 +336,16 @@
         "title": "데이터 가져오기",
         "subtitle": "외부 소스에서 데이터를 가져옵니다"
       },
+      "trash": {
+        "title": "휴지통",
+        "subtitle": "삭제된 항목은 30일간 보관됩니다",
+        "all": "전체",
+        "empty": "휴지통 비우기",
+        "restore": "복구",
+        "delete": "삭제",
+        "expiresIn": "{{days}}일 후 삭제",
+        "noItems": "휴지통이 비어있습니다"
+      },
       "dangerZone": {
         "title": "위험 구역",
         "subtitle": "되돌릴 수 없는 작업입니다. 주의해서 진행하세요."
@@ -279,6 +382,123 @@
         "newNote": "새 노트 생성",
         "newFolder": "새 폴더 생성",
         "newChat": "새 채팅 생성"
+      }
+    },
+    "developerMode": {
+      "title": "개발자 모드",
+      "subtitle": "개발자를 위한 고급 커스터마이징 기능 활성화",
+      "toggle": "개발자 모드 활성화",
+      "toggleDescription": "커스텀 MCP 서버, 그래프 색상 등 고급 기능으로 앱을 커스터마이징하려면 개발자 모드를 활성화하세요."
+    },
+    "graphColors": {
+      "title": "그래프 색상",
+      "hint": "그래프 노드와 엣지 색상을 커스터마이징하세요 (Cmd/Ctrl + S로 저장)",
+      "preview": "미리보기",
+      "reset": "초기화",
+      "formatTitle": "JSON 형식",
+      "enableDevMode": "그래프 색상을 커스터마이징하려면 내 계정 설정에서 개발자 모드를 활성화하세요.",
+      "errorGraphObject": "\"graph\"는 객체여야 합니다",
+      "errorInvalidColor": "{{field}}의 색상 형식이 잘못되었습니다 (#RRGGBB 형식 사용)",
+      "errorPaletteArray": "\"clusterPalette\"는 배열이어야 합니다",
+      "errorInvalidPaletteColor": "clusterPalette에 잘못된 색상이 있습니다"
+    },
+    "mcp": {
+      "title": "MCP 서버",
+      "subtitle": "AI 기능을 확장하기 위한 Model Context Protocol 서버를 관리합니다",
+      "builtinSection": "내장 서버",
+      "customSection": "커스텀 서버",
+      "enableDevMode": "커스텀 MCP 서버를 추가하려면 내 계정 설정에서 개발자 모드를 활성화하세요.",
+      "status": {
+        "connected": "연결됨",
+        "connecting": "연결 중...",
+        "disconnected": "연결 안 됨",
+        "error": "오류"
+      },
+      "toolsCount": "{{count}}개의 도구 사용 가능",
+      "configure": "설정",
+      "delete": "삭제",
+      "filesystem": {
+        "title": "파일시스템 설정",
+        "description": "AI가 접근할 수 있는 디렉토리를 추가하세요. 이 디렉토리 내의 파일만 읽을 수 있습니다.",
+        "placeholder": "디렉토리 경로 입력 (예: /Users/name/Documents)",
+        "examplePaths": "경로 예시",
+        "noPathsAdded": "아직 추가된 디렉토리가 없습니다",
+        "securityWarning": "보안: 신뢰할 수 있는 디렉토리만 추가하세요. AI가 이 위치의 파일을 읽을 수 있습니다.",
+        "saved": "저장 및 연결 완료"
+      },
+      "custom": {
+        "addServer": "커스텀 서버 추가",
+        "addTitle": "커스텀 MCP 서버 추가",
+        "noServers": "추가된 커스텀 서버가 없습니다",
+        "name": "서버 이름",
+        "namePlaceholder": "내 커스텀 서버",
+        "command": "명령어",
+        "commandPlaceholder": "npx -y @example/mcp-server",
+        "args": "인자 (공백으로 구분)",
+        "argsPlaceholder": "--port 3000 --verbose",
+        "env": "환경 변수 (줄당 KEY=VALUE)",
+        "envPlaceholder": "API_KEY=your-key\nDEBUG=true",
+        "add": "서버 추가",
+        "confirmDelete": "이 서버를 삭제하시겠습니까?",
+        "warning": "경고: 커스텀 MCP 서버는 시스템 권한으로 실행됩니다. 신뢰할 수 있는 소스의 서버만 추가하세요."
+      },
+      "notion": {
+        "title": "Notion 설정",
+        "description": "Notion 워크스페이스에 접근하려면 API 키를 입력하세요.",
+        "apiKeyLabel": "Notion API 키 (내부 통합 토큰)",
+        "apiKeyPlaceholder": "secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "howToGetKey": "API 키를 얻으려면 Notion에서 내부 통합을 생성하고 내부 통합 토큰을 복사하세요.",
+        "openIntegrations": "Notion 통합 페이지 열기",
+        "saved": "저장 및 연결 완료"
+      },
+      "google": {
+        "title": "{{service}} 설정",
+        "description": "AI 어시스턴트가 {{service}}에 접근할 수 있도록 Google 계정을 연결하세요.",
+        "credentialsFile": "OAuth 인증 정보 파일",
+        "credentialsLoaded": "인증 정보 파일이 로드되었습니다",
+        "clickToChange": "클릭하여 다른 파일 선택",
+        "dropOrClick": "JSON 파일을 드래그하거나 클릭하여 선택",
+        "uploadFirst": "먼저 인증 정보 파일을 업로드하세요",
+        "credentialsPathLabel": "OAuth 인증 정보 JSON 파일 경로",
+        "credentialsPathPlaceholder": "/path/to/credentials.json",
+        "credentialsPathHint": "Google Cloud Console에서 인증 정보 JSON 파일을 다운로드하세요",
+        "howToGetCredentials": "인증하기 전에 OAuth 인증 정보를 설정하세요:",
+        "step1": "Google Cloud Console로 이동",
+        "step2": "프로젝트 생성 또는 선택",
+        "step3": "필요한 API 활성화 (Drive/Calendar)",
+        "step4": "OAuth 2.0 데스크톱 자격 증명을 생성하고 JSON 파일 다운로드",
+        "openConsole": "Google Cloud Console 열기",
+        "authenticated": "연결됨",
+        "notAuthenticated": "연결되지 않음",
+        "authRequired": "이 서비스를 사용하려면 인증이 필요합니다",
+        "connectedTo": "{{service}}에 성공적으로 연결되었습니다",
+        "authenticate": "Google로 연결",
+        "authenticating": "연결 중...",
+        "disconnect": "연결 해제"
+      },
+      "vscode": {
+        "title": "VS Code 설정",
+        "description": "VS Code MCP 서버를 통해 AI가 VS Code 워크스페이스와 열린 파일에 접근할 수 있습니다."
+      },
+      "developerMode": {
+        "title": "개발자 모드",
+        "description": "커스텀 MCP 서버를 추가하려면 개발자 모드를 활성화하세요"
+      },
+      "json": {
+        "hint": "JSON을 편집하여 커스텀 MCP 서버를 설정하세요 (Cmd/Ctrl + S로 저장)",
+        "saved": "저장됨",
+        "formatTitle": "JSON 형식",
+        "errorParse": "잘못된 JSON 형식입니다",
+        "errorMcpArray": "\"mcp\"는 배열이어야 합니다",
+        "errorName": "서버 {{index}}: \"name\"이 필요합니다",
+        "errorCommand": "서버 {{index}}: \"command\"가 필요합니다",
+        "errorSave": "설정 저장에 실패했습니다"
+      },
+      "about": {
+        "title": "MCP 소개",
+        "description": "Model Context Protocol(MCP)은 AI 어시스턴트가 외부 도구 및 데이터 소스에 연결하여 내장 기능을 넘어 능력을 확장할 수 있게 합니다.",
+        "docsLink": "MCP 문서 보기 (GraphNode)",
+        "learnMore": "MCP에 대해 더 알아보기 (공식)"
       }
     }
   }

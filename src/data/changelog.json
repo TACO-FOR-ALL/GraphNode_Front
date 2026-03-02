@@ -1,0 +1,56 @@
+{
+  "1.0.0": {
+    "date": "2025-03-02",
+    "title": {
+      "ko": "GraphNode 2.0 출시",
+      "en": "GraphNode 2.0 Release",
+      "ja": "GraphNode 2.0 リリース",
+      "zh": "GraphNode 2.0 发布"
+    },
+    "features": {
+      "ko": [
+        "그래프 노드/엣지 색상 커스터마이징 기능 추가",
+        "MCP (Model Context Protocol) 서버 지원",
+        "그래프 생성 시작/완료/실패 알림 기능",
+        "그래프 상태 확인 기능 추가",
+        "다국어 지원 개선 (한국어, 영어, 일본어, 중국어)"
+      ],
+      "en": [
+        "Added graph node/edge color customization",
+        "MCP (Model Context Protocol) server support",
+        "Graph generation start/complete/fail notifications",
+        "Added graph status check feature",
+        "Improved multilingual support (Korean, English, Japanese, Chinese)"
+      ],
+      "ja": [
+        "グラフノード/エッジの色カスタマイズ機能を追加",
+        "MCP (Model Context Protocol) サーバーサポート",
+        "グラフ生成開始/完了/失敗通知機能",
+        "グラフ状態確認機能を追加",
+        "多言語サポートの改善（韓国語、英語、日本語、中国語）"
+      ],
+      "zh": [
+        "添加图节点/边颜色自定义功能",
+        "MCP (Model Context Protocol) 服务器支持",
+        "图结构生成开始/完成/失败通知功能",
+        "添加图结构状态检查功能",
+        "改进多语言支持（韩语、英语、日语、中文）"
+      ]
+    },
+    "improvements": {
+      "ko": [
+        "AI 에이전트 채팅 코드 가독성 개선",
+        "Toggle 버튼 재사용 컴포넌트로 분리"
+      ],
+      "en": [
+        "Improved AI agent chat code readability",
+        "Separated Toggle button as reusable component"
+      ],
+      "ja": [
+        "AIエージェントチャットコードの可読性を改善",
+        "Toggleボタンを再利用可能なコンポーネントに分離"
+      ],
+      "zh": ["改进 AI 代理聊天代码可读性", "将 Toggle 按钮分离为可复用组件"]
+    }
+  }
+}

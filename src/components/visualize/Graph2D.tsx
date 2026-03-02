@@ -460,7 +460,7 @@ function layoutWithBoundedForce(
 // 노드 크기 계산 (엣지 수 기반)
 const BASE_NODE_RADIUS = 3;
 const MAX_NODE_RADIUS = 5;
-const SUBCLUSTER_FOCUS_COLORS = [
+const DEFAULT_CLUSTER_COLORS = [
   "#4aa8c0",
   "#e74c3c",
   "#2ecc71",
@@ -471,6 +471,27 @@ const SUBCLUSTER_FOCUS_COLORS = [
   "#2d98da",
   "#ff9f43",
 ];
+
+// 커스텀 클러스터 팔레트 가져오기 (CSS 변수에서)
+function getClusterPalette(): string[] {
+  try {
+    const paletteStr = document.documentElement.style.getPropertyValue(
+      "--graph-cluster-palette"
+    );
+    if (paletteStr) {
+      const parsed = JSON.parse(paletteStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_CLUSTER_COLORS;
+}
+
+// SUBCLUSTER_FOCUS_COLORS를 동적으로 가져오는 함수로 대체
+const SUBCLUSTER_FOCUS_COLORS = getClusterPalette();
 
 function getNodeRadius(edgeCount: number, maxEdgeCount: number): number {
   if (maxEdgeCount === 0) return BASE_NODE_RADIUS;
@@ -530,9 +551,13 @@ export default function Graph2D({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef<{ x: number; y: number } | null>(null);
   const [scale, setScale] = useState(1);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const [draggingNodeId, setDraggingNodeId] = useState<number | null>(null);
   const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
@@ -807,9 +832,9 @@ export default function Graph2D({
 
     isAnimatingRef.current = true;
 
-    const startScale = scale;
-    const startOffsetX = offset.x;
-    const startOffsetY = offset.y;
+    const startScale = scaleRef.current;
+    const startOffsetX = offsetRef.current.x;
+    const startOffsetY = offsetRef.current.y;
 
     // Reset to initial view
     const targetScale = 1;
@@ -842,7 +867,7 @@ export default function Graph2D({
     };
 
     requestAnimationFrame(animate);
-  }, [offset, scale]);
+  }, []);
 
   const animateZoomToCluster = useCallback(
     (clusterId: string, focusAfter: boolean = false) => {
@@ -869,9 +894,9 @@ export default function Graph2D({
       const targetOffsetX = centerX - circle.centerX * targetScale;
       const targetOffsetY = centerY - circle.centerY * targetScale;
 
-      const startScale = scale;
-      const startOffsetX = offset.x;
-      const startOffsetY = offset.y;
+      const startScale = scaleRef.current;
+      const startOffsetX = offsetRef.current.x;
+      const startOffsetY = offsetRef.current.y;
 
       const duration = 900;
       const startTime = performance.now();
@@ -906,7 +931,7 @@ export default function Graph2D({
 
       requestAnimationFrame(animate);
     },
-    [circles, focusedClusterId, offset, scale],
+    [circles, focusedClusterId],
   );
 
   const [nodeTitleMap, setNodeTitleMap] = useState<Map<number, string>>(
@@ -915,10 +940,10 @@ export default function Graph2D({
 
   useEffect(() => {
     if (!focusedClusterId) return;
-    if (!collapsedSnapshotRef.current) {
-      collapsedSnapshotRef.current = new Set(collapsedSubclusters);
-    }
     setCollapsedSubclusters((prev) => {
+      if (!collapsedSnapshotRef.current) {
+        collapsedSnapshotRef.current = new Set(prev);
+      }
       const next = new Set(prev);
       subclusters.forEach((sc) => {
         if (isSubclusterInFocus(sc)) {
@@ -927,12 +952,7 @@ export default function Graph2D({
       });
       return next;
     });
-  }, [
-    focusedClusterId,
-    subclusters,
-    isSubclusterInFocus,
-    collapsedSubclusters,
-  ]);
+  }, [focusedClusterId, subclusters, isSubclusterInFocus]);
 
   useEffect(() => {
     if (!focusedClusterId) {

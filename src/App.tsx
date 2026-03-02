@@ -16,6 +16,7 @@ import Login from "./routes/Login";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
 import { folderRepo } from "./managers/folderRepo";
+import { trashRepo } from "./managers/trashRepo";
 import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
@@ -29,6 +30,11 @@ import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
 import { useNotificationConnection } from "./hooks/useNotification";
 import { useSettingsStore } from "./store/useSettingsStore";
+import { loadAndApplyGraphColors } from "./utils/graphColors";
+import { useChangelogStore } from "./store/useChangelogStore";
+import ChangelogModal from "./components/changelog/ChangelogModal";
+import { useOnboardingStore } from "./store/useOnboardingStore";
+import Onboarding from "./components/onboarding/Onboarding";
 
 export default function App() {
   return (
@@ -53,9 +59,32 @@ function MainLayout() {
   // SSE 알림 연결
   useNotificationConnection();
 
+  // Changelog 모달 상태
+  const { lastSeenVersion, setModalOpen } = useChangelogStore();
+
+  // 온보딩 상태
+  const { hasCompletedOnboarding, startOnboarding } = useOnboardingStore();
+
   // 설정 로드
   useEffect(() => {
     useSettingsStore.getState().loadSettings();
+    loadAndApplyGraphColors(); // 커스텀 그래프 색상 로드
+  }, []);
+
+  // 버전 체크 및 Changelog 모달 표시
+  useEffect(() => {
+    const currentVersion = __APP_VERSION__;
+    // 온보딩이 완료되지 않았으면 Changelog 모달 표시하지 않음
+    if (hasCompletedOnboarding && lastSeenVersion !== currentVersion) {
+      setModalOpen(true);
+    }
+  }, [lastSeenVersion, setModalOpen, hasCompletedOnboarding]);
+
+  // 휴지통 만료 항목 정리
+  useEffect(() => {
+    trashRepo.cleanupExpiredItems().catch((err) => {
+      console.error("Failed to cleanup expired trash items:", err);
+    });
   }, []);
 
   // Visualize 페이지에서는 AgentToolTipButton 안 보이기
@@ -202,6 +231,8 @@ function MainLayout() {
         {!isVisualizePage && <AgentToolTipButton setIsOpen={setIsOpen} />}
         {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
         <Toaster />
+        <ChangelogModal />
+        <Onboarding />
       </div>
     </div>
   );

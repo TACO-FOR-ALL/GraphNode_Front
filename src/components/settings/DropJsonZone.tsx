@@ -123,7 +123,7 @@ export default function DropJsonZone() {
       {...dragProps}
       className={`
         relative w-full rounded-xl border-2 border-dashed p-6
-        transition-all duration-200 cursor-pointer
+        transition-all duration-200 cursor-pointer flex-1
         ${
           isOver
             ? "border-primary bg-primary/5 dark:bg-primary/10"

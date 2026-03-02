@@ -7,6 +7,7 @@ import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { useCurrentHightlightStore } from "@/store/useCurrentHighlight";
 import CodePreview from "./CodePreview";
 import ToggleSettingItem from "./ToggleSettingItem";
+import GraphColorEditor from "./GraphColorEditor";
 
 const themes = [
   { key: "system", value: "settings.appearance.theme.system" },
@@ -542,14 +543,20 @@ export default function AppearancePanel() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isGpuActive, setIsGpuActive] = useState(true);
-  const [isDevModeActive, setIsDevModeActive] = useState(false);
   const [pendingRestart, setPendingRestart] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   // 앱 시작 시 설정 로드
   useEffect(() => {
     window.systemAPI.getSettings().then((settings) => {
       setIsGpuActive(settings.hardwareAcceleration);
     });
+  }, []);
+
+  // 개발자 모드 로드
+  useEffect(() => {
+    const devMode = localStorage.getItem("graphnode-dev-mode") === "true";
+    setIsDevMode(devMode);
   }, []);
 
   // 하드웨어 가속 설정 변경
@@ -638,15 +645,26 @@ export default function AppearancePanel() {
         )}
       </div>
       <CodePreview isOpenPanel={isOpen} currentHighlight={currentHighlight} />
-      {/* GPU Acceleration*/}
+
+      {/* Graph Colors Customization */}
+      <div className="w-full flex flex-col gap-3">
+        <SettingCategoryTitle
+          title={t("settings.graphColors.title")}
+          subtitle={t("settings.graphColors.hint")}
+        />
+        {isDevMode ? (
+          <GraphColorEditor />
+        ) : (
+          <div className="p-4 bg-bg-secondary rounded-lg border border-base-border">
+            <p className="text-sm text-text-secondary">
+              {t("settings.graphColors.enableDevMode")}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Hardware Acceleration */}
       <SettingCategoryTitle title={t("settings.appearance.advanced.title")} />
-      <ToggleSettingItem
-        title={t("settings.appearance.advanced.developer")}
-        subtitle={t("settings.appearance.advanced.developerDescription")}
-        isActive={isDevModeActive}
-        onChange={setIsDevModeActive}
-        devMode={true}
-      />
       <ToggleSettingItem
         title={t("settings.appearance.advanced.hardware")}
         subtitle={t("settings.appearance.advanced.hardwareDescription")}

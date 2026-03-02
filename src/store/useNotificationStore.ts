@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import i18n from "@/i18n";
 import type {
   NotificationEvent,
   NotificationType,
@@ -41,7 +42,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     // 그래프 생성 상태 업데이트
     if (event.type === "GRAPH_GENERATION_REQUESTED") {
       useGraphGenerationStore.getState().setGenerating(true);
-      return; // 알림 목록에는 추가하지 않음
     }
 
     if (
@@ -114,41 +114,57 @@ function showDesktopNotification(notification: Notification) {
   window.notification?.showNative({ title, body });
 }
 
-// TODO: 나중에 실제 알림 내용에 따라서 title, body 설정 및 번역 파일 추가하기
 function getNotificationContent(notification: Notification): {
   title: string;
   body: string;
 } {
+  const t = i18n.t.bind(i18n);
+
   switch (notification.type) {
+    case "GRAPH_GENERATION_REQUESTED":
+      return {
+        title: t("notification.graphGeneration.requestedTitle", "Graph Generation Started"),
+        body: t("notification.graphGeneration.requestedBody", "Graph generation has started. Please wait."),
+      };
     case "GRAPH_GENERATION_COMPLETED":
       return {
-        title: "그래프 생성 완료",
-        body: `그래프가 성공적으로 생성되었습니다. (노드: ${notification.payload.nodeCount}, 엣지: ${notification.payload.edgeCount})`,
+        title: t("notification.graphGeneration.completedTitle", "Graph Generation Complete"),
+        body: t("notification.graphGeneration.completedBody", {
+          defaultValue: "Graph has been successfully generated. (Nodes: {{nodeCount}}, Edges: {{edgeCount}})",
+          nodeCount: notification.payload.nodeCount,
+          edgeCount: notification.payload.edgeCount,
+        }),
       };
     case "GRAPH_GENERATION_FAILED":
       return {
-        title: "그래프 생성 실패",
-        body: `그래프 생성에 실패했습니다: ${notification.payload.error}`,
+        title: t("notification.graphGenerationFailed.title", "Graph Generation Failed"),
+        body: t("notification.graphGenerationFailed.body", {
+          defaultValue: "Failed to generate graph: {{error}}",
+          error: notification.payload.error,
+        }),
       };
     case "GRAPH_SUMMARY_COMPLETED":
       return {
-        title: "그래프 요약 완료",
-        body: "그래프 요약이 완료되었습니다.",
+        title: t("notification.graphSummary.completedTitle", "Graph Summary Complete"),
+        body: t("notification.graphSummary.completedBody", "Graph summary has been completed."),
       };
     case "GRAPH_SUMMARY_FAILED":
       return {
-        title: "그래프 요약 실패",
-        body: `그래프 요약에 실패했습니다: ${notification.payload.error}`,
+        title: t("notification.graphSummaryFailed.title", "Graph Summary Failed"),
+        body: t("notification.graphSummaryFailed.body", {
+          defaultValue: "Failed to generate graph summary: {{error}}",
+          error: notification.payload.error,
+        }),
       };
     case "TEST_NOTIFICATION":
       return {
-        title: "테스트 알림",
-        body: (notification.payload.message as string) || "테스트 알림이 도착했습니다.",
+        title: t("notification.test.title", "Test Notification"),
+        body: (notification.payload.message as string) || t("notification.test.body", "Test notification received."),
       };
     default:
       return {
-        title: "알림",
-        body: "새로운 알림이 도착했습니다.",
+        title: t("notification.default.title", "Notification"),
+        body: t("notification.default.body", "You have a new notification."),
       };
   }
 }

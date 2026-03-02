@@ -15,6 +15,8 @@ import {
 import { GraphSubcluster, GraphSnapshot } from "@/types/GraphData";
 import ToggleSidebarExpand from "../sidebar/ToggleSidebarExpand";
 import { GraphSummary } from "@/types/GraphSummary";
+import { api } from "@/apiClient";
+import { unwrapResponse } from "@/utils/httpResponse";
 
 // 패턴 타입 스타일
 const PATTERN_CONFIG = {
@@ -49,8 +51,6 @@ interface VisualizeSidebarProps {
   subclusters: GraphSubcluster[];
   expandedSubclusters: Set<string>;
   onToggleSubcluster: (subclusterId: string) => void;
-  onUpdateGraph?: () => void;
-  isUpdating?: boolean;
 }
 
 interface SubclusterGroup {
@@ -84,10 +84,24 @@ export default function VisualizeSidebar({
   subclusters,
   expandedSubclusters,
   onToggleSubcluster,
-  onUpdateGraph,
-  isUpdating = false,
 }: VisualizeSidebarProps) {
   const { t } = useTranslation();
+
+  // 그래프 업데이트 상태
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // 컴포넌트 마운트 시 그래프 상태 확인
+  useEffect(() => {
+    const checkGraphStatus = async () => {
+      try {
+        const { status } = unwrapResponse(await api.graph.getStats());
+        setIsUpdating(status === "UPDATING" || status === "CREATING");
+      } catch {
+        // 에러 시 무시
+      }
+    };
+    checkGraphStatus();
+  }, []);
 
   // 드래그 리사이즈 관련 상태
   const [sidebarWidth, setSidebarWidth] = useState(259);
@@ -230,6 +244,17 @@ export default function VisualizeSidebar({
       }
       return newSet;
     });
+  };
+
+  const onUpdateGraph = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const result = await api.graphAi.addNode();
+      console.log(result);
+    } catch {
+      setIsUpdating(false);
+    }
   };
 
   return (

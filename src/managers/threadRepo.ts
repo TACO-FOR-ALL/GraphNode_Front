@@ -4,6 +4,7 @@ import uuid from "../utils/uuid";
 import { db } from "@/db/graphnode.db";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { outboxRepo } from "./outboxRepo";
+import { trashRepo } from "./trashRepo";
 
 export const threadRepo = {
   async create(
@@ -114,10 +115,9 @@ export const threadRepo = {
     const thread = await this.getThreadById(id);
     if (!thread) return null;
 
-    await db.transaction("rw", db.threads, db.outbox, async () => {
-      await db.threads.delete(id);
-      await outboxRepo.enqueueThreadDelete(id);
-    });
+    // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
+    const trashedThread = await trashRepo.moveThreadToTrash(id);
+    if (!trashedThread) return null;
 
     return id;
   },

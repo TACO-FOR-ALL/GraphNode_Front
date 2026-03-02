@@ -6,6 +6,7 @@ import { outboxRepo } from "./outboxRepo";
 import sortItemByDate from "@/utils/sortItemByDate";
 import i18n from "@/i18n";
 import { getDefaultNoteContent } from "@/constants/defaultNotes";
+import { trashRepo } from "./trashRepo";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -97,10 +98,9 @@ export const noteRepo = {
     const note = await this.getNoteById(id);
     if (!note) return null;
 
-    await db.transaction("rw", db.notes, db.outbox, async () => {
-      await db.notes.delete(id);
-      await outboxRepo.enqueueNoteDelete(id);
-    });
+    // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
+    const trashedNote = await trashRepo.moveNoteToTrash(id);
+    if (!trashedNote) return null;
 
     return id;
   },

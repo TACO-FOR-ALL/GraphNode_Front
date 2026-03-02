@@ -16,6 +16,37 @@
       "appleLoginFailed": "Appleログインの開始に失敗しました。"
     }
   },
+  "onboarding": {
+    "skip": "スキップ",
+    "next": "次へ",
+    "complete": "完了",
+    "intro": {
+      "title": "あなたの知識は今どこにありますか？",
+      "subtitle": "どんなに会話やメモを書いても、時間が経てば跡形もなく消えてしまいます。",
+      "painPoint1": "ChatGPT、Claude、Geminiで得たインサイトは、スクロールの彼方に埋もれています。",
+      "painPoint2": "Notion、Obsidianのメモはフォルダの中に埋もれ、互いに繋がっていません。",
+      "painPoint3": "どこかに記録したはずなのに、文脈がないため検索しても見つかりません。"
+    },
+    "solution": {
+      "title": "会話とメモが生きた知識マップに",
+      "subtitle": "GraphNode AIが内容を読み、分析し、トピックを把握して自動で繋げます。タグ付けやリンク作成は不要です。",
+      "start": "始める"
+    },
+    "apiKey": {
+      "title": "AIと会話する",
+      "description": "AIと会話するにはAPIキーを設定してください。キーがなくてもグラフ機能は使えます。",
+      "linkText": "APIキーの取得方法を見る"
+    },
+    "dataImport": {
+      "title": "データをインポート",
+      "description": "既存のメモ（マークダウンファイル）やChatGPTの会話履歴をドラッグ＆ドロップでインポートできます。",
+      "linkText": "会話のエクスポート方法を見る"
+    },
+    "visualize": {
+      "title": "グラフを生成する",
+      "description": "「グラフを生成」ボタンを押して、あなたの知識マップを作りましょう！"
+    }
+  },
   "toast": {
     "apiKeyRequired": "まずAPIキーを登録してください。",
     "goToSettings": "設定へ移動"
@@ -31,7 +62,21 @@
     "summary": "この内容を要約",
     "note": "この内容をメモに",
     "placeholder": "質問、検索、または何でもお聞きください",
-    "selectSourceFirst": "まずソースを選択してください（@をクリックしてチャットまたはメモを選択）"
+    "selectSourceFirst": "まずソースを選択してください（@をクリックしてチャットまたはメモを選択）",
+    "chatHistory": "チャット履歴",
+    "newChat": "+ 新しいチャット",
+    "noChatHistory": "チャット履歴がありません",
+    "newConversation": "新しい会話",
+    "noChats": "チャットがありません",
+    "noNotes": "メモがありません",
+    "generatingResponse": "応答を生成中...",
+    "roleUser": "ユーザー",
+    "roleAI": "AI",
+    "analyzing": "リクエストを分析中...",
+    "done": "完了",
+    "noteCreated": "メモが作成されました！",
+    "error": "エラー",
+    "errorOccurred": "エラーが発生しました"
   },
   "home": {
     "title": "こんにちは、{{provider}}さん",
@@ -96,6 +141,17 @@
       "generate": "グラフを生成",
       "generating": "生成中...",
       "generatingNotice": "生成が完了したら通知します。アプリを閉じないでください。",
+      "generatingHelp": "グラフ生成開始の通知を受け取れませんでしたか？または生成に時間がかかりすぎていますか？データ量によって通常10〜30分かかります。100MB以上のチャット履歴の場合は1時間以上かかることがあります。",
+      "checkStatus": "グラフの状態を確認",
+      "retryGenerate": "再リクエスト",
+      "status": {
+        "NOT_CREATED": "グラフはまだ作成されていません。",
+        "CREATING": "グラフは現在生成中です。しばらくお待ちください。",
+        "CREATED": "グラフが作成されました。ページを更新してください。",
+        "UPDATING": "グラフは現在更新中です。しばらくお待ちください。",
+        "UPDATED": "グラフが更新されました。ページを更新してください。",
+        "error": "グラフの状態を確認中にエラーが発生しました。"
+      },
       "notice": "グラフは保存されたチャットとメモに基づいて生成されます。チャットまたはメモがない場合、グラフは生成できません。"
     },
     "patternType": {
@@ -114,6 +170,9 @@
       "high": "高",
       "medium": "中",
       "low": "低"
+    },
+    "zoomControls": {
+      "reset": "リセット"
     }
   },
   "search": {
@@ -122,6 +181,39 @@
     "notes": "メモ",
     "noResultFound": "{{provider}}が見つかりません",
     "shortcut": "ショートカット"
+  },
+  "changelog": {
+    "newFeatures": "新機能",
+    "improvements": "改善点",
+    "gotIt": "了解しました！"
+  },
+  "notification": {
+    "graphGeneration": {
+      "requestedTitle": "グラフ生成開始",
+      "requestedBody": "グラフの生成が開始されました。しばらくお待ちください。",
+      "completedTitle": "グラフ生成完了",
+      "completedBody": "グラフが正常に生成されました。（ノード: {{nodeCount}}、エッジ: {{edgeCount}}）"
+    },
+    "graphGenerationFailed": {
+      "title": "グラフ生成失敗",
+      "body": "グラフの生成に失敗しました: {{error}}"
+    },
+    "graphSummary": {
+      "completedTitle": "グラフ要約完了",
+      "completedBody": "グラフの要約が完了しました。"
+    },
+    "graphSummaryFailed": {
+      "title": "グラフ要約失敗",
+      "body": "グラフの要約に失敗しました: {{error}}"
+    },
+    "test": {
+      "title": "テスト通知",
+      "body": "テスト通知を受信しました。"
+    },
+    "default": {
+      "title": "通知",
+      "body": "新しい通知があります。"
+    }
   },
   "settings": {
     "title": "設定",
@@ -188,7 +280,8 @@
       "appearance": "外観",
       "notification": "通知",
       "keybinds": "キーバインド",
-      "language-time": "言語と時刻"
+      "language-time": "言語と時刻",
+      "mcp": "MCPサーバー"
     },
     "feedback": "フィードバックを送る",
     "logout": "ログアウト",
@@ -243,6 +336,16 @@
         "title": "データをインポート",
         "subtitle": "外部ソースからデータをインポート"
       },
+      "trash": {
+        "title": "ゴミ箱",
+        "subtitle": "削除されたアイテムは30日間保持されます",
+        "all": "すべて",
+        "empty": "ゴミ箱を空にする",
+        "restore": "復元",
+        "delete": "削除",
+        "expiresIn": "{{days}}日後に削除",
+        "noItems": "ゴミ箱は空です"
+      },
       "dangerZone": {
         "title": "危険ゾーン",
         "subtitle": "元に戻せない操作です。慎重に進めてください。"
@@ -279,6 +382,123 @@
         "newNote": "新しいメモを作成",
         "newFolder": "新しいフォルダを作成",
         "newChat": "新しいチャットを作成"
+      }
+    },
+    "developerMode": {
+      "title": "開発者モード",
+      "subtitle": "開発者向けの高度なカスタマイズ機能を有効化",
+      "toggle": "開発者モードを有効にする",
+      "toggleDescription": "カスタムMCPサーバーやグラフの色などの高度な機能でアプリをカスタマイズするには、開発者モードを有効にしてください。"
+    },
+    "graphColors": {
+      "title": "グラフの色",
+      "hint": "グラフのノードとエッジの色をカスタマイズ（Cmd/Ctrl + Sで保存）",
+      "preview": "プレビュー",
+      "reset": "リセット",
+      "formatTitle": "JSON形式",
+      "enableDevMode": "グラフの色をカスタマイズするには、マイアカウント設定で開発者モードを有効にしてください。",
+      "errorGraphObject": "\"graph\"はオブジェクトである必要があります",
+      "errorInvalidColor": "{{field}}の色形式が無効です（#RRGGBB形式を使用）",
+      "errorPaletteArray": "\"clusterPalette\"は配列である必要があります",
+      "errorInvalidPaletteColor": "clusterPaletteに無効な色があります"
+    },
+    "mcp": {
+      "title": "MCPサーバー",
+      "subtitle": "Model Context Protocolサーバーを管理してAI機能を拡張します",
+      "builtinSection": "組み込みサーバー",
+      "customSection": "カスタムサーバー",
+      "enableDevMode": "カスタムMCPサーバーを追加するには、マイアカウント設定で開発者モードを有効にしてください。",
+      "status": {
+        "connected": "接続済み",
+        "connecting": "接続中...",
+        "disconnected": "未接続",
+        "error": "エラー"
+      },
+      "toolsCount": "{{count}}個のツールが利用可能",
+      "configure": "設定",
+      "delete": "削除",
+      "filesystem": {
+        "title": "ファイルシステム設定",
+        "description": "AIがアクセスできるディレクトリを追加します。これらのディレクトリ内のファイルのみ読み取り可能です。",
+        "placeholder": "ディレクトリパスを入力（例：/Users/name/Documents）",
+        "examplePaths": "パスの例",
+        "noPathsAdded": "まだディレクトリが追加されていません",
+        "securityWarning": "セキュリティ：信頼できるディレクトリのみ追加してください。AIはこれらの場所のファイルを読み取ることができます。",
+        "saved": "保存して接続完了"
+      },
+      "custom": {
+        "addServer": "カスタムサーバーを追加",
+        "addTitle": "カスタムMCPサーバーを追加",
+        "noServers": "カスタムサーバーが追加されていません",
+        "name": "サーバー名",
+        "namePlaceholder": "マイカスタムサーバー",
+        "command": "コマンド",
+        "commandPlaceholder": "npx -y @example/mcp-server",
+        "args": "引数（スペース区切り）",
+        "argsPlaceholder": "--port 3000 --verbose",
+        "env": "環境変数（行ごとにKEY=VALUE）",
+        "envPlaceholder": "API_KEY=your-key\nDEBUG=true",
+        "add": "サーバーを追加",
+        "confirmDelete": "このサーバーを削除してもよろしいですか？",
+        "warning": "警告：カスタムMCPサーバーはシステム権限で実行されます。信頼できるソースからのサーバーのみ追加してください。"
+      },
+      "notion": {
+        "title": "Notion 設定",
+        "description": "Notion ワークスペースにアクセスするには API キーを入力してください。",
+        "apiKeyLabel": "Notion API キー（内部インテグレーショントークン）",
+        "apiKeyPlaceholder": "secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "howToGetKey": "API キーを取得するには、Notion で内部インテグレーションを作成し、内部インテグレーショントークンをコピーしてください。",
+        "openIntegrations": "Notion インテグレーションを開く",
+        "saved": "保存して接続完了"
+      },
+      "google": {
+        "title": "{{service}} 設定",
+        "description": "AIアシスタントが {{service}} にアクセスできるよう、Googleアカウントを接続します。",
+        "credentialsFile": "OAuth 認証情報ファイル",
+        "credentialsLoaded": "認証情報ファイルが読み込まれました",
+        "clickToChange": "クリックして別のファイルを選択",
+        "dropOrClick": "JSON ファイルをドロップするかクリックして選択",
+        "uploadFirst": "先に認証情報ファイルをアップロードしてください",
+        "credentialsPathLabel": "OAuth 認証情報 JSON ファイルパス",
+        "credentialsPathPlaceholder": "/path/to/credentials.json",
+        "credentialsPathHint": "Google Cloud Console から認証情報 JSON ファイルをダウンロードしてください",
+        "howToGetCredentials": "認証前に OAuth 認証情報を設定してください：",
+        "step1": "Google Cloud Console に移動",
+        "step2": "プロジェクトを作成または選択",
+        "step3": "必要な API を有効化（Drive/Calendar）",
+        "step4": "OAuth 2.0 デスクトップ認証情報を作成し JSON ファイルをダウンロード",
+        "openConsole": "Google Cloud Console を開く",
+        "authenticated": "接続済み",
+        "notAuthenticated": "未接続",
+        "authRequired": "このサービスを使用するには認証が必要です",
+        "connectedTo": "{{service}} に正常に接続しました",
+        "authenticate": "Google で接続",
+        "authenticating": "接続中...",
+        "disconnect": "接続を解除"
+      },
+      "vscode": {
+        "title": "VS Code 設定",
+        "description": "VS Code MCP サーバーにより、AI が VS Code ワークスペースと開いているファイルにアクセスできます。"
+      },
+      "developerMode": {
+        "title": "開発者モード",
+        "description": "カスタムMCPサーバーを追加するには開発者モードを有効にしてください"
+      },
+      "json": {
+        "hint": "JSONを編集してカスタムMCPサーバーを設定（Cmd/Ctrl + Sで保存）",
+        "saved": "保存済み",
+        "formatTitle": "JSON形式",
+        "errorParse": "無効なJSON形式です",
+        "errorMcpArray": "\"mcp\"は配列である必要があります",
+        "errorName": "サーバー{{index}}：\"name\"が必要です",
+        "errorCommand": "サーバー{{index}}：\"command\"が必要です",
+        "errorSave": "設定の保存に失敗しました"
+      },
+      "about": {
+        "title": "MCPについて",
+        "description": "Model Context Protocol（MCP）は、AIアシスタントが外部ツールやデータソースに接続し、組み込み機能を超えて機能を拡張できるようにします。",
+        "docsLink": "MCPドキュメントを見る（GraphNode）",
+        "learnMore": "MCPについて詳しく（公式）"
       }
     }
   }

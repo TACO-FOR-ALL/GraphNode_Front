@@ -1,4 +1,5 @@
 import SettingsPanelLayout from "./SettingsPanelLayout";
+import ToggleSettingItem from "./ToggleSettingItem";
 import { FaCheck } from "react-icons/fa";
 import {
   IoCamera,
@@ -80,6 +81,19 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
   const [claudeApiKey, setClaudeApiKey] = useState<boolean>(false);
   const [deepseekApiKey, setDeepseekApiKey] = useState<boolean>(false);
   const [currentPlan, setCurrentPlan] = useState<PlanType>("standard");
+  const [isDevMode, setIsDevMode] = useState<boolean>(false);
+
+  // 개발자 모드 로드
+  useEffect(() => {
+    const devMode = localStorage.getItem("graphnode-dev-mode") === "true";
+    setIsDevMode(devMode);
+  }, []);
+
+  // 개발자 모드 토글
+  const handleDevModeToggle = (value: boolean) => {
+    setIsDevMode(value);
+    localStorage.setItem("graphnode-dev-mode", value.toString());
+  };
 
   useEffect(() => {
     (async () => {
@@ -151,7 +165,10 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
       </div>
 
       {/* API Keys Section */}
-      <div className="flex flex-col items-start justify-start gap-4 w-full">
+      <div
+        className="flex flex-col items-start justify-start gap-4 w-full"
+        data-onboarding="api-key-section"
+      >
         <SettingCategoryTitle
           title={t("settings.my.api.title")}
           subtitle={t("settings.my.api.subtitle")}
@@ -195,7 +212,7 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
           subtitle={t("settings.my.subscription.subtitle")}
         />
       </div>
-      <div className="flex gap-4 w-full">
+      <div className="flex gap-4 w-full mb-4">
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
 
@@ -310,7 +327,14 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
         })}
       </div>
 
-      <div className="m-1 h-[1px] p-[1px] w-full flex bg-text-tertiary/20" />
+      <SettingCategoryTitle title={t("settings.developerMode.title")} />
+      <ToggleSettingItem
+        title={t("settings.developerMode.toggle")}
+        subtitle={t("settings.developerMode.toggleDescription")}
+        isActive={isDevMode}
+        onChange={handleDevModeToggle}
+      />
+
       {/* Feedback & Logout Section */}
       <div className="flex gap-2">
         <button

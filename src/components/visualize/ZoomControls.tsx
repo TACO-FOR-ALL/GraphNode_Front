@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface ZoomControlsProps {
   scale: number;
   onZoomIn: () => void;
@@ -15,6 +17,8 @@ export default function ZoomControls({
   onReset,
   className = "",
 }: ZoomControlsProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={`absolute bottom-10 right-6 flex items-center gap-1 bg-bg-secondary/90 backdrop-blur rounded-xl p-1 shadow-lg border border-text-tertiary/10 ${className}`}
@@ -40,7 +44,7 @@ export default function ZoomControls({
         onClick={onReset}
         className="px-3 h-8 hover:bg-bg-tertiary rounded-lg flex items-center justify-center text-xs text-text-secondary transition-colors"
       >
-        초기화
+        {t("visualize.zoomControls.reset", "Reset")}
       </button>
     </div>
   );

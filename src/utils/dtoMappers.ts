@@ -6,8 +6,8 @@ import type {
   GraphSubclusterDto,
   GraphSnapshotDto,
   GraphSummaryDto,
-} from "node_modules/@taco_tsinghua/graphnode-sdk/dist/types/graph";
-import type { NoteDto } from "@taco_tsinghua/graphnode-sdk";
+  NoteDto,
+} from "@taco_tsinghua/graphnode-sdk";
 import type {
   PositionedNode,
   PositionedEdge,
@@ -84,6 +84,8 @@ export function mapGraphStats(dto: GraphStatsDto): GraphStats {
     nodes: dto.nodes,
     edges: dto.edges,
     clusters: dto.clusters,
+    status: dto.status,
+    updatedAt: toTimestamp(dto.updatedAt) ?? undefined,
     generatedAt: toTimestamp(dto.generatedAt) ?? undefined,
     metadata: dto.metadata,
   };
@@ -116,6 +118,8 @@ export function mapGraphSnapshot(dto: GraphSnapshotDto): GraphSnapshot {
       nodes: dto.stats.nodes,
       edges: dto.stats.edges,
       clusters: dto.stats.clusters,
+      status: dto.stats.status,
+      updatedAt: toTimestamp(dto.stats.updatedAt) ?? undefined,
       generatedAt: toTimestamp(dto.stats.generatedAt) ?? undefined,
       metadata: dto.stats.metadata,
     },
