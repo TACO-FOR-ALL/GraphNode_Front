@@ -38,7 +38,7 @@ export default function SpotlightOverlay() {
       },
       navigateTo: "/settings",
       settingsCategory: "my-account",
-      position: "right",
+      position: "bottom",
     },
     {
       step: "dataImport",
@@ -51,7 +51,7 @@ export default function SpotlightOverlay() {
       },
       navigateTo: "/settings",
       settingsCategory: "data-privacy",
-      position: "right",
+      position: "bottom",
     },
     {
       step: "visualize",
@@ -186,26 +186,24 @@ export default function SpotlightOverlay() {
       {/* 툴팁 */}
       {targetRect && (
         <div
-          className="absolute w-80 p-5 rounded-xl bg-bg-primary border border-base-border shadow-xl"
+          className="absolute w-96 p-4 rounded-xl bg-bg-primary border border-base-border shadow-xl"
           style={getTooltipStyle()}
         >
           <h3 className="text-base font-semibold text-text-primary mb-2">
             {config.title}
           </h3>
-          <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+          <p className="text-sm text-text-secondary mb-1 leading-relaxed">
             {config.description}
           </p>
-
           {config.link && (
-            <button
+            <div
               onClick={handleLinkClick}
-              className="flex items-center gap-1 text-sm text-primary hover:underline mb-4"
+              className="flex items-center justify-end gap-1 text-sm text-primary hover:underline mb-3"
             >
-              {config.link.text}
+              <a>{config.link.text}</a>
               <FiExternalLink className="w-3 h-3" />
-            </button>
+            </div>
           )}
-
           <div className="flex items-center justify-between">
             <button
               onClick={skipOnboarding}

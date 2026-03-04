@@ -15,9 +15,11 @@
 - `docs/development-guide.md`: 로컬 실행, 빌드, 테스트, 디렉토리별 작업 규칙
 - `docs/architecture.md`: 앱 구조, 라우팅, 상태관리, 보안 경계
 - `docs/data-sync-ipc.md`: DB 스키마, Outbox coalescing, sync worker, IPC 브리지
+- `docs/MCP_ARCHITECTURE.md`: MCP 서버 구조, IPC 채널, 호출 흐름
+- `docs/CHANGELOG_DEV.md`: 최근 개발 변경 사항 로그
+- `docs/testing-strategy.md`: 테스트 범위, 실행 방법, 우선순위
+- `docs/troubleshooting.md`: 자주 발생하는 실행/빌드/연동 이슈 대응
 
 ## 추가 권장 문서 (다음 단계)
 
-- `docs/troubleshooting.md`: 자주 발생하는 실행/빌드/키체인 이슈 대응
 - `docs/release-playbook.md`: macOS/Windows 패키징 및 검증 체크리스트
-- `docs/testing-strategy.md`: 단위 테스트 범위와 우선 테스트 대상

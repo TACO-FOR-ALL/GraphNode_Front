@@ -8,7 +8,9 @@ export type OpenAIModel =
   | "gpt-5-pro"
   | "gpt-5-nano"
   | "gpt-5-mini"
-  | "gpt-5";
+  | "gpt-5"
+  | "gpt-5.2-pro"
+  | "gpt-5.2";
 
 export const OPENAI_MODEL: OpenAIModel[] = [
   "gpt-4o-mini",
@@ -17,5 +19,7 @@ export const OPENAI_MODEL: OpenAIModel[] = [
   "gpt-5-nano",
   "gpt-5-mini",
   "gpt-5",
+  "gpt-5.2",
+  "gpt-5.2-pro",
 ];
-export const OPENAI_MODEL_DEFAULT = "gpt-4o-mini";
+export const OPENAI_MODEL_DEFAULT = "gpt-5.2";

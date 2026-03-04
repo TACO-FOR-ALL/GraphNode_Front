@@ -1,6 +1,6 @@
 {
   "name": "graphnode_front",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "TACO 4기 GraphNode의 프론트앤드 코드입니다.",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.graphnode.app",
-    "asar": false,
+    "asar": true,
     "asarUnpack": [
       "**/node_modules/@floating-ui/**/*",
       "**/node_modules/@tiptap/**/*"

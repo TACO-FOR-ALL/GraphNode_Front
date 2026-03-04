@@ -2,6 +2,7 @@ import { noteRepo } from "../noteRepo";
 
 // DB 모킹
 const mockNotes = new Map<string, any>();
+const mockTrashedNotes = new Map<string, any>();
 const mockOutbox = new Map<string, any>();
 
 jest.mock("@/db/graphnode.db", () => ({
@@ -60,6 +61,38 @@ jest.mock("@/db/graphnode.db", () => ({
       update: jest.fn(() => Promise.resolve(1)),
       bulkDelete: jest.fn(() => Promise.resolve()),
     },
+    trashedNotes: {
+      put: jest.fn((note: any) => {
+        mockTrashedNotes.set(note.id, note);
+        return Promise.resolve(note.id);
+      }),
+      get: jest.fn((id: string) => Promise.resolve(mockTrashedNotes.get(id))),
+      delete: jest.fn((id: string) => {
+        mockTrashedNotes.delete(id);
+        return Promise.resolve();
+      }),
+      orderBy: jest.fn(() => ({
+        reverse: jest.fn(() => ({
+          toArray: jest.fn(() =>
+            Promise.resolve(
+              Array.from(mockTrashedNotes.values()).sort(
+                (a, b) => b.deletedAt - a.deletedAt,
+              ),
+            ),
+          ),
+        })),
+      })),
+      toArray: jest.fn(() => Promise.resolve(Array.from(mockTrashedNotes.values()))),
+      clear: jest.fn(() => {
+        mockTrashedNotes.clear();
+        return Promise.resolve();
+      }),
+      where: jest.fn(() => ({
+        below: jest.fn(() => ({
+          toArray: jest.fn(() => Promise.resolve([])),
+        })),
+      })),
+    },
     transaction: jest.fn(async (...args: any[]) => {
       // Dexie transaction: (mode, tables..., callback)
       const callback = args[args.length - 1];
@@ -79,6 +112,7 @@ jest.mock("@/utils/uuid", () => ({
 describe("noteRepo", () => {
   beforeEach(() => {
     mockNotes.clear();
+    mockTrashedNotes.clear();
     mockOutbox.clear();
     jest.clearAllMocks();
   });
@@ -217,6 +251,7 @@ describe("noteRepo", () => {
       const deletedId = await noteRepo.deleteNoteById(created.id);
 
       expect(deletedId).toBe(created.id);
+      expect(mockTrashedNotes.has(created.id)).toBe(true);
     });
 
     test("존재하지 않는 노트 삭제 → null", async () => {

@@ -1,11 +1,56 @@
 {
   "1.0.0": {
+    "date": "2025-03-04",
+    "title": {
+      "ko": "GraphNode 1.0.0 정식 출시",
+      "en": "GraphNode 1.0.0 Official Release",
+      "ja": "GraphNode 1.0.0 正式リリース",
+      "zh": "GraphNode 1.0.0 正式发布"
+    },
+    "features": {
+      "ko": [
+        "온보딩 튜토리얼 추가",
+        "업데이트 내역 알림 모달 추가",
+        "MCP (Model Context Protocol) 서버 지원 - Claude Desktop 등 AI 도구와 연동 가능"
+      ],
+      "en": [
+        "Added onboarding tutorial",
+        "Added update changelog modal",
+        "MCP (Model Context Protocol) server support - Integration with AI tools like Claude Desktop"
+      ],
+      "ja": [
+        "オンボーディングチュートリアルを追加",
+        "アップデート履歴通知モーダルを追加",
+        "MCP (Model Context Protocol) サーバーサポート - Claude Desktop などの AI ツールとの連携が可能"
+      ],
+      "zh": [
+        "添加入门教程",
+        "添加更新日志通知模态框",
+        "MCP (Model Context Protocol) 服务器支持 - 可与 Claude Desktop 等 AI 工具集成"
+      ]
+    },
+    "improvements": {
+      "ko": [
+        "전체적인 안정성 개선"
+      ],
+      "en": [
+        "Overall stability improvements"
+      ],
+      "ja": [
+        "全体的な安定性の向上"
+      ],
+      "zh": [
+        "整体稳定性改进"
+      ]
+    }
+  },
+  "0.1.0": {
     "date": "2025-03-02",
     "title": {
-      "ko": "GraphNode 2.0 출시",
-      "en": "GraphNode 2.0 Release",
-      "ja": "GraphNode 2.0 リリース",
-      "zh": "GraphNode 2.0 发布"
+      "ko": "GraphNode 0.1.0 출시",
+      "en": "GraphNode 0.1.0 Release",
+      "ja": "GraphNode 0.1.0 リリース",
+      "zh": "GraphNode 0.1.0 发布"
     },
     "features": {
       "ko": [

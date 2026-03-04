@@ -6,6 +6,7 @@ import type {
 } from "@/managers/notificationClient";
 import { useSettingsStore } from "./useSettingsStore";
 import { useGraphGenerationStore } from "./useGraphGenerationStore";
+import { playSound } from "@/utils/sound";
 
 export interface Notification {
   id: string;
@@ -63,6 +64,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       notifications: [notification, ...state.notifications].slice(0, 50), // 최대 50개 유지
       unreadCount: state.unreadCount + 1,
     }));
+
+    // 알림음 재생
+    playSound("notification");
 
     // 데스크톱 알림 표시
     showDesktopNotification(notification);

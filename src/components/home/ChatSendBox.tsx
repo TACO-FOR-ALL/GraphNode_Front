@@ -1,5 +1,4 @@
 import AutoResizeTextarea from "@/components/AutoResizeTextArea";
-import { IoIosArrowDown } from "react-icons/io";
 import { FaArrowRight } from "react-icons/fa6";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -10,12 +9,15 @@ import FilePreviewList from "../FilePreviewList";
 import useFileAttachment from "@/hooks/useFileAttachment";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
+import ModelSelector from "@/components/common/ModelSelector";
+import { OPENAI_MODEL_DEFAULT, type OpenAIModel } from "@/constants/OPENAI_MODEL";
 
 export default function ChatSendBox() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<OpenAIModel>(OPENAI_MODEL_DEFAULT);
 
   const {
     attachedFiles,
@@ -58,6 +60,7 @@ export default function ChatSendBox() {
           initialMessage: text,
           id: id,
           attachedFiles: attachedFiles,
+          selectedModel: selectedModel,
         },
       });
     } catch (error) {
@@ -91,12 +94,7 @@ export default function ChatSendBox() {
       />
       <div className="flex items-center justify-between w-full">
         <div className="flex gap-4 items-center">
-          <div className="flex gap-1 items-center cursor-pointer bg-[rgba(var(--color-chatbox-active-rgb),0.05)] p-[6px] rounded-[8px] shadow-[0_0_3px_0_#badaff]">
-            <p className="font-noto-sans-kr text-[12px] font-medium text-text-secondary">
-              <span className="text-chatbox-active">ChatGPT</span> 5.1 Instant
-            </p>
-            <IoIosArrowDown className="text-[16px] text-chatbox-active" />
-          </div>
+          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           <div
             onClick={handleButtonClick}
             className="text-text-secondary hover:text-primary items-center justify-center text-center text-[16px] hover:bg-sidebar-button-hover rounded-md p-1.5 border-1 border-gray-300 dark:border-gray-500 hover:border-0"

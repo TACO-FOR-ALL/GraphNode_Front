@@ -71,6 +71,13 @@ function MainLayout() {
     loadAndApplyGraphColors(); // 커스텀 그래프 색상 로드
   }, []);
 
+  // 온보딩이 완료되지 않은 경우 자동 시작
+  useEffect(() => {
+    if (!hasCompletedOnboarding) {
+      startOnboarding();
+    }
+  }, [hasCompletedOnboarding, startOnboarding]);
+
   // 버전 체크 및 Changelog 모달 표시
   useEffect(() => {
     const currentVersion = __APP_VERSION__;

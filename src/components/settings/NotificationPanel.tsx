@@ -1,17 +1,10 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import ToggleSettingItem from "./ToggleSettingItem";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import { FiBell } from "react-icons/fi";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-
-interface LocalNotificationSettings {
-  newMessageSound: boolean;
-  appNotificationSound: boolean;
-}
+import { useSoundStore } from "@/store/useSoundStore";
+import { playSound } from "@/utils/sound";
 
 export default function NotificationPanel() {
   const { t } = useTranslation();
@@ -22,19 +15,23 @@ export default function NotificationPanel() {
     (state) => state.setDesktopNotification,
   );
 
-  const [localSettings, setLocalSettings] = useState<LocalNotificationSettings>(
-    {
-      newMessageSound: false,
-      appNotificationSound: false,
-    },
-  );
-  // const [isSendingTest, setIsSendingTest] = useState(false);
+  const { newMessageSound, appNotificationSound, setNewMessageSound, setAppNotificationSound } =
+    useSoundStore();
 
-  const updateLocalSetting = <K extends keyof LocalNotificationSettings>(
-    key: K,
-    value: LocalNotificationSettings[K],
-  ) => {
-    setLocalSettings((prev) => ({ ...prev, [key]: value }));
+  const handleNewMessageSoundChange = (value: boolean) => {
+    setNewMessageSound(value);
+    if (value) {
+      // 활성화 시 미리듣기
+      playSound("message");
+    }
+  };
+
+  const handleAppNotificationSoundChange = (value: boolean) => {
+    setAppNotificationSound(value);
+    if (value) {
+      // 활성화 시 미리듣기
+      playSound("notification");
+    }
   };
 
   // const handleSendTestNotification = async () => {
@@ -71,14 +68,14 @@ export default function NotificationPanel() {
       <ToggleSettingItem
         title={t("settings.notification.newMessage.title")}
         subtitle={t("settings.notification.newMessage.subtitle")}
-        isActive={localSettings.newMessageSound}
-        onChange={(value) => updateLocalSetting("newMessageSound", value)}
+        isActive={newMessageSound}
+        onChange={handleNewMessageSoundChange}
       />
       <ToggleSettingItem
         title={t("settings.notification.appNotification.title")}
         subtitle={t("settings.notification.appNotification.subtitle")}
-        isActive={localSettings.appNotificationSound}
-        onChange={(value) => updateLocalSetting("appNotificationSound", value)}
+        isActive={appNotificationSound}
+        onChange={handleAppNotificationSoundChange}
       />
 
       {/* 테스트 알림 섹션

@@ -22,6 +22,9 @@ Tailwind CSS로 UI 스타일링을 단순화하고, i18n(국제화)을 통해 **
 - [개발 가이드](docs/development-guide.md)
 - [아키텍처](docs/architecture.md)
 - [데이터 동기화 & IPC](docs/data-sync-ipc.md)
+- [MCP 아키텍처](docs/MCP_ARCHITECTURE.md)
+- [테스트 전략](docs/testing-strategy.md)
+- [트러블슈팅](docs/troubleshooting.md)
 
 ---
 

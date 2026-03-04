@@ -29,11 +29,33 @@ export const openAI = {
     }
   },
 
+  // async getModels(apiKey: string): Promise<Result<string[]>> {
+  //   const client = new OpenAI({ apiKey });
+  //   try {
+  //     const response = await client.models.list();
+  //     // GPT 모델만 필터링하고 정렬
+  //     const gptModels = response.data
+  //       .filter((model) => model.id.startsWith("gpt-"))
+  //       .map((model) => model.id)
+  //       .sort((a, b) => {
+  //         // gpt-5 > gpt-4 > gpt-3 순으로 정렬
+  //         const getVersion = (id: string) => {
+  //           const match = id.match(/gpt-(\d+)/);
+  //           return match ? parseInt(match[1]) : 0;
+  //         };
+  //         return getVersion(b) - getVersion(a);
+  //       });
+  //     return { ok: true, data: gptModels };
+  //   } catch (e) {
+  //     return { ok: false, error: normalizeError(e) };
+  //   }
+  // },
+
   async request(
     apiKey: string,
     stream: boolean,
     model: string,
-    messages: ChatMessageRequest[]
+    messages: ChatMessageRequest[],
   ) {
     try {
       const client = new OpenAI({ apiKey: apiKey });
@@ -52,7 +74,7 @@ export const openAI = {
   async requestGenerateThreadTitle(
     apiKey: string,
     firstUserMessage: string,
-    opts?: { timeoutMs?: number }
+    opts?: { timeoutMs?: number },
   ): Promise<Result<string>> {
     try {
       const client = new OpenAI({ apiKey: apiKey });

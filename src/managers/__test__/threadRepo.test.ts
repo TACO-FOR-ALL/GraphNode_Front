@@ -3,6 +3,7 @@ import { ChatMessage } from "@/types/Chat";
 
 // DB 모킹
 const mockThreads = new Map<string, any>();
+const mockTrashedThreads = new Map<string, any>();
 const mockOutbox = new Map<string, any>();
 
 jest.mock("@/db/graphnode.db", () => ({
@@ -50,6 +51,38 @@ jest.mock("@/db/graphnode.db", () => ({
         return Promise.resolve(op.opId);
       }),
     },
+    trashedThreads: {
+      put: jest.fn((thread: any) => {
+        mockTrashedThreads.set(thread.id, thread);
+        return Promise.resolve(thread.id);
+      }),
+      get: jest.fn((id: string) => Promise.resolve(mockTrashedThreads.get(id))),
+      delete: jest.fn((id: string) => {
+        mockTrashedThreads.delete(id);
+        return Promise.resolve();
+      }),
+      orderBy: jest.fn(() => ({
+        reverse: jest.fn(() => ({
+          toArray: jest.fn(() =>
+            Promise.resolve(
+              Array.from(mockTrashedThreads.values()).sort(
+                (a, b) => b.deletedAt - a.deletedAt,
+              ),
+            ),
+          ),
+        })),
+      })),
+      toArray: jest.fn(() => Promise.resolve(Array.from(mockTrashedThreads.values()))),
+      clear: jest.fn(() => {
+        mockTrashedThreads.clear();
+        return Promise.resolve();
+      }),
+      where: jest.fn(() => ({
+        below: jest.fn(() => ({
+          toArray: jest.fn(() => Promise.resolve([])),
+        })),
+      })),
+    },
     transaction: jest.fn(async (...args: any[]) => {
       const callback = args[args.length - 1];
       if (typeof callback === "function") {
@@ -89,6 +122,7 @@ jest.mock("@/utils/uuid", () => ({
 describe("threadRepo", () => {
   beforeEach(() => {
     mockThreads.clear();
+    mockTrashedThreads.clear();
     mockOutbox.clear();
     mockEnqueueThreadUpdateTitle.mockClear();
     mockEnqueueThreadDelete.mockClear();
@@ -364,7 +398,8 @@ describe("threadRepo", () => {
 
       await threadRepo.deleteThreadById("t1");
 
-      expect(mockEnqueueThreadDelete).toHaveBeenCalledWith("t1");
+      expect(mockEnqueueThreadDelete).not.toHaveBeenCalled();
+      expect(mockTrashedThreads.has("t1")).toBe(true);
     });
 
     test("존재하지 않는 스레드 삭제 → null", async () => {

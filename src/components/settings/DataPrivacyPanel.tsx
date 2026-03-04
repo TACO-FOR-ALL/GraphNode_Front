@@ -59,7 +59,6 @@ export default function DataPrivacyPanel() {
           <DropMdZone />
         </div>
       </div>
-
       {/* Trash Section */}
       <div className="mt-8 w-full">
         <SettingCategoryTitle
@@ -71,7 +70,6 @@ export default function DataPrivacyPanel() {
         />
         <TrashPanel />
       </div>
-
       {/* Danger Zone */}
       <div className="mt-8">
         <SettingCategoryTitle
@@ -82,7 +80,6 @@ export default function DataPrivacyPanel() {
           )}
         />
       </div>
-
       <div className="flex flex-col gap-3 w-full">
         <DangerZoneItem
           title={t("settings.dataPrivacy.clearChats.title", "Clear All Chats")}
@@ -121,10 +118,17 @@ export default function DataPrivacyPanel() {
           handleClearTarget={handleClearNotes}
         />
       </div>
-
-      {/* Dev Tools - 개발 테스트용 (주석 처리) */}
-
-      {/* <div className="mt-8">
+      <button
+        onClick={() => {
+          resetOnboarding();
+          startOnboarding();
+        }}
+        className="px-3 py-2 text-sm text-white bg-primary hover:bg-primary/80 rounded-lg transition-colors w-fit"
+      >
+        restart onboarding
+      </button>
+      {/* Dev Tools - 개발 테스트용 (주석 처리)
+      <div className="mt-8">
         <SettingCategoryTitle
           title="Developer Tools"
           subtitle="For testing purposes only"
@@ -187,6 +191,14 @@ export default function DataPrivacyPanel() {
           }}
         >
           delete graph
+        </button>
+        <button
+          onClick={async () => {
+            const result = await api.graph.getSnapshot();
+            console.log(result);
+          }}
+        >
+          get graph
         </button>
         <button
           onClick={async () => {
