@@ -121,6 +121,10 @@ export const noteRepo = {
     await db.notes.bulkPut(sorted);
   },
 
+  async deleteMany(ids: string[]): Promise<void> {
+    await db.notes.bulkDelete(ids);
+  },
+
   async clearAll(): Promise<void> {
     await db.notes.clear();
   },

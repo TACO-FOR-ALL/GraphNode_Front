@@ -12,12 +12,12 @@ export type SupportedLangs = "en" | "ko" | "zh" | "ja";
 const supportedLangs = ["en", "ko", "zh", "ja"];
 const LANGUAGE_STORAGE_KEY = "graphnode-language";
 
-async function detectSystemLanguage() {
+async function detectSystemLanguage(): Promise<SupportedLangs> {
   try {
     const systemLang = await window.systemAPI?.getLocale();
     if (systemLang) {
       const shortCode = systemLang.split("-")[0]; // ex) 'en-US' → 'en'
-      if (supportedLangs.includes(shortCode)) return shortCode;
+      if (supportedLangs.includes(shortCode)) return shortCode as SupportedLangs;
     }
   } catch (e) {
     console.warn("Failed to get system language:", e);
@@ -27,7 +27,7 @@ async function detectSystemLanguage() {
   return "en";
 }
 
-function getSavedLanguage(): SupportedLangs | null {
+export function getSavedLanguage(): SupportedLangs | null {
   try {
     const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved && supportedLangs.includes(saved)) {
@@ -49,8 +49,23 @@ export function saveLanguage(lang: SupportedLangs): boolean {
   }
 }
 
+export function clearSavedLanguage(): void {
+  try {
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  } catch (e) {
+    console.warn("Failed to clear saved language:", e);
+  }
+}
+
+export async function resetToSystemLanguage(): Promise<SupportedLangs> {
+  clearSavedLanguage();
+  const lang = await detectSystemLanguage();
+  await i18n.changeLanguage(lang);
+  return lang;
+}
+
 export async function initI18n() {
-  // 저장된 언어 설정 우선, 없으면 시스템 언어 감지
+  // 저장된 언어 설정 우선, 없으면 시스템 언어 감지 (auto 모드)
   const savedLang = getSavedLanguage();
   const detectedLang = savedLang ?? (await detectSystemLanguage());
 

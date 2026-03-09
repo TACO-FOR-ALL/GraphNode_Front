@@ -10,14 +10,15 @@ import useFileAttachment from "@/hooks/useFileAttachment";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import ModelSelector from "@/components/common/ModelSelector";
-import { OPENAI_MODEL_DEFAULT, type OpenAIModel } from "@/constants/OPENAI_MODEL";
+import { LLM_MODEL_DEFAULT, type LLMModel } from "@/constants/OPENAI_MODEL";
 
 export default function ChatSendBox() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<OpenAIModel>(OPENAI_MODEL_DEFAULT);
+  const [selectedModel, setSelectedModel] =
+    useState<LLMModel>(LLM_MODEL_DEFAULT);
 
   const {
     attachedFiles,

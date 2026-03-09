@@ -127,6 +127,10 @@ export const threadRepo = {
     await db.threads.bulkPut(sorted);
   },
 
+  async deleteMany(ids: string[]): Promise<void> {
+    await db.threads.bulkDelete(ids);
+  },
+
   async clearAll(): Promise<void> {
     await db.threads.clear();
   },

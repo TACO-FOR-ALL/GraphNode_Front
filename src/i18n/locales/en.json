@@ -258,6 +258,7 @@
     "language": {
       "title": "Select a Language",
       "subtitle": "Choose the language you want GraphNode to display.",
+      "auto": "🌐 System Language",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
@@ -287,7 +288,7 @@
     "logout": "Logout",
     "dropJsonZone": {
       "title": "Drag & Drop JSON File Upload",
-      "description": "Drop your conversation.json file here",
+      "description": "Drop your conversations.json file here",
       "maxSize": "Only one file can be dropped (maximum 512MB recommended)",
       "uploading": "Uploading (reading)… {progress}%",
       "parsing": "Parsing (parsing)…",
@@ -299,6 +300,10 @@
         "readFailed": "File read failed",
         "parseFailed": "JSON parsing failed",
         "processingFailed": "Processing failed"
+      },
+      "toast": {
+        "success": "Conversations imported successfully",
+        "error": "Failed to import conversations"
       }
     },
     "dropMdZone": {
@@ -308,6 +313,10 @@
       "errorMessage": {
         "notMd": "Only Markdown files can be uploaded (.md)",
         "exceptOther": "Some files were excluded because they are not in MD format."
+      },
+      "toast": {
+        "success": "Markdown files imported successfully",
+        "error": "Failed to import markdown files"
       }
     },
     "notification": {
@@ -352,11 +361,19 @@
       },
       "clearChats": {
         "title": "Clear All Chats",
-        "description": "Permanently delete all chat conversations"
+        "description": "Permanently delete all chat conversations",
+        "toast": {
+          "success": "All chats cleared successfully",
+          "error": "Failed to clear chats"
+        }
       },
       "clearNotes": {
         "title": "Clear All Notes",
-        "description": "Permanently delete all notes and folders"
+        "description": "Permanently delete all notes and folders",
+        "toast": {
+          "success": "All notes cleared successfully",
+          "error": "Failed to clear notes"
+        }
       },
       "delete": "Delete",
       "cancel": "Cancel",

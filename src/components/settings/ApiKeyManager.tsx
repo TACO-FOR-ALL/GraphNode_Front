@@ -2,7 +2,14 @@ import { api } from "@/apiClient";
 import { AiProvider } from "@/types/AiProvider";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoCheckmarkCircle, IoTrash, IoEye, IoEyeOff } from "react-icons/io5";
+import {
+  IoCheckmarkCircle,
+  IoTrash,
+  IoEye,
+  IoEyeOff,
+  IoAlertCircle,
+} from "react-icons/io5";
+import { unwrapResponse } from "@/utils/httpResponse";
 
 export default function ApiKeyManager({
   id,
@@ -21,14 +28,19 @@ export default function ApiKeyManager({
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!apiKey.trim()) return;
     setLoading(true);
+    setError(null);
     try {
-      await api.me.updateApiKey(id, apiKey);
+      unwrapResponse(await api.me.updateApiKey(id, apiKey));
       setIsVerified(true);
       setApiKey("");
+    } catch (error: any) {
+      console.error("Failed to save API key:", error);
+      setError(t("settings.my.api.verifyError", "API key verification failed"));
     } finally {
       setLoading(false);
     }
@@ -36,9 +48,13 @@ export default function ApiKeyManager({
 
   const handleDelete = async () => {
     setLoading(true);
+    setError(null);
     try {
-      await api.me.deleteApiKey(id);
+      unwrapResponse(await api.me.deleteApiKey(id));
       setIsVerified(false);
+    } catch (error: any) {
+      console.error("Failed to delete API key:", error);
+      setError(t("settings.my.api.deleteError", "Failed to remove API key"));
     } finally {
       setLoading(false);
     }
@@ -91,33 +107,51 @@ export default function ApiKeyManager({
               </div>
             </div>
           ) : (
-            <div className="relative flex-1">
-              <input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                placeholder={t("settings.my.api.placeholder", { provider: title })}
-                onChange={(e) => setApiKey(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={loading}
-                className="
-                  w-full h-8 px-3 pr-10 text-sm
-                  bg-bg-tertiary border border-transparent rounded-lg
-                  focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20
-                  placeholder:text-text-placeholder text-text-primary
-                  disabled:opacity-50 transition-all duration-200
-                "
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors"
-              >
-                {showKey ? (
-                  <IoEyeOff className="text-sm" />
-                ) : (
-                  <IoEye className="text-sm" />
-                )}
-              </button>
+            <div className="flex flex-col gap-1">
+              <div className="relative flex-1">
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  placeholder={t("settings.my.api.placeholder", {
+                    provider: title,
+                  })}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                  className={`
+                    w-full h-8 px-3 pr-10 text-sm
+                    bg-bg-tertiary border rounded-lg
+                    focus:outline-none focus:ring-1
+                    placeholder:text-text-placeholder text-text-primary
+                    disabled:opacity-50 transition-all duration-200
+                    ${
+                      error
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                        : "border-transparent focus:border-primary focus:ring-primary/20"
+                    }
+                  `}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  {showKey ? (
+                    <IoEyeOff className="text-sm" />
+                  ) : (
+                    <IoEye className="text-sm" />
+                  )}
+                </button>
+              </div>
+              {error && (
+                <div className="flex items-center gap-1 text-red-500">
+                  <IoAlertCircle className="text-xs" />
+                  <span className="text-[11px]">{error}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

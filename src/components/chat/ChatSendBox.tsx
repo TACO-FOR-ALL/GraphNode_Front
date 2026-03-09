@@ -12,7 +12,11 @@ import useFileAttachment from "@/hooks/useFileAttachment";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import { useToastStore } from "@/store/useToastStore";
-import { OPENAI_MODEL_DEFAULT, type OpenAIModel } from "@/constants/OPENAI_MODEL";
+import {
+  LLM_MODEL_DEFAULT,
+  getProvider,
+  type LLMModel,
+} from "@/constants/OPENAI_MODEL";
 import ModelSelector from "@/components/common/ModelSelector";
 import { playSound } from "@/utils/sound";
 
@@ -29,7 +33,8 @@ export default function ChatSendBox({
   const { threadId } = useParams<{ threadId?: string }>();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<OpenAIModel>(OPENAI_MODEL_DEFAULT);
+  const [selectedModel, setSelectedModel] =
+    useState<LLMModel>(LLM_MODEL_DEFAULT);
   const autoSendRef = useRef(false);
   const processedLocationKeyRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
@@ -60,7 +65,7 @@ export default function ChatSendBox({
     targetThreadId: string,
     id: string,
     filesOverride?: File[], // [Fixed] 인자 추가: 외부(Home 등)에서 전달된 파일 강제 사용
-    modelOverride?: OpenAIModel, // Home에서 전달된 모델
+    modelOverride?: LLMModel, // Home에서 전달된 모델
   ) => {
     if (!messageText || sending || sendingRef.current) return;
 
@@ -111,7 +116,7 @@ export default function ChatSendBox({
         await api.ai.chatStream(
           targetThreadId,
           {
-            model: "openai",
+            model: getProvider(modelToUse),
             id: id,
             chatContent: messageText,
             modelName: modelToUse,
@@ -314,7 +319,7 @@ export default function ChatSendBox({
       initialMessage?: string;
       attachedFiles?: File[]; // [Check] 여기서 받은 File[]을 그대로 chat()에 넘기면 됨
       id?: string;
-      selectedModel?: OpenAIModel;
+      selectedModel?: LLMModel;
     } | null;
 
     // state가 없거나 autoSend가 아니면 리턴
@@ -347,14 +352,18 @@ export default function ChatSendBox({
     }
 
     // 자동으로 메시지 전송 (비동기로 실행) - 전달된 모델 사용
-    handleSendMessage(messageText, threadId, id, state.attachedFiles, state.selectedModel).catch(
-      (err) => {
-        console.error("Auto send failed:", err);
-        // 에러 발생 시 ref 리셋하여 재시도 가능하게
-        autoSendRef.current = false;
-        processedLocationKeyRef.current = null;
-      },
-    );
+    handleSendMessage(
+      messageText,
+      threadId,
+      id,
+      state.attachedFiles,
+      state.selectedModel,
+    ).catch((err) => {
+      console.error("Auto send failed:", err);
+      // 에러 발생 시 ref 리셋하여 재시도 가능하게
+      autoSendRef.current = false;
+      processedLocationKeyRef.current = null;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, sending, location.key]);
 

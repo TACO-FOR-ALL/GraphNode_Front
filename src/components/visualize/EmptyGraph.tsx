@@ -27,7 +27,8 @@ export default function EmptyGraph() {
       const { status } = unwrapResponse(await api.graph.getStats());
       addToast({
         message: t(`visualize.empty.status.${status}`),
-        type: status === "CREATING" || status === "UPDATING" ? "info" : "success",
+        type:
+          status === "CREATING" || status === "UPDATING" ? "info" : "success",
       });
     } catch {
       addToast({

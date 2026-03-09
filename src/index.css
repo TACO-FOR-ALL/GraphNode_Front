@@ -19,6 +19,9 @@
   --color-sidebar-expanded-background: #f6f8f9;
   --color-sidebar-tab-selected: #7ab5fb;
   --color-chatbox-active: #2b89f8;
+  --color-openai-active: #2b89f8;
+  --color-claude-active: #D97757;
+  --color-gemini-active: #8C7DCE;
   --color-notebox-background: #fafafa;
   --color-notebox-add-rgb: 120, 120, 120;
   --color-note-editor-border: #e2e8f0;
@@ -54,6 +57,9 @@
   --color-primary: #2b89f8;
   --color-sidebar-tab-selected: #7ab5fb;
   --color-chatbox-active: #2b89f8;
+  --color-openai-active: #2b89f8;
+  --color-claude-active: #D97757;
+  --color-gemini-active: #8C7DCE;
   --color-chatbox-active-rgb: 43, 137, 248;
   --color-sidebar-button-hover: #1e3a5f;
   --color-sidebar-folder-plus-hover: 54, 191, 250;

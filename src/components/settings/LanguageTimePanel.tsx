@@ -1,18 +1,26 @@
-import i18n, { saveLanguage, SupportedLangs } from "@/i18n";
+import i18n, {
+  saveLanguage,
+  resetToSystemLanguage,
+  getSavedLanguage,
+} from "@/i18n";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import { useTranslation } from "react-i18next";
 import { useState, useRef, useEffect } from "react";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { useToastStore } from "@/store/useToastStore";
+import { useFirstRunStorage } from "@/store/useFirtstRunStore";
 import { api } from "@/apiClient";
 
 const languages = [
+  { code: "auto", key: "settings.language.auto" },
   { code: "ko", key: "settings.language.ko" },
   { code: "en", key: "settings.language.en" },
   { code: "zh", key: "settings.language.zh" },
   { code: "ja", key: "settings.language.ja" },
 ] as const;
+
+type LanguageCode = (typeof languages)[number]["code"];
 
 const timeFormats = [
   { value: "auto", key: "settings.timeFormat.auto" },
@@ -28,6 +36,7 @@ export default function LanguageTimePanel() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>("auto");
   const addToast = useToastStore((state) => state.addToast);
+  const { setLanguageSynced } = useFirstRunStorage();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,17 +57,26 @@ export default function LanguageTimePanel() {
     };
   }, [isOpen]);
 
-  const currentLangCode = i18nInstance.language.split("-")[0];
+  // 현재 선택된 언어 코드 (저장된 언어 없으면 "auto")
+  const savedLang = getSavedLanguage();
+  const currentCode: LanguageCode = savedLang ?? "auto";
   const currentLanguage =
-    languages.find((lang) => lang.code === currentLangCode) || languages[0];
+    languages.find((lang) => lang.code === currentCode) || languages[0];
 
-  const handleLanguageChange = async (langCode: SupportedLangs) => {
-    i18n.changeLanguage(langCode);
-
+  const handleLanguageChange = async (code: LanguageCode) => {
     try {
-      const saved = saveLanguage(langCode);
-      if (!saved) throw new Error("Local save failed");
-      await api.me.updatePreferredLanguage(langCode);
+      if (code === "auto") {
+        // 시스템 언어로 리셋 → savedLang 제거 → 매번 시스템 언어 따라감
+        const systemLang = await resetToSystemLanguage();
+        setLanguageSynced(false); // auto 전환 시 App.tsx에서 다음 마운트에도 동기화
+        await api.me.updatePreferredLanguage(systemLang);
+      } else {
+        i18n.changeLanguage(code);
+        const saved = saveLanguage(code);
+        if (!saved) throw new Error("Local save failed");
+        setLanguageSynced(true);
+        await api.me.updatePreferredLanguage(code);
+      }
     } catch {
       addToast({
         message: t("settings.language.saveFailed"),
@@ -94,7 +112,7 @@ export default function LanguageTimePanel() {
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
                   className={`w-full text-left px-4 py-2 text-[14px] hover:bg-text-tertiary/10 transition-colors duration-200 first:rounded-t-sm last:rounded-b-sm ${
-                    lang.code === currentLangCode
+                    lang.code === currentCode
                       ? "bg-text-tertiary/20 font-medium"
                       : ""
                   }`}

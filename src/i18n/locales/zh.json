@@ -258,6 +258,7 @@
     "language": {
       "title": "选择一种语言",
       "subtitle": "选择您希望 GraphNode 显示的语言。",
+      "auto": "🌐 系统语言",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
@@ -287,7 +288,7 @@
     "logout": "登出",
     "dropJsonZone": {
       "title": "拖拽 & 上传 JSON 文件",
-      "description": "将 conversation.json 文件拖拽到这里",
+      "description": "将 conversations.json 文件拖拽到这里",
       "maxSize": "只能上传一个文件 (最大 512MB 推荐)",
       "uploading": "上传中 (读取)… {progress}%",
       "parsing": "解析中 (解析)…",
@@ -299,6 +300,10 @@
         "readFailed": "文件读取失败",
         "parseFailed": "JSON 解析失败",
         "processingFailed": "处理中失败"
+      },
+      "toast": {
+        "success": "对话导入成功",
+        "error": "对话导入失败"
       }
     },
     "dropMdZone": {
@@ -308,6 +313,10 @@
       "errorMessage": {
         "notMd": "只能上传 MARKDOWN 文件 (.md)",
         "exceptOther": "部分文件因不是 MD 格式而被排除。"
+      },
+      "toast": {
+        "success": "Markdown 文件导入成功",
+        "error": "Markdown 文件导入失败"
       }
     },
     "notification": {
@@ -352,11 +361,19 @@
       },
       "clearChats": {
         "title": "清除所有聊天",
-        "description": "永久删除所有聊天对话"
+        "description": "永久删除所有聊天对话",
+        "toast": {
+          "success": "所有对话已清除",
+          "error": "清除对话失败"
+        }
       },
       "clearNotes": {
         "title": "清除所有笔记",
-        "description": "永久删除所有笔记和文件夹"
+        "description": "永久删除所有笔记和文件夹",
+        "toast": {
+          "success": "所有笔记已清除",
+          "error": "清除笔记失败"
+        }
       },
       "delete": "删除",
       "cancel": "取消",

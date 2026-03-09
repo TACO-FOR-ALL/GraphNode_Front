@@ -30,6 +30,9 @@ import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
 import { useNotificationConnection } from "./hooks/useNotification";
 import { useSettingsStore } from "./store/useSettingsStore";
+import { useFirstRunStorage } from "./store/useFirtstRunStore";
+import { api } from "./apiClient";
+import i18n, { getSavedLanguage } from "./i18n";
 import { loadAndApplyGraphColors } from "./utils/graphColors";
 import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
@@ -69,6 +72,19 @@ function MainLayout() {
   useEffect(() => {
     useSettingsStore.getState().loadSettings();
     loadAndApplyGraphColors(); // 커스텀 그래프 색상 로드
+
+    // 언어 백엔드 동기화
+    // - auto 모드(savedLang=null): 시스템 언어가 변경될 수 있으므로 매번 동기화
+    // - 수동 설정: 최초 1회만 동기화 (이후 변경은 LanguageTimePanel에서 처리)
+    const { languageSynced, setLanguageSynced } = useFirstRunStorage.getState();
+    const isAutoMode = getSavedLanguage() === null;
+
+    if (isAutoMode || !languageSynced) {
+      const lang = i18n.language.split("-")[0];
+      api.me.updatePreferredLanguage(lang)
+        .then(() => { if (!languageSynced) setLanguageSynced(true); })
+        .catch(() => {});
+    }
   }, []);
 
   // 온보딩이 완료되지 않은 경우 자동 시작

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToastStore } from "@/store/useToastStore";
 import type { Status } from "../../types/FileUploadStatus";
 import { readMdContent } from "@/utils/readMdContent";
 import { Note } from "@/types/Note";
@@ -13,10 +14,13 @@ import {
   IoCheckmarkCircle,
   IoAlertCircle,
 } from "react-icons/io5";
+import { api } from "@/apiClient";
+import { unwrapResponse } from "@/utils/httpResponse";
 
 export default function DropMdZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { addToast } = useToastStore();
 
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
@@ -50,18 +54,43 @@ export default function DropMdZone() {
         }
       }
 
-      // 로컬 및 서버 저장 (TODO: 저장 실패 로직 추가 필요)
-      noteRepo.upsertMany(results);
-      // await api.note
+      // 로컬 저장 후 서버 저장 - 서버 실패 시 로컬 롤백
+      if (results.length) {
+        const ids = results.map((r) => r.id);
+        await noteRepo.upsertMany(results);
+        try {
+          unwrapResponse(
+            await api.note.bulkCreate({
+              notes: results.map((n) => ({
+                id: n.id,
+                title: n.title,
+                content: n.content,
+                folderId: n.folderId,
+              })),
+            }),
+          );
+        } catch (e) {
+          await noteRepo.deleteMany(ids);
+          throw e;
+        }
+      }
     },
 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notes"] });
+      addToast({
+        message: t("settings.dropMdZone.toast.success"),
+        type: "success",
+      });
     },
 
     onError: (err) => {
       console.warn("Import error:", err);
       setIsParsing(false);
+      addToast({
+        message: err.message || t("settings.dropMdZone.toast.error"),
+        type: "error",
+      });
     },
 
     onSettled: () => {

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToastStore } from "@/store/useToastStore";
 import threadRepo from "../../managers/threadRepo";
 import { parseConversations } from "../../utils/parseConversations";
 import { toMarkdownFromUnknown } from "../../utils/toMarkdown";
@@ -8,6 +9,7 @@ import { ChatMessage } from "../../types/Chat";
 import type { Status } from "../../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
 import { api } from "@/apiClient";
+import { unwrapResponse } from "@/utils/httpResponse";
 import useDragDrop from "@/hooks/useDragDrop";
 import {
   IoChatbubbles,
@@ -19,6 +21,7 @@ import {
 export default function DropJsonZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { addToast } = useToastStore();
 
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
@@ -73,26 +76,42 @@ export default function DropJsonZone() {
         })),
       }));
 
-      // 6) 로컬 및 서버 저장 (TODO: 저장 실패 로직 추가 필요)
+      // 6) 로컬 저장 후 서버 저장 - 서버 실패 시 로컬 롤백
       if (normalized.length) {
-        threadRepo.upsertMany(normalized);
-        await api.conversations.bulkCreate({
-          conversations: normalized.map((n) => ({
-            id: n.id,
-            title: n.title,
-            messages: n.messages,
-          })),
-        });
+        const ids = normalized.map((n) => n.id);
+        await threadRepo.upsertMany(normalized);
+        try {
+          unwrapResponse(
+            await api.conversations.bulkCreate({
+              conversations: normalized.map((n) => ({
+                id: n.id,
+                title: n.title,
+                messages: n.messages,
+              })),
+            }),
+          );
+        } catch (e) {
+          await threadRepo.deleteMany(ids);
+          throw e;
+        }
       }
     },
 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chatThreads"] });
+      addToast({
+        message: t("settings.dropJsonZone.toast.success"),
+        type: "success",
+      });
     },
 
     onError: (err) => {
       console.warn("Import error:", err);
       setIsParsing(false);
+      addToast({
+        message: err.message || t("settings.dropJsonZone.toast.error"),
+        type: "error",
+      });
     },
 
     onSettled: () => {

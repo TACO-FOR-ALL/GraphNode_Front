@@ -258,6 +258,7 @@
     "language": {
       "title": "언어 선택하기",
       "subtitle": "GraphNode에 표시할 언어를 선택하세요.",
+      "auto": "🌐 시스템 설정",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
@@ -287,7 +288,7 @@
     "logout": "로그아웃",
     "dropJsonZone": {
       "title": "드래그 & 드롭으로 JSON 파일 업로드하기",
-      "description": "conversation.json 파일을 끌어다 놓으세요",
+      "description": "conversations.json 파일을 끌어다 놓으세요",
       "maxSize": "파일 하나만 드랍 (최대 512MB 권장)",
       "uploading": "업로드(읽는 중)… {progress}%",
       "parsing": "분석(파싱) 중…",
@@ -299,6 +300,10 @@
         "readFailed": "파일 읽기 실패",
         "parseFailed": "JSON 파싱 실패",
         "processingFailed": "처리 중 오류"
+      },
+      "toast": {
+        "success": "대화 가져오기 성공",
+        "error": "대화 가져오기 실패"
       }
     },
     "dropMdZone": {
@@ -308,6 +313,10 @@
       "errorMessage": {
         "notMd": "마크다운 파일만 업로드 해주세요 (.md)",
         "exceptOther": "일부 파일은 MD 형식이 아니라서 제외되었습니다."
+      },
+      "toast": {
+        "success": "마크다운 파일 가져오기 성공",
+        "error": "마크다운 파일 가져오기 실패"
       }
     },
     "notification": {
@@ -352,11 +361,19 @@
       },
       "clearChats": {
         "title": "모든 채팅 삭제",
-        "description": "모든 채팅 대화를 영구적으로 삭제합니다"
+        "description": "모든 채팅 대화를 영구적으로 삭제합니다",
+        "toast": {
+          "success": "모든 채팅이 삭제되었습니다",
+          "error": "채팅 삭제에 실패했습니다"
+        }
       },
       "clearNotes": {
         "title": "모든 노트 삭제",
-        "description": "모든 노트와 폴더를 영구적으로 삭제합니다"
+        "description": "모든 노트와 폴더를 영구적으로 삭제합니다",
+        "toast": {
+          "success": "모든 노트가 삭제되었습니다",
+          "error": "노트 삭제에 실패했습니다"
+        }
       },
       "delete": "삭제",
       "cancel": "취소",

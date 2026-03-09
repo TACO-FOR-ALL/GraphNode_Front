@@ -258,6 +258,7 @@
     "language": {
       "title": "言語を選択",
       "subtitle": "GraphNodeに表示する言語を選択してください。",
+      "auto": "🌐 システム言語",
       "ko": "🇰🇷 한국어",
       "en": "🇺🇸 English",
       "zh": "🇨🇳 简体中文",
@@ -287,7 +288,7 @@
     "logout": "ログアウト",
     "dropJsonZone": {
       "title": "JSONファイルをドラッグ＆ドロップでアップロード",
-      "description": "conversation.jsonファイルをここにドロップ",
+      "description": "conversations.jsonファイルをここにドロップ",
       "maxSize": "1つのファイルのみドロップ可能（最大512MB推奨）",
       "uploading": "アップロード中（読み取り中）... {progress}%",
       "parsing": "解析中（パース中）...",
@@ -299,6 +300,10 @@
         "readFailed": "ファイルの読み取りに失敗",
         "parseFailed": "JSONの解析に失敗",
         "processingFailed": "処理中に失敗"
+      },
+      "toast": {
+        "success": "会話のインポートに成功しました",
+        "error": "会話のインポートに失敗しました"
       }
     },
     "dropMdZone": {
@@ -308,6 +313,10 @@
       "errorMessage": {
         "notMd": "Markdownファイルのみアップロードできます（.md）",
         "exceptOther": "一部のファイルはMD形式でないため除外されました。"
+      },
+      "toast": {
+        "success": "Markdownファイルのインポートに成功しました",
+        "error": "Markdownファイルのインポートに失敗しました"
       }
     },
     "notification": {
@@ -352,11 +361,19 @@
       },
       "clearChats": {
         "title": "すべてのチャットをクリア",
-        "description": "すべてのチャット会話を完全に削除"
+        "description": "すべてのチャット会話を完全に削除",
+        "toast": {
+          "success": "すべてのチャットが削除されました",
+          "error": "チャットの削除に失敗しました"
+        }
       },
       "clearNotes": {
         "title": "すべてのメモをクリア",
-        "description": "すべてのメモとフォルダを完全に削除"
+        "description": "すべてのメモとフォルダを完全に削除",
+        "toast": {
+          "success": "すべてのメモが削除されました",
+          "error": "メモの削除に失敗しました"
+        }
       },
       "delete": "削除",
       "cancel": "キャンセル",

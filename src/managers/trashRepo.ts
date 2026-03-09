@@ -1,6 +1,7 @@
 import { db } from "@/db/graphnode.db";
 import { TrashedNote, TrashedThread } from "@/types/Trash";
-import { outboxRepo } from "./outboxRepo";
+import { api } from "@/apiClient";
+import { unwrapResponse } from "@/utils/httpResponse";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -22,6 +23,17 @@ export const trashRepo = {
       await db.trashedNotes.put(trashedNote);
     });
 
+    // 서버 소프트 삭제 - 실패 시 로컬 롤백
+    try {
+      unwrapResponse(await api.note.softDeleteNote(noteId));
+    } catch (e) {
+      await db.transaction("rw", db.notes, db.trashedNotes, async () => {
+        await db.trashedNotes.delete(noteId);
+        await db.notes.put(note);
+      });
+      throw e;
+    }
+
     return trashedNote;
   },
 
@@ -41,6 +53,17 @@ export const trashRepo = {
       await db.threads.delete(threadId);
       await db.trashedThreads.put(trashedThread);
     });
+
+    // 서버 소프트 삭제 - 실패 시 로컬 롤백
+    try {
+      unwrapResponse(await api.conversations.softDelete(threadId));
+    } catch (e) {
+      await db.transaction("rw", db.threads, db.trashedThreads, async () => {
+        await db.trashedThreads.delete(threadId);
+        await db.threads.put(thread);
+      });
+      throw e;
+    }
 
     return trashedThread;
   },
@@ -73,10 +96,8 @@ export const trashRepo = {
     const trashedNote = await db.trashedNotes.get(trashedNoteId);
     if (!trashedNote) return false;
 
-    await db.transaction("rw", db.trashedNotes, db.outbox, async () => {
-      await db.trashedNotes.delete(trashedNoteId);
-      await outboxRepo.enqueueNoteDelete(trashedNoteId);
-    });
+    unwrapResponse(await api.note.hardDeleteNote(trashedNoteId));
+    await db.trashedNotes.delete(trashedNoteId);
 
     return true;
   },
@@ -85,10 +106,8 @@ export const trashRepo = {
     const trashedThread = await db.trashedThreads.get(trashedThreadId);
     if (!trashedThread) return false;
 
-    await db.transaction("rw", db.trashedThreads, db.outbox, async () => {
-      await db.trashedThreads.delete(trashedThreadId);
-      await outboxRepo.enqueueThreadDelete(trashedThreadId);
-    });
+    unwrapResponse(await api.conversations.hardDelete(trashedThreadId));
+    await db.trashedThreads.delete(trashedThreadId);
 
     return true;
   },
@@ -105,25 +124,22 @@ export const trashRepo = {
     const trashedNotes = await db.trashedNotes.toArray();
     const trashedThreads = await db.trashedThreads.toArray();
 
-    await db.transaction(
-      "rw",
-      db.trashedNotes,
-      db.trashedThreads,
-      db.outbox,
-      async () => {
-        for (const note of trashedNotes) {
-          await outboxRepo.enqueueNoteDelete(note.id);
-        }
-        await db.trashedNotes.clear();
+    await Promise.all([
+      ...trashedNotes.map((n) =>
+        api.note.hardDeleteNote(n.id).then(unwrapResponse),
+      ),
+      ...trashedThreads.map((t) =>
+        api.conversations.hardDelete(t.id).then(unwrapResponse),
+      ),
+    ]);
 
-        for (const thread of trashedThreads) {
-          await outboxRepo.enqueueThreadDelete(thread.id);
-        }
-        await db.trashedThreads.clear();
-      },
-    );
+    await db.transaction("rw", db.trashedNotes, db.trashedThreads, async () => {
+      await db.trashedNotes.clear();
+      await db.trashedThreads.clear();
+    });
   },
 
+  // 백엔드에서는 서버 자체 cron 사용해서 정리 (프론트, 백엔드 분리)
   async cleanupExpiredItems(): Promise<void> {
     const now = Date.now();
 
@@ -141,22 +157,9 @@ export const trashRepo = {
       return;
     }
 
-    await db.transaction(
-      "rw",
-      db.trashedNotes,
-      db.trashedThreads,
-      db.outbox,
-      async () => {
-        for (const note of expiredNotes) {
-          await outboxRepo.enqueueNoteDelete(note.id);
-          await db.trashedNotes.delete(note.id);
-        }
-
-        for (const thread of expiredThreads) {
-          await outboxRepo.enqueueThreadDelete(thread.id);
-          await db.trashedThreads.delete(thread.id);
-        }
-      },
-    );
+    await db.transaction("rw", db.trashedNotes, db.trashedThreads, async () => {
+      await db.trashedNotes.bulkDelete(expiredNotes.map((n) => n.id));
+      await db.trashedThreads.bulkDelete(expiredThreads.map((t) => t.id));
+    });
   },
 };
