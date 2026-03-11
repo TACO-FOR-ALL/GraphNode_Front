@@ -332,24 +332,30 @@ export default function VisualizeSidebar({
 
                   {/* 주요 통계 */}
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg">
-                      <FiMessageCircle size={12} className="text-primary" />
-                      <div>
-                        <p className="text-[10px] text-text-tertiary">
+                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                      <FiMessageCircle
+                        size={12}
+                        className="text-primary flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-text-tertiary truncate">
                           {t("visualize.conversations")}
                         </p>
-                        <p className="text-[12px] font-medium text-text-primary">
+                        <p className="text-[12px] font-medium text-text-primary truncate">
                           {graphSummary.overview.total_conversations}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg">
-                      <FiActivity size={12} className="text-node-focus" />
-                      <div>
-                        <p className="text-[10px] text-text-tertiary">
+                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                      <FiActivity
+                        size={12}
+                        className="text-node-focus flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-text-tertiary truncate">
                           {t("visualize.style")}
                         </p>
-                        <p className="text-[12px] font-medium text-text-primary">
+                        <p className="text-[12px] font-medium text-text-primary truncate">
                           {graphSummary.overview.conversation_style}
                         </p>
                       </div>

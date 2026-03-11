@@ -124,9 +124,9 @@
     "chatPreview": {
       "title": "对话预览",
       "viewDetail": "查看详情",
-      "noData": "暂无数据",
-      "hardcodedTitle": "示例对话",
-      "hardcodedContent": "这是示例对话内容。加载实际数据后将在此处显示。"
+      "deletedConversation": "该对话已被删除。",
+      "analyzeWithMicroscope": "用Microscope分析",
+      "viewAnalysis": "查看分析结果"
     },
     "error": {
       "title": "无法加载图结构",

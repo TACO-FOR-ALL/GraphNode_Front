@@ -25,7 +25,7 @@ export function useNotificationConnection() {
           (event: NotificationEvent) => {
             if (event.type === "CONNECTED") {
               setConnected(true);
-              console.log("[Notification] Connected to SSE");
+              // console.log("[Notification] Connected to SSE");
             } else {
               addNotification(event);
             }

@@ -124,9 +124,9 @@
     "chatPreview": {
       "title": "Chat Preview",
       "viewDetail": "View Detail",
-      "noData": "No data",
-      "hardcodedTitle": "Sample Conversation",
-      "hardcodedContent": "This is sample conversation content. Actual data will be displayed here when loaded."
+      "deletedConversation": "This conversation has been deleted.",
+      "analyzeWithMicroscope": "Analyze with Microscope",
+      "viewAnalysis": "View Analysis"
     },
     "error": {
       "title": "Failed to load graph",

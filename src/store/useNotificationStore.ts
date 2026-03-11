@@ -114,7 +114,6 @@ function showDesktopNotification(notification: Notification) {
   if (!desktopNotification) return;
 
   const { title, body } = getNotificationContent(notification);
-
   window.notification?.showNative({ title, body });
 }
 

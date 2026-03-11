@@ -124,9 +124,9 @@
     "chatPreview": {
       "title": "チャットプレビュー",
       "viewDetail": "詳細を見る",
-      "noData": "データなし",
-      "hardcodedTitle": "サンプル会話",
-      "hardcodedContent": "これはサンプルの会話内容です。実際のデータが読み込まれるとここに表示されます。"
+      "deletedConversation": "この会話は削除されています。",
+      "analyzeWithMicroscope": "Microscopeで分析する",
+      "viewAnalysis": "分析結果を見る"
     },
     "error": {
       "title": "グラフを読み込めません",

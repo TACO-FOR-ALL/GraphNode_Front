@@ -73,7 +73,7 @@ class NotificationClient {
 
       // 연결 성공 시
       this.eventSource.onopen = () => {
-        console.log("[NotificationClient] SSE connection opened");
+        // console.log("[NotificationClient] SSE connection opened");
         this.reconnectAttempts = 0; // 재연결 카운터 초기화
         this.isConnecting = false;
       };
@@ -83,7 +83,7 @@ class NotificationClient {
       this.eventSource.onmessage = (event) => {
         try {
           const data: NotificationEvent = JSON.parse(event.data);
-          console.log("[NotificationClient] Received:", data.type);
+          // console.log("[NotificationClient] Received:", data.type);
           this.notifyListeners(data); // 등록된 모든 리스너에게 알림
         } catch (e) {
           console.error("[NotificationClient] Failed to parse message:", e);
@@ -118,7 +118,7 @@ class NotificationClient {
   // 재연결 스케줄링 (지수 백오프)
   private scheduleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log("[NotificationClient] Max reconnect attempts reached");
+      // console.log("[NotificationClient] Max reconnect attempts reached");
       return;
     }
 
@@ -128,7 +128,7 @@ class NotificationClient {
 
     // 지수 백오프: 재시도마다 대기 시간 2배 증가
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    console.log(`[NotificationClient] Reconnecting in ${delay}ms...`);
+    // console.log(`[NotificationClient] Reconnecting in ${delay}ms...`);
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
@@ -138,7 +138,7 @@ class NotificationClient {
 
   // SSE 연결 종료
   disconnect() {
-    console.log("[NotificationClient] Disconnecting...");
+    // console.log("[NotificationClient] Disconnecting...");
 
     // 재연결 타이머 정리
     if (this.reconnectTimer) {

@@ -31,7 +31,7 @@ const timeFormats = [
 type TimeFormat = "auto" | "12hour" | "24hour";
 
 export default function LanguageTimePanel() {
-  const { t, i18n: i18nInstance } = useTranslation();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>("auto");
