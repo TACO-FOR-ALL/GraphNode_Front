@@ -1,6 +1,8 @@
 import { db } from "@/db/graphnode.db";
 import { Folder } from "@/types/Folder";
 import uuid from "@/utils/uuid";
+import { outboxRepo } from "./outboxRepo";
+import { trashRepo } from "./trashRepo";
 
 export const folderRepo = {
   async create(name: string, parentId: string | null = null): Promise<Folder> {
@@ -12,7 +14,11 @@ export const folderRepo = {
       updatedAt: Date.now(),
     };
 
-    await db.folders.put(newFolder);
+    await db.transaction("rw", db.folders, db.outbox, async () => {
+      await db.folders.put(newFolder);
+      await outboxRepo.enqueueFolderCreate(newFolder.id, { name, parentId });
+    });
+
     return newFolder;
   },
 
@@ -41,9 +47,9 @@ export const folderRepo = {
     const folder = await this.getFolderById(id);
     if (!folder) return null;
 
-    await db.folders.update(id, {
-      ...updates,
-      updatedAt: Date.now(),
+    await db.transaction("rw", db.folders, db.outbox, async () => {
+      await db.folders.update(id, { ...updates, updatedAt: Date.now() });
+      await outboxRepo.enqueueFolderUpdate(id, updates);
     });
 
     return await this.getFolderById(id);
@@ -53,19 +59,16 @@ export const folderRepo = {
     const folder = await this.getFolderById(id);
     if (!folder) return null;
 
-    // 하위 폴더들도 모두 삭제 (재귀적)
+    // 하위 폴더들도 모두 재귀적으로 휴지통으로 이동
     const childFolders = await this.getFoldersByParentId(id);
     for (const childFolder of childFolders) {
       await this.deleteFolderById(childFolder.id);
     }
 
-    // 폴더 내의 모든 노트를 루트로 이동
-    const notes = await db.notes.where("folderId").equals(id).toArray();
-    for (const note of notes) {
-      await db.notes.update(note.id, { folderId: null });
-    }
+    // 휴지통으로 이동 (노트 루트 이동 + 서버 소프트 삭제 포함)
+    const trashed = await trashRepo.moveFolderToTrash(id);
+    if (!trashed) return null;
 
-    await db.folders.delete(id);
     return id;
   },
 };

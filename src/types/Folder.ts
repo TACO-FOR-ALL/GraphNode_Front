@@ -5,3 +5,13 @@ export type Folder = {
   createdAt: number;
   updatedAt: number;
 };
+
+export type FolderCreate = {
+  name: string;
+  parentId?: string | null;
+};
+
+export type FolderUpdate = {
+  name?: string;
+  parentId?: string | null;
+};

@@ -1,6 +1,7 @@
 import { db } from "@/db/graphnode.db";
 import { api } from "@/apiClient";
 import type { OutboxOp } from "@/types/Outbox";
+import type { FolderCreate, FolderUpdate } from "@/types/Folder";
 
 let running = false;
 
@@ -58,7 +59,7 @@ async function processOp(op: OutboxOp) {
         break;
 
       case "note.delete":
-        await api.note.deleteNote(op.entityId);
+        await api.note.softDeleteNote(op.entityId);
         break;
 
       case "thread.update":
@@ -66,7 +67,58 @@ async function processOp(op: OutboxOp) {
         break;
 
       case "thread.delete":
-        await api.conversations.delete(op.entityId);
+        await api.conversations.softDelete(op.entityId);
+        break;
+
+      case "folder.create": {
+        const result = await api.note.createFolder(op.payload as FolderCreate);
+        if (!result.isSuccess) throw new Error(result.error.message);
+
+        const serverId = result.data.id;
+        const localId = op.entityId;
+
+        // 서버가 다른 ID를 할당한 경우 로컬 DB를 서버 ID로 교체합니다
+        if (serverId !== localId) {
+          await db.transaction(
+            "rw",
+            db.folders,
+            db.notes,
+            db.outbox,
+            async () => {
+              const local = await db.folders.get(localId);
+              if (local) {
+                await db.folders.put({ ...local, id: serverId });
+                await db.folders.delete(localId);
+              }
+              // 해당 폴더를 참조하는 노트의 folderId 업데이트
+              const affectedNotes = await db.notes
+                .where("folderId")
+                .equals(localId)
+                .toArray();
+              for (const note of affectedNotes) {
+                await db.notes.update(note.id, { folderId: serverId });
+              }
+              // 동일 entityId를 가진 후속 outbox op의 entityId 업데이트
+              const pending = await db.outbox
+                .where("entityId")
+                .equals(localId)
+                .toArray();
+              for (const p of pending) {
+                await db.outbox.delete(p.opId);
+                await db.outbox.put({ ...p, entityId: serverId });
+              }
+            },
+          );
+        }
+        break;
+      }
+
+      case "folder.update":
+        await api.note.updateFolder(op.entityId, op.payload as FolderUpdate);
+        break;
+
+      case "folder.delete":
+        await api.note.softDeleteFolder(op.entityId);
         break;
     }
 

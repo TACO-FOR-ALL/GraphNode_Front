@@ -22,6 +22,7 @@ declare global {
       minimize: () => void;
       maximize: () => void;
       close: () => void;
+      platform: "darwin" | "win32" | "linux";
     };
     electron: {
       send: (channel: string, ...args: any[]) => void;
@@ -29,8 +30,17 @@ declare global {
     systemAPI: {
       getLocale: () => Promise<string>;
       openExternal: (url: string) => Promise<void>;
-      getSettings: () => Promise<{ hardwareAcceleration: boolean; desktopNotification: boolean }>;
-      saveSettings: (settings: { hardwareAcceleration?: boolean; desktopNotification?: boolean }) => Promise<{ hardwareAcceleration: boolean; desktopNotification: boolean }>;
+      getSettings: () => Promise<{
+        hardwareAcceleration: boolean;
+        desktopNotification: boolean;
+      }>;
+      saveSettings: (settings: {
+        hardwareAcceleration?: boolean;
+        desktopNotification?: boolean;
+      }) => Promise<{
+        hardwareAcceleration: boolean;
+        desktopNotification: boolean;
+      }>;
       restartApp: () => Promise<void>;
     };
     openaiAPI: {
@@ -39,12 +49,12 @@ declare global {
         apiKey: string,
         stream: boolean,
         model: string,
-        messages: ChatMessageRequest[]
+        messages: ChatMessageRequest[],
       ) => Promise<Result<ChatCompletion>>;
       requestGenerateThreadTitle: (
         apiKey: string,
         firstUserMessage: string,
-        opts?: { timeoutMs?: number }
+        opts?: { timeoutMs?: number },
       ) => Promise<Result<string>>;
     };
     keytarAPI: {
@@ -57,13 +67,13 @@ declare global {
     fileAPI: {
       readFileStream: (absPath: string, id: string) => void;
       onReadProgress: (
-        cb: (p: { id: string; percent: number }) => void
+        cb: (p: { id: string; percent: number }) => void,
       ) => () => void;
       onReadComplete: (
-        cb: (p: { id: string; text: string }) => void
+        cb: (p: { id: string; text: string }) => void,
       ) => () => void;
       onReadError: (
-        cb: (p: { id: string; message: string }) => void
+        cb: (p: { id: string; message: string }) => void,
       ) => () => void;
     };
     notification: {
@@ -73,7 +83,11 @@ declare global {
       onError: (callback: (error: any) => void) => void;
       activateWindow: () => void;
       setBadge: (count: number) => void;
-      showNative: (options: { title: string; body: string; silent?: boolean }) => void;
+      showNative: (options: {
+        title: string;
+        body: string;
+        silent?: boolean;
+      }) => void;
     };
     mcpAPI: {
       // 서버 목록
@@ -87,29 +101,77 @@ declare global {
       // 서버 관리
       addServer: (server: MCPServerConfig) => Promise<boolean>;
       updateServer: (server: MCPServerConfig) => Promise<boolean>;
-      updateServerConfig: (serverId: string, updates: Partial<MCPServerConfig>) => Promise<MCPServerConfig>;
+      updateServerConfig: (
+        serverId: string,
+        updates: Partial<MCPServerConfig>,
+      ) => Promise<MCPServerConfig>;
       deleteServer: (serverId: string) => Promise<boolean>;
       // 연결 관리
       connectServer: (serverId: string) => Promise<MCPServerState>;
       disconnectServer: (serverId: string) => Promise<MCPServerState>;
-      toggleServer: (serverId: string, enabled: boolean) => Promise<MCPServerState>;
+      toggleServer: (
+        serverId: string,
+        enabled: boolean,
+      ) => Promise<MCPServerState>;
       // 도구 및 리소스
-      callTool: (serverId: string, toolName: string, arguments_: Record<string, unknown>) => Promise<MCPToolCallResult>;
-      readResource: (serverId: string, uri: string) => Promise<{ contents: unknown[] }>;
+      callTool: (
+        serverId: string,
+        toolName: string,
+        arguments_: Record<string, unknown>,
+      ) => Promise<MCPToolCallResult>;
+      readResource: (
+        serverId: string,
+        uri: string,
+      ) => Promise<{ contents: unknown[] }>;
       getAllTools: () => Promise<Array<{ serverId: string; tools: MCPTool[] }>>;
       // Built-in 서버 설정
-      updateBuiltinSettings: (serverId: string, settings: Record<string, unknown>) => Promise<MCPServerConfig>;
+      updateBuiltinSettings: (
+        serverId: string,
+        settings: Record<string, unknown>,
+      ) => Promise<MCPServerConfig>;
       // Google OAuth
-      startGoogleOAuth: (serverType: "google-drive" | "google-calendar") => Promise<{ success: boolean; credentialsPath?: string; error?: string }>;
-      checkGoogleOAuth: (serverType: "google-drive" | "google-calendar") => Promise<{ authenticated: boolean; credentialsPath?: string }>;
-      disconnectGoogleOAuth: (serverType: "google-drive" | "google-calendar") => Promise<{ success: boolean }>;
+      startGoogleOAuth: (
+        serverType: "google-drive" | "google-calendar",
+      ) => Promise<{
+        success: boolean;
+        credentialsPath?: string;
+        error?: string;
+      }>;
+      checkGoogleOAuth: (
+        serverType: "google-drive" | "google-calendar",
+      ) => Promise<{ authenticated: boolean; credentialsPath?: string }>;
+      disconnectGoogleOAuth: (
+        serverType: "google-drive" | "google-calendar",
+      ) => Promise<{ success: boolean }>;
       openGoogleCloudConsole: () => Promise<{ success: boolean }>;
       // Google 자격 증명 파일
-      selectGoogleCredentialsFile: () => Promise<{ success: boolean; canceled?: boolean; error?: string; credentialsPath?: string; clientId?: string }>;
-      processGoogleCredentialsFile: (filePath: string) => Promise<{ success: boolean; error?: string; credentialsPath?: string; clientId?: string }>;
-      saveGoogleCredentialsContent: (content: string) => Promise<{ success: boolean; error?: string; credentialsPath?: string; clientId?: string }>;
+      selectGoogleCredentialsFile: () => Promise<{
+        success: boolean;
+        canceled?: boolean;
+        error?: string;
+        credentialsPath?: string;
+        clientId?: string;
+      }>;
+      processGoogleCredentialsFile: (
+        filePath: string,
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+        credentialsPath?: string;
+        clientId?: string;
+      }>;
+      saveGoogleCredentialsContent: (
+        content: string,
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+        credentialsPath?: string;
+        clientId?: string;
+      }>;
       // 상태 변경 이벤트
-      onStateChanged: (callback: (states: MCPServerState[]) => void) => () => void;
+      onStateChanged: (
+        callback: (states: MCPServerState[]) => void,
+      ) => () => void;
     };
   }
 }

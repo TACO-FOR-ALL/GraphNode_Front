@@ -4,7 +4,10 @@ export type OutboxOpType =
   | "note.move"
   | "note.delete"
   | "thread.update"
-  | "thread.delete";
+  | "thread.delete"
+  | "folder.create"
+  | "folder.update"
+  | "folder.delete";
 
 export type OutboxOp = {
   opId: string;

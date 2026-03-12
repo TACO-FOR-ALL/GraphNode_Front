@@ -7,6 +7,9 @@ import type {
   GraphSnapshotDto,
   GraphSummaryDto,
   NoteDto,
+  FolderDto,
+  ConversationDto,
+  MessageDto,
 } from "@taco_tsinghua/graphnode-sdk";
 import type {
   PositionedNode,
@@ -18,6 +21,8 @@ import type {
 } from "@/types/GraphData";
 import type { GraphSummary } from "@/types/GraphSummary";
 import type { Note } from "@/types/Note";
+import type { Folder } from "@/types/Folder";
+import type { ChatThread, ChatMessage } from "@/types/Chat";
 
 // 날짜 변환 헬퍼
 function toTimestamp(isoString: string | null | undefined): number | null {
@@ -192,5 +197,38 @@ export function mapNote(dto: NoteDto): Note {
     folderId: dto.folderId,
     createdAt: toTimestampRequired(dto.createdAt),
     updatedAt: toTimestampRequired(dto.updatedAt),
+  };
+}
+
+// Folder 변환
+export function mapFolder(dto: FolderDto): Folder {
+  return {
+    id: dto.id,
+    name: dto.name,
+    parentId: dto.parentId,
+    createdAt: toTimestampRequired(dto.createdAt),
+    updatedAt: toTimestampRequired(dto.updatedAt),
+  };
+}
+
+// Message 변환
+export function mapMessage(dto: MessageDto): ChatMessage {
+  return {
+    id: dto.id,
+    role: dto.role,
+    content: dto.content,
+    ts: dto.createdAt ? new Date(dto.createdAt).getTime() : Date.now(),
+  };
+}
+
+// Conversation → ChatThread 변환
+export function mapConversation(dto: ConversationDto): ChatThread {
+  return {
+    id: dto.id,
+    title: dto.title,
+    messages: dto.messages
+      .filter((m) => !m.deletedAt)
+      .map(mapMessage),
+    updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
   };
 }

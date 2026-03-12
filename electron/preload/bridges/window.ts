@@ -6,6 +6,7 @@ export default function exposeWindowBridge() {
     minimize: () => ipcRenderer.send("window:minimize"),
     maximize: () => ipcRenderer.send("window:maximize"),
     close: () => ipcRenderer.send("window:close"),
+    platform: process.platform,
   });
   contextBridge.exposeInMainWorld("electron", {
     // ipcRenderer.send(): contextBridge.exposeInMainWorld()를 통해 브라우저에 안전한 API 노출 (preload가 브릿지)

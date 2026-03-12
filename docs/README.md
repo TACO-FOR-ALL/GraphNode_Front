@@ -15,6 +15,7 @@
 - `docs/development-guide.md`: 로컬 실행, 빌드, 테스트, 디렉토리별 작업 규칙
 - `docs/architecture.md`: 앱 구조, 라우팅, 상태관리, 보안 경계
 - `docs/data-sync-ipc.md`: DB 스키마, Outbox coalescing, sync worker, IPC 브리지
+- `docs/feature-map.md`: 주요 라우트, 부팅 순서, 핵심 모듈 책임 빠른 참조
 - `docs/MCP_ARCHITECTURE.md`: MCP 서버 구조, IPC 채널, 호출 흐름
 - `docs/CHANGELOG_DEV.md`: 최근 개발 변경 사항 로그
 - `docs/testing-strategy.md`: 테스트 범위, 실행 방법, 우선순위

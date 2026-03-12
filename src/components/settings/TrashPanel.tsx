@@ -6,10 +6,11 @@ import {
   IoRefresh,
   IoDocumentText,
   IoChatbubbles,
+  IoFolder,
 } from "react-icons/io5";
-import { TrashedNote, TrashedThread } from "@/types/Trash";
+import { TrashedNote, TrashedThread, TrashedFolder } from "@/types/Trash";
 
-type TabType = "all" | "notes" | "chats";
+type TabType = "all" | "notes" | "chats" | "folders";
 
 export default function TrashPanel() {
   const { t } = useTranslation();
@@ -20,16 +21,19 @@ export default function TrashPanel() {
 
   const [trashedNotes, setTrashedNotes] = useState<TrashedNote[]>([]);
   const [trashedThreads, setTrashedThreads] = useState<TrashedThread[]>([]);
+  const [trashedFolders, setTrashedFolders] = useState<TrashedFolder[]>([]);
 
   const loadTrash = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [notes, threads] = await Promise.all([
+      const [notes, threads, folders] = await Promise.all([
         trashRepo.getTrashedNotes(),
         trashRepo.getTrashedThreads(),
+        trashRepo.getTrashedFolders(),
       ]);
       setTrashedNotes(notes);
       setTrashedThreads(threads);
+      setTrashedFolders(folders);
     } finally {
       setIsLoading(false);
     }
@@ -49,6 +53,11 @@ export default function TrashPanel() {
     setTrashedThreads((prev) => prev.filter((thread) => thread.id !== id));
   };
 
+  const handleRestoreFolder = async (id: string) => {
+    await trashRepo.restoreFolder(id);
+    setTrashedFolders((prev) => prev.filter((folder) => folder.id !== id));
+  };
+
   const handleDeleteNote = async (id: string) => {
     await trashRepo.permanentlyDeleteNote(id);
     setTrashedNotes((prev) => prev.filter((note) => note.id !== id));
@@ -59,12 +68,18 @@ export default function TrashPanel() {
     setTrashedThreads((prev) => prev.filter((thread) => thread.id !== id));
   };
 
+  const handleDeleteFolder = async (id: string) => {
+    await trashRepo.permanentlyDeleteFolder(id);
+    setTrashedFolders((prev) => prev.filter((folder) => folder.id !== id));
+  };
+
   const handleEmptyTrash = async () => {
     setIsEmptying(true);
     try {
       await trashRepo.emptyTrash();
       setTrashedNotes([]);
       setTrashedThreads([]);
+      setTrashedFolders([]);
       setShowEmptyConfirm(false);
     } finally {
       setIsEmptying(false);
@@ -81,8 +96,11 @@ export default function TrashPanel() {
     activeTab === "all" || activeTab === "notes" ? trashedNotes : [];
   const filteredThreads =
     activeTab === "all" || activeTab === "chats" ? trashedThreads : [];
+  const filteredFolders =
+    activeTab === "all" || activeTab === "folders" ? trashedFolders : [];
 
-  const totalItems = trashedNotes.length + trashedThreads.length;
+  const totalItems =
+    trashedNotes.length + trashedThreads.length + trashedFolders.length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,36 +130,26 @@ export default function TrashPanel() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-bg-tertiary">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "all"
-              ? "text-accent-primary border-b-2 border-accent-primary"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          {t("settings.dataPrivacy.trash.all", "All")} ({totalItems})
-        </button>
-        <button
-          onClick={() => setActiveTab("notes")}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "notes"
-              ? "text-accent-primary border-b-2 border-accent-primary"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          {t("search.notes", "Notes")} ({trashedNotes.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("chats")}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === "chats"
-              ? "text-accent-primary border-b-2 border-accent-primary"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          {t("search.chats", "Chats")} ({trashedThreads.length})
-        </button>
+        {(
+          [
+            { key: "all", label: t("settings.dataPrivacy.trash.all", "All"), count: totalItems },
+            { key: "notes", label: t("search.notes", "Notes"), count: trashedNotes.length },
+            { key: "chats", label: t("search.chats", "Chats"), count: trashedThreads.length },
+            { key: "folders", label: t("notes.folders", "Folders"), count: trashedFolders.length },
+          ] as const
+        ).map(({ key, label, count }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === key
+                ? "text-accent-primary border-b-2 border-accent-primary"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {label} ({count})
+          </button>
+        ))}
       </div>
 
       {/* Content */}
@@ -159,6 +167,15 @@ export default function TrashPanel() {
           </div>
         ) : (
           <>
+            {filteredFolders.map((folder) => (
+              <TrashFolderItem
+                key={folder.id}
+                folder={folder}
+                daysLeft={getDaysUntilExpiry(folder.expiresAt)}
+                onRestore={() => handleRestoreFolder(folder.id)}
+                onDelete={() => handleDeleteFolder(folder.id)}
+              />
+            ))}
             {filteredNotes.map((note) => (
               <TrashNoteItem
                 key={note.id}
@@ -195,16 +212,14 @@ export default function TrashPanel() {
   );
 }
 
-function TrashNoteItem({
-  note,
-  daysLeft,
+// ── Shared action buttons ─────────────────────────────────────────────────────
+
+function TrashItemActions({
   onRestore,
   onDelete,
 }: {
-  note: TrashedNote;
-  daysLeft: number;
   onRestore: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -219,6 +234,100 @@ function TrashNoteItem({
     }
   };
 
+  return (
+    <div className="flex items-center gap-2">
+      {!showDeleteConfirm ? (
+        <>
+          <button
+            onClick={onRestore}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-accent-primary hover:bg-bg-tertiary rounded transition-colors"
+            title={t("settings.dataPrivacy.trash.restore", "Restore")}
+          >
+            <IoRefresh className="text-sm" />
+            {t("settings.dataPrivacy.trash.restore", "Restore")}
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+          >
+            <IoTrash className="text-sm" />
+            {t("settings.dataPrivacy.trash.delete", "Delete")}
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            onClick={() => setShowDeleteConfirm(false)}
+            disabled={isDeleting}
+            className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors"
+          >
+            {t("settings.dataPrivacy.cancel", "Cancel")}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
+          >
+            {isDeleting
+              ? t("settings.dataPrivacy.deleting", "Deleting...")
+              : t("settings.dataPrivacy.confirmDelete", "Confirm")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Folder item ───────────────────────────────────────────────────────────────
+
+function TrashFolderItem({
+  folder,
+  daysLeft,
+  onRestore,
+  onDelete,
+}: {
+  folder: TrashedFolder;
+  daysLeft: number;
+  onRestore: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between p-3 bg-bg-secondary rounded-lg">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <IoFolder className="text-lg text-text-secondary flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-text-primary truncate">
+            {folder.originalFolder.name}
+          </p>
+          <p className="text-xs text-text-tertiary">
+            {t(
+              "settings.dataPrivacy.trash.expiresIn",
+              "Expires in {{days}} days",
+              { days: daysLeft },
+            )}
+          </p>
+        </div>
+      </div>
+      <TrashItemActions onRestore={onRestore} onDelete={onDelete} />
+    </div>
+  );
+}
+
+// ── Note item ─────────────────────────────────────────────────────────────────
+
+function TrashNoteItem({
+  note,
+  daysLeft,
+  onRestore,
+  onDelete,
+}: {
+  note: TrashedNote;
+  daysLeft: number;
+  onRestore: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between p-3 bg-bg-secondary rounded-lg">
       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -231,60 +340,17 @@ function TrashNoteItem({
             {t(
               "settings.dataPrivacy.trash.expiresIn",
               "Expires in {{days}} days",
-              {
-                days: daysLeft,
-              },
+              { days: daysLeft },
             )}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {!showDeleteConfirm ? (
-          <>
-            <button
-              onClick={onRestore}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-accent-primary hover:bg-bg-tertiary rounded transition-colors"
-              title={t("settings.dataPrivacy.trash.restore", "Restore")}
-            >
-              <IoRefresh className="text-sm" />
-              {t("settings.dataPrivacy.trash.restore", "Restore")}
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-              title={t(
-                "settings.dataPrivacy.trash.delete",
-                "Delete Permanently",
-              )}
-            >
-              <IoTrash className="text-sm" />
-              {t("settings.dataPrivacy.trash.delete", "Delete")}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => setShowDeleteConfirm(false)}
-              disabled={isDeleting}
-              className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors"
-            >
-              {t("settings.dataPrivacy.cancel", "Cancel")}
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
-            >
-              {isDeleting
-                ? t("settings.dataPrivacy.deleting", "Deleting...")
-                : t("settings.dataPrivacy.confirmDelete", "Confirm")}
-            </button>
-          </>
-        )}
-      </div>
+      <TrashItemActions onRestore={onRestore} onDelete={onDelete} />
     </div>
   );
 }
+
+// ── Thread item ───────────────────────────────────────────────────────────────
 
 function TrashThreadItem({
   thread,
@@ -295,21 +361,9 @@ function TrashThreadItem({
   thread: TrashedThread;
   daysLeft: number;
   onRestore: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await onDelete();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   return (
     <div className="flex items-center justify-between p-3 bg-bg-secondary rounded-lg">
       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -322,57 +376,12 @@ function TrashThreadItem({
             {t(
               "settings.dataPrivacy.trash.expiresIn",
               "Expires in {{days}} days",
-              {
-                days: daysLeft,
-              },
+              { days: daysLeft },
             )}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {!showDeleteConfirm ? (
-          <>
-            <button
-              onClick={onRestore}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-accent-primary hover:bg-bg-tertiary rounded transition-colors"
-              title={t("settings.dataPrivacy.trash.restore", "Restore")}
-            >
-              <IoRefresh className="text-sm" />
-              {t("settings.dataPrivacy.trash.restore", "Restore")}
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-              title={t(
-                "settings.dataPrivacy.trash.delete",
-                "Delete Permanently",
-              )}
-            >
-              <IoTrash className="text-sm" />
-              {t("settings.dataPrivacy.trash.delete", "Delete")}
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => setShowDeleteConfirm(false)}
-              disabled={isDeleting}
-              className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors"
-            >
-              {t("settings.dataPrivacy.cancel", "Cancel")}
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
-            >
-              {isDeleting
-                ? t("settings.dataPrivacy.deleting", "Deleting...")
-                : t("settings.dataPrivacy.confirmDelete", "Confirm")}
-            </button>
-          </>
-        )}
-      </div>
+      <TrashItemActions onRestore={onRestore} onDelete={onDelete} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { db } from "@/db/graphnode.db";
-import { TrashedNote, TrashedThread } from "@/types/Trash";
+import { TrashedNote, TrashedThread, TrashedFolder } from "@/types/Trash";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
 
@@ -112,6 +112,78 @@ export const trashRepo = {
     return true;
   },
 
+  // ── Folder ─────────────────────────────────────────────────────────────
+
+  async moveFolderToTrash(folderId: string): Promise<TrashedFolder | null> {
+    const folder = await db.folders.get(folderId);
+    if (!folder) return null;
+
+    const now = Date.now();
+    const notesInFolder = await db.notes.where("folderId").equals(folderId).toArray();
+    const noteIds = notesInFolder.map((n) => n.id);
+
+    const trashedFolder: TrashedFolder = {
+      id: folderId,
+      originalFolder: folder,
+      noteIds,
+      deletedAt: now,
+      expiresAt: now + THIRTY_DAYS_MS,
+    };
+
+    await db.transaction("rw", db.folders, db.notes, db.trashedFolders, async () => {
+      for (const noteId of noteIds) {
+        await db.notes.update(noteId, { folderId: null });
+      }
+      await db.folders.delete(folderId);
+      await db.trashedFolders.put(trashedFolder);
+    });
+
+    // 서버 소프트 삭제 - 실패 시 로컬 롤백
+    try {
+      unwrapResponse(await api.note.softDeleteFolder(folderId));
+    } catch (e) {
+      await db.transaction("rw", db.folders, db.notes, db.trashedFolders, async () => {
+        await db.trashedFolders.delete(folderId);
+        await db.folders.put(folder);
+        for (const noteId of noteIds) {
+          await db.notes.update(noteId, { folderId });
+        }
+      });
+      throw e;
+    }
+
+    return trashedFolder;
+  },
+
+  async restoreFolder(trashedFolderId: string): Promise<boolean> {
+    const trashedFolder = await db.trashedFolders.get(trashedFolderId);
+    if (!trashedFolder) return false;
+
+    await db.transaction("rw", db.folders, db.notes, db.trashedFolders, async () => {
+      await db.folders.put(trashedFolder.originalFolder);
+      for (const noteId of trashedFolder.noteIds) {
+        await db.notes.update(noteId, { folderId: trashedFolderId });
+      }
+      await db.trashedFolders.delete(trashedFolderId);
+    });
+
+    return true;
+  },
+
+  async permanentlyDeleteFolder(trashedFolderId: string): Promise<boolean> {
+    const trashedFolder = await db.trashedFolders.get(trashedFolderId);
+    if (!trashedFolder) return false;
+
+    unwrapResponse(await api.note.hardDeleteFolder(trashedFolderId));
+    await db.trashedFolders.delete(trashedFolderId);
+
+    return true;
+  },
+
+  async getTrashedFolders(): Promise<TrashedFolder[]> {
+    return await db.trashedFolders.orderBy("deletedAt").reverse().toArray();
+  },
+
   async getTrashedNotes(): Promise<TrashedNote[]> {
     return await db.trashedNotes.orderBy("deletedAt").reverse().toArray();
   },
@@ -123,6 +195,7 @@ export const trashRepo = {
   async emptyTrash(): Promise<void> {
     const trashedNotes = await db.trashedNotes.toArray();
     const trashedThreads = await db.trashedThreads.toArray();
+    const trashedFolders = await db.trashedFolders.toArray();
 
     await Promise.all([
       ...trashedNotes.map((n) =>
@@ -131,35 +204,50 @@ export const trashRepo = {
       ...trashedThreads.map((t) =>
         api.conversations.hardDelete(t.id).then(unwrapResponse),
       ),
+      ...trashedFolders.map((f) =>
+        api.note.hardDeleteFolder(f.id).then(unwrapResponse),
+      ),
     ]);
 
-    await db.transaction("rw", db.trashedNotes, db.trashedThreads, async () => {
-      await db.trashedNotes.clear();
-      await db.trashedThreads.clear();
-    });
+    await db.transaction(
+      "rw",
+      db.trashedNotes,
+      db.trashedThreads,
+      db.trashedFolders,
+      async () => {
+        await db.trashedNotes.clear();
+        await db.trashedThreads.clear();
+        await db.trashedFolders.clear();
+      },
+    );
   },
 
   // 백엔드에서는 서버 자체 cron 사용해서 정리 (프론트, 백엔드 분리)
   async cleanupExpiredItems(): Promise<void> {
     const now = Date.now();
 
-    const expiredNotes = await db.trashedNotes
-      .where("expiresAt")
-      .below(now)
-      .toArray();
+    const expiredNotes = await db.trashedNotes.where("expiresAt").below(now).toArray();
+    const expiredThreads = await db.trashedThreads.where("expiresAt").below(now).toArray();
+    const expiredFolders = await db.trashedFolders.where("expiresAt").below(now).toArray();
 
-    const expiredThreads = await db.trashedThreads
-      .where("expiresAt")
-      .below(now)
-      .toArray();
-
-    if (expiredNotes.length === 0 && expiredThreads.length === 0) {
+    if (
+      expiredNotes.length === 0 &&
+      expiredThreads.length === 0 &&
+      expiredFolders.length === 0
+    ) {
       return;
     }
 
-    await db.transaction("rw", db.trashedNotes, db.trashedThreads, async () => {
-      await db.trashedNotes.bulkDelete(expiredNotes.map((n) => n.id));
-      await db.trashedThreads.bulkDelete(expiredThreads.map((t) => t.id));
-    });
+    await db.transaction(
+      "rw",
+      db.trashedNotes,
+      db.trashedThreads,
+      db.trashedFolders,
+      async () => {
+        await db.trashedNotes.bulkDelete(expiredNotes.map((n) => n.id));
+        await db.trashedThreads.bulkDelete(expiredThreads.map((t) => t.id));
+        await db.trashedFolders.bulkDelete(expiredFolders.map((f) => f.id));
+      },
+    );
   },
 };

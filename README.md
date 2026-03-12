@@ -227,6 +227,8 @@ this.version(2).stores({
 
 ```bash
 git push origin develop   # TACO-FOR-ALL/GraphNode_Front => 개발 및 IPC 업데이트 배포용
+
+git remote add app https://github.com/Yoy0z-maps/graphnode-web.git
 git push app develop      # Yoy0z-maps/graphnode-app (vercel) => 웹 서버 URL 배포용
 ```
 

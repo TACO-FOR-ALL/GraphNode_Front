@@ -28,12 +28,14 @@ import { useThemeStore } from "./store/useThemeStore";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
+import { useToastStore } from "./store/useToastStore";
 import { useNotificationConnection } from "./hooks/useNotification";
 import { useSettingsStore } from "./store/useSettingsStore";
 import { useFirstRunStorage } from "./store/useFirtstRunStore";
 import { api } from "./apiClient";
 import i18n, { getSavedLanguage } from "./i18n";
 import { loadAndApplyGraphColors } from "./utils/graphColors";
+import { pullOnce } from "./managers/pullWorker";
 import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
 import { useOnboardingStore } from "./store/useOnboardingStore";
@@ -81,8 +83,11 @@ function MainLayout() {
 
     if (isAutoMode || !languageSynced) {
       const lang = i18n.language.split("-")[0];
-      api.me.updatePreferredLanguage(lang)
-        .then(() => { if (!languageSynced) setLanguageSynced(true); })
+      api.me
+        .updatePreferredLanguage(lang)
+        .then(() => {
+          if (!languageSynced) setLanguageSynced(true);
+        })
         .catch(() => {});
     }
   }, []);
@@ -195,6 +200,17 @@ function MainLayout() {
       const me = await window.keytarAPI.getMe();
       setMe(me as Me);
     })();
+  }, []);
+
+  // 앱 시작 시 서버 최신 데이터 pull (notes, folders, conversations)
+  useEffect(() => {
+    pullOnce().catch((err) => {
+      console.error("Initial sync pull failed:", err);
+      useToastStore.getState().addToast({
+        type: "error",
+        message: t("sync.pullFailed"),
+      });
+    });
   }, []);
 
   const { isOpen, setIsOpen } = useAgentToolBoxStore();

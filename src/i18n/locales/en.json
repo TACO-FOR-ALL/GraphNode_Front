@@ -518,5 +518,8 @@
         "learnMore": "Learn more about MCP (Official)"
       }
     }
+  },
+  "sync": {
+    "pullFailed": "Failed to sync data from server. Please check your connection."
   }
 }

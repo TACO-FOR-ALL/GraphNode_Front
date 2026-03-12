@@ -2,6 +2,7 @@ import { db } from "@/db/graphnode.db";
 import uuid from "@/utils/uuid";
 import type { OutboxOp, OutboxOpType } from "@/types/Outbox";
 import type { NoteCreate, NoteUpdate } from "@/types/Note";
+import type { FolderCreate, FolderUpdate } from "@/types/Folder";
 import type { ConversationUpdate } from "@/types/Conversation";
 
 /**
@@ -36,6 +37,18 @@ export const outboxRepo = {
   },
   async enqueueThreadDelete(threadId: string) {
     await enqueueWithCoalesce("thread.delete", threadId, null);
+  },
+
+  async enqueueFolderCreate(folderId: string, payload: FolderCreate) {
+    await enqueueWithCoalesce("folder.create", folderId, payload);
+  },
+
+  async enqueueFolderUpdate(folderId: string, payload: FolderUpdate) {
+    await enqueueWithCoalesce("folder.update", folderId, payload);
+  },
+
+  async enqueueFolderDelete(folderId: string) {
+    await enqueueWithCoalesce("folder.delete", folderId, null);
   },
 };
 
@@ -84,7 +97,11 @@ async function enqueueWithCoalesce(
     // (A-3) thread.update: threadId당 1개로 coalesce
     if (type === "thread.update") {
       const existing = await db.outbox
-        .where({ entityId, type: "thread.update" as const, status: "pending" as const })
+        .where({
+          entityId,
+          type: "thread.update" as const,
+          status: "pending" as const,
+        })
         .first();
 
       if (existing) {
@@ -99,6 +116,75 @@ async function enqueueWithCoalesce(
       }
 
       await db.outbox.put(makeOp(entityId, "thread.update", payload, now));
+      return;
+    }
+
+    // ── Folder ops ─────────────────────────────────────────────────────────
+
+    // folder.delete: 관련 pending op 정리 후 delete만 남김
+    if (type === "folder.delete") {
+      const related = await db.outbox
+        .where("entityId")
+        .equals(entityId)
+        .toArray();
+      const pendingOnly = related.filter((r) => r.status === "pending");
+      if (pendingOnly.length) {
+        await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
+      }
+      await db.outbox.put(makeOp(entityId, "folder.delete", null, now));
+      return;
+    }
+
+    // folder.create pending + folder.update incoming → merge into create payload
+    if (type === "folder.update") {
+      const pendingCreate = await db.outbox
+        .where({
+          entityId,
+          type: "folder.create" as const,
+          status: "pending" as const,
+        })
+        .first();
+      if (pendingCreate) {
+        const merged = {
+          ...(pendingCreate.payload as FolderCreate),
+          ...(payload as FolderUpdate),
+        };
+        await db.outbox.update(pendingCreate.opId, {
+          payload: merged,
+          nextRetryAt: now,
+          updatedAt: now,
+          lastError: undefined,
+        });
+        return;
+      }
+
+      // folder.update: 1개로 coalesce
+      const existing = await db.outbox
+        .where({
+          entityId,
+          type: "folder.update" as const,
+          status: "pending" as const,
+        })
+        .first();
+      if (existing) {
+        await db.outbox.update(existing.opId, {
+          payload: {
+            ...(existing.payload as FolderUpdate),
+            ...(payload as FolderUpdate),
+          },
+          nextRetryAt: now,
+          updatedAt: now,
+          lastError: undefined,
+        });
+        return;
+      }
+
+      await db.outbox.put(makeOp(entityId, "folder.update", payload, now));
+      return;
+    }
+
+    if (type === "folder.create") {
+      await db.outbox.put(makeOp(entityId, "folder.create", payload, now));
       return;
     }
 

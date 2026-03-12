@@ -6,7 +6,7 @@ import type { ChatThread } from "../types/Chat";
 import { Note } from "@/types/Note";
 import { Folder } from "@/types/Folder";
 import { OutboxOp } from "@/types/Outbox";
-import { TrashedNote, TrashedThread } from "@/types/Trash";
+import { TrashedNote, TrashedThread, TrashedFolder } from "@/types/Trash";
 
 export class ChatDB extends Dexie {
   // Table<T, K> T: 테이블 타입, K: 기본키 타입 (T.id의 타입)
@@ -16,6 +16,7 @@ export class ChatDB extends Dexie {
   outbox!: Table<OutboxOp, string>;
   trashedNotes!: Table<TrashedNote, string>;
   trashedThreads!: Table<TrashedThread, string>;
+  trashedFolders!: Table<TrashedFolder, string>;
 
   constructor() {
     super("GraphNode_Front_ChatDB");
@@ -48,6 +49,17 @@ export class ChatDB extends Dexie {
       outbox: "opId, entityId, type, status, createdAt, [status+nextRetryAt]",
       trashedNotes: "id, deletedAt, expiresAt",
       trashedThreads: "id, deletedAt, expiresAt",
+    });
+
+    // 폴더 휴지통 추가
+    this.version(5).stores({
+      threads: "id, updatedAt, title, messages",
+      notes: "id, title, content, createdAt, updatedAt, folderId",
+      folders: "id, name, parentId, createdAt, updatedAt",
+      outbox: "opId, entityId, type, status, createdAt, [status+nextRetryAt]",
+      trashedNotes: "id, deletedAt, expiresAt",
+      trashedThreads: "id, deletedAt, expiresAt",
+      trashedFolders: "id, deletedAt, expiresAt",
     });
   }
 }
