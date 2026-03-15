@@ -78,12 +78,14 @@ export default function ChatWindow({
   const total = allMessages.length;
   const startIndex = Math.max(0, total - visibleCount);
   const visible = total ? allMessages.slice(startIndex) : [];
-  const lastVisibleMessage = visible.length > 0 ? visible[visible.length - 1] : null;
+  const lastVisibleMessage =
+    visible.length > 0 ? visible[visible.length - 1] : null;
   const hasActiveTurn =
     !!lastVisibleMessage &&
     (isTyping ||
       lastVisibleMessage.role === "user" ||
-      (lastVisibleMessage.role === "assistant" && lastVisibleMessage.content === ""));
+      (lastVisibleMessage.role === "assistant" &&
+        lastVisibleMessage.content === ""));
 
   // 이전 메시지(history)와 현재 활성 턴(가장 최근 user + 그 이후 assistant들) 분리
   const { history, currentTurn } = useMemo(() => {
@@ -110,15 +112,24 @@ export default function ChatWindow({
   }, [visible, hasActiveTurn]);
 
   const shouldUseTopAnchoredTurn = currentTurn.length > 0;
-  const turnUserMessage = currentTurn[0]?.role === "user" ? currentTurn[0] : null;
+  const turnUserMessage =
+    currentTurn[0]?.role === "user" ? currentTurn[0] : null;
   const turnAssistantMessages = turnUserMessage ? currentTurn.slice(1) : [];
   const lastUserMessage = turnUserMessage;
   const lastUserMessageId = lastUserMessage?.id;
 
   const spacerHeight = useMemo(() => {
     if (!shouldUseTopAnchoredTurn) return 0;
-    return Math.max(0, containerHeight - (userMessageHeight + aiResponseHeight));
-  }, [shouldUseTopAnchoredTurn, containerHeight, userMessageHeight, aiResponseHeight]);
+    return Math.max(
+      0,
+      containerHeight - (userMessageHeight + aiResponseHeight),
+    );
+  }, [
+    shouldUseTopAnchoredTurn,
+    containerHeight,
+    userMessageHeight,
+    aiResponseHeight,
+  ]);
 
   const alignCurrentTurnToTop = () => {
     const scroller = wrapRef.current;
@@ -145,8 +156,12 @@ export default function ChatWindow({
     const measureHeights = () => {
       const userHeight = lastUserMessageRef.current?.offsetHeight ?? 0;
       const aiHeight = aiTurnRef.current?.offsetHeight ?? 0;
-      setUserMessageHeight((prev) => (Math.abs(prev - userHeight) > 1 ? userHeight : prev));
-      setAiResponseHeight((prev) => (Math.abs(prev - aiHeight) > 1 ? aiHeight : prev));
+      setUserMessageHeight((prev) =>
+        Math.abs(prev - userHeight) > 1 ? userHeight : prev,
+      );
+      setAiResponseHeight((prev) =>
+        Math.abs(prev - aiHeight) > 1 ? aiHeight : prev,
+      );
     };
 
     measureHeights();
@@ -227,8 +242,10 @@ export default function ChatWindow({
   }, [startIndex, threadId, shouldUseTopAnchoredTurn]);
 
   // 전체 visible 배열에서 마지막 메시지 ID 확인
-  const lastMessageId = visible.length > 0 ? visible[visible.length - 1]?.id : null;
-  const lastMessageRole = visible.length > 0 ? visible[visible.length - 1]?.role : null;
+  const lastMessageId =
+    visible.length > 0 ? visible[visible.length - 1]?.id : null;
+  const lastMessageRole =
+    visible.length > 0 ? visible[visible.length - 1]?.role : null;
 
   // 메시지 버블 렌더링 함수
   const renderMessage = (m: ChatMessage, isInCurrentTurn: boolean = false) => {
@@ -236,12 +253,11 @@ export default function ChatWindow({
 
     // 전체 visible 배열에서 마지막 어시스턴트 메시지인지 확인 (스트리밍 중인 메시지)
     const isLastAssistantMessage =
-      !isUser &&
-      m.id === lastMessageId &&
-      lastMessageRole === "assistant";
+      !isUser && m.id === lastMessageId && lastMessageRole === "assistant";
 
     // currentTurn의 마지막 유저 메시지인지 확인
-    const isLastUserInTurn = isInCurrentTurn && isUser && lastUserMessage?.id === m.id;
+    const isLastUserInTurn =
+      isInCurrentTurn && isUser && lastUserMessage?.id === m.id;
 
     // Assistant 메시지가 빈 문자열이면 TypingBubble 표시
     if (!isUser && m.content === "") {
@@ -285,7 +301,7 @@ export default function ChatWindow({
               alt="Profile"
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"
-              className="w-6 h-6 flex-shrink-0"
+              className="w-6 h-6 flex-shrink-0 pt-1"
               style={{ marginTop: 0 }}
             />
             <div className="flex flex-col min-w-0 overflow-hidden">
