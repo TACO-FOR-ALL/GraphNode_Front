@@ -1766,7 +1766,6 @@ export default function Graph2D({
       {selectedNodeId && (
         <NodeChatPreview
           threadId={selectedNodeId}
-          avatarUrl={avatarUrl}
           onClose={() => setSelectedNodeId(null)}
           onExpand={() => setSelectedNodeId(null)}
         />

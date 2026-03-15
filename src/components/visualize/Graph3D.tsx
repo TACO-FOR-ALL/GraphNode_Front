@@ -1459,7 +1459,6 @@ export default function Graph3D({
       {selectedNodeId && (
         <NodeChatPreview
           threadId={selectedNodeId}
-          avatarUrl={avatarUrl ?? null}
           onClose={() => setSelectedNodeId(null)}
           onExpand={() => setSelectedNodeId(null)}
         />
