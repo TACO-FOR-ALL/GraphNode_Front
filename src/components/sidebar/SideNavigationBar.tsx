@@ -12,8 +12,7 @@ import VisualizeIconActive from "@/assets/icons/share_active.svg";
 import SearchIconActive from "@/assets/icons/search_active.svg";
 import SettingsIcon from "@/assets/icons/settings.svg";
 import SettingsIconActive from "@/assets/icons/settings_active.svg";
-import { IoNotificationsOutline } from "react-icons/io5";
-import { IoNotificationsOffOutline } from "react-icons/io5";
+import { IoNotificationsOutline, IoNotificationsOffOutline, IoFlaskOutline } from "react-icons/io5";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
@@ -115,6 +114,15 @@ export default function SideNavigationBar({
           {unreadCount > 0 && (
             <div className="absolute top-[5px] right-[5px]  bg-red-400 flex items-center justify-center rounded-full w-1 h-1" />
           )}
+        </div>
+        <div
+          key="graph-lab"
+          className={`flex items-center justify-center rounded-[6px] p-[6px] ${path === "graph-lab" ? "bg-sidebar-tab-selected text-white" : "text-[#6B7280]"} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 cursor-pointer`}
+          onClick={() => navigate("/graph-lab")}
+          onMouseEnter={() => setHoveredItem("graph-lab")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <IoFlaskOutline className="w-4 h-4" />
         </div>
         <div
           key="settings"

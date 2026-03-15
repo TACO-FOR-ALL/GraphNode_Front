@@ -521,5 +521,71 @@
   },
   "sync": {
     "pullFailed": "サーバーからデータを同期できませんでした。接続状態を確認してください。"
+  },
+  "visualizeDetail": {
+    "subtitle": "Microscopeによる知識の可視化",
+    "noData": {
+      "title": "分析データがありません",
+      "description": "このノードのナレッジグラフはまだ生成されていません。\n分析をリクエストすると、Microscopeが会話を分析してナレッジグラフを生成します。",
+      "requestButton": "分析を再リクエスト",
+      "generating": "生成中..."
+    }
+  },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "ドラッグで回転 · Ctrl+ドラッグで移動 · スクロールでズーム · ダブルクリックでリセット",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "宇宙星雲 · 重力軌道",
+      "plasma": "PLASMA",
+      "plasmaDesc": "ニューラルネット · 電気パルス",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "結晶幾何学 · オーロラ"
+    }
+  },
+  "graphVisualization": {
+    "back": "戻る",
+    "nodeTypes": "ノードタイプ",
+    "relationTypes": "関係タイプ",
+    "stats": "統計",
+    "nodes": "ノード",
+    "edges": "エッジ",
+    "connections": "接続",
+    "help": {
+      "title": "ヘルプ",
+      "network": "スクロールでズーム、ドラッグで移動。ノードをクリックして詳細を確認。",
+      "cluster": "ノードをクリックしてクラスター間の接続を表示。",
+      "ctrlClick": "Ctrl+クリック:",
+      "ctrlClickDesc": "ノードをコンテキストに追加してエージェントと対話"
+    },
+    "viewMode": {
+      "network": "ネットワーク",
+      "cluster": "クラスター"
+    },
+    "agent": {
+      "title": "AIエージェント",
+      "selectedContext": "選択されたコンテキスト ({{count}}個)",
+      "addNodeHint": "Ctrl+クリックでノードを追加",
+      "askAboutNodes": "選択したノードについて質問してください",
+      "suggestRelation": "💡 これらのノードの関係は？",
+      "suggestImportance": "💡 なぜこれらは重要？",
+      "suggestRelationInput": "これらのノードの関係は？",
+      "suggestImportanceInput": "なぜこれらは重要？",
+      "inputPlaceholder": "質問を入力してください...",
+      "send": "送信",
+      "noContext": "ノードが選択されていません。Ctrl+クリックでノードを選択してください。",
+      "analyzeOneIntro": "この{{type}}はキー要素の一つです。",
+      "descLabel": "説明",
+      "analyzeOneOutro": "このノードは他のノードとさまざまな関係を持ち、全体的なコンテキストで重要な役割を果たします。",
+      "analyzeMultipleTitle": "選択された{{count}}個のノード間の関係分析:",
+      "relationSummaryTitle": "関係の要約:",
+      "analyzeMultipleSummary": "は{{second}}と共にコアフレームワークを構成します。",
+      "otherElements": "その他の要素",
+      "describeTitle": "選択されたノードの説明:",
+      "importanceTitle": "{{names}}の重要性:",
+      "importanceBody": "選択されたノードは重要な役割を果たします。",
+      "contextNodesLabel": "コンテキストノード",
+      "defaultResponse": "選択された{{count}}個のノード({{types}})を分析します。\n\nより具体的な質問があればお気軽にどうぞ！"
+    }
   }
 }

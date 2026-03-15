@@ -521,5 +521,71 @@
   },
   "sync": {
     "pullFailed": "无法从服务器同步数据，请检查您的网络连接。"
+  },
+  "visualizeDetail": {
+    "subtitle": "通过 Microscope 进行知识可视化",
+    "noData": {
+      "title": "暂无分析数据",
+      "description": "该节点的知识图谱尚未生成。\n请求分析后，Microscope 将分析对话并生成知识图谱。",
+      "requestButton": "重新请求分析",
+      "generating": "生成中..."
+    }
+  },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "拖拽旋转 · Ctrl+拖拽平移 · 滚轮缩放 · 双击重置",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "宇宙星云 · 引力轨道",
+      "plasma": "PLASMA",
+      "plasmaDesc": "神经网络 · 电脉冲",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "晶体几何 · 极光"
+    }
+  },
+  "graphVisualization": {
+    "back": "返回",
+    "nodeTypes": "节点类型",
+    "relationTypes": "关系类型",
+    "stats": "统计",
+    "nodes": "节点",
+    "edges": "边",
+    "connections": "连接",
+    "help": {
+      "title": "帮助",
+      "network": "滚动缩放，拖拽移动。点击节点查看详情。",
+      "cluster": "点击节点显示跨集群连接。",
+      "ctrlClick": "Ctrl+点击:",
+      "ctrlClickDesc": "将节点添加到上下文并与智能体对话"
+    },
+    "viewMode": {
+      "network": "网络",
+      "cluster": "集群"
+    },
+    "agent": {
+      "title": "AI 智能体",
+      "selectedContext": "已选上下文 ({{count}}个)",
+      "addNodeHint": "Ctrl+点击添加节点",
+      "askAboutNodes": "询问关于所选节点的问题",
+      "suggestRelation": "💡 这些节点有什么关系？",
+      "suggestImportance": "💡 为什么这些节点很重要？",
+      "suggestRelationInput": "这些节点有什么关系？",
+      "suggestImportanceInput": "为什么这些节点很重要？",
+      "inputPlaceholder": "输入您的问题...",
+      "send": "发送",
+      "noContext": "没有选中节点。请Ctrl+点击选择节点。",
+      "analyzeOneIntro": "这个{{type}}是关键元素之一。",
+      "descLabel": "描述",
+      "analyzeOneOutro": "此节点与其他节点有多种关系，在整体上下文中扮演重要角色。",
+      "analyzeMultipleTitle": "{{count}}个选中节点间的关系分析:",
+      "relationSummaryTitle": "关系摘要:",
+      "analyzeMultipleSummary": "与{{second}}共同构成核心框架。",
+      "otherElements": "其他元素",
+      "describeTitle": "所选节点的描述:",
+      "importanceTitle": "{{names}}的重要性:",
+      "importanceBody": "所选节点发挥着重要作用。",
+      "contextNodesLabel": "上下文节点",
+      "defaultResponse": "正在分析您选择的{{count}}个节点({{types}})。\n\n如有更具体的问题，请随时提问！"
+    }
   }
 }

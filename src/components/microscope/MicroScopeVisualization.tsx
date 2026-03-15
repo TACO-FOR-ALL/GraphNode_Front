@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import * as d3Force from "d3-force";
 import ZoomControls from "@/components/visualize/ZoomControls";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 // 타입 정의
 interface RawNode {
@@ -45,65 +47,41 @@ interface ChatMessage {
   content: string;
 }
 
-// 노드 타입별 색상
-const NODE_COLORS: Record<string, { fill: string; stroke: string; gradient: string }> = {
-  Paper: { fill: "#8B5CF6", stroke: "#6D28D9", gradient: "#A78BFA" },
-  Problem: { fill: "#F43F5E", stroke: "#BE123C", gradient: "#FB7185" },
-  Method: { fill: "#3B82F6", stroke: "#1D4ED8", gradient: "#60A5FA" },
-  Dataset: { fill: "#10B981", stroke: "#047857", gradient: "#34D399" },
-  Metric: { fill: "#F59E0B", stroke: "#B45309", gradient: "#FBBF24" },
-  Result: { fill: "#06B6D4", stroke: "#0E7490", gradient: "#22D3EE" },
-  Baseline: { fill: "#6B7280", stroke: "#374151", gradient: "#9CA3AF" },
-  Limitation: { fill: "#F97316", stroke: "#C2410C", gradient: "#FB923C" },
-};
+// 동적 색상 팔레트 - 타입 순서 기반으로 자동 배정
+const COLOR_PALETTE = [
+  { fill: "#8B5CF6", stroke: "#6D28D9", gradient: "#A78BFA" },
+  { fill: "#3B82F6", stroke: "#1D4ED8", gradient: "#60A5FA" },
+  { fill: "#10B981", stroke: "#047857", gradient: "#34D399" },
+  { fill: "#F43F5E", stroke: "#BE123C", gradient: "#FB7185" },
+  { fill: "#F59E0B", stroke: "#B45309", gradient: "#FBBF24" },
+  { fill: "#06B6D4", stroke: "#0E7490", gradient: "#22D3EE" },
+  { fill: "#EC4899", stroke: "#BE185D", gradient: "#F472B6" },
+  { fill: "#84CC16", stroke: "#4D7C0F", gradient: "#A3E635" },
+  { fill: "#F97316", stroke: "#C2410C", gradient: "#FB923C" },
+  { fill: "#0EA5E9", stroke: "#0369A1", gradient: "#38BDF8" },
+  { fill: "#A855F7", stroke: "#7E22CE", gradient: "#C084FC" },
+  { fill: "#14B8A6", stroke: "#0F766E", gradient: "#2DD4BF" },
+];
 
-// 엣지 타입별 색상
-const EDGE_COLORS: Record<string, string> = {
-  proposes: "#8B5CF6",
-  addresses: "#F43F5E",
-  evaluates_on: "#10B981",
-  uses: "#3B82F6",
-  achieves: "#06B6D4",
-  measured_by: "#F59E0B",
-  outperforms: "#22C55E",
-  suffers_from: "#F97316",
-};
+const EDGE_PALETTE = [
+  "#8B5CF6", "#3B82F6", "#10B981", "#F43F5E",
+  "#F59E0B", "#06B6D4", "#EC4899", "#84CC16",
+  "#F97316", "#0EA5E9", "#A855F7", "#14B8A6",
+];
 
-// 노드 타입별 약어
-const NODE_ABBR: Record<string, string> = {
-  Paper: "논문",
-  Problem: "문제",
-  Method: "방법",
-  Dataset: "데이터",
-  Metric: "지표",
-  Result: "결과",
-  Baseline: "기준",
-  Limitation: "한계",
-};
+function getNodeColors(type: string, allTypes: string[]): { fill: string; stroke: string; gradient: string } {
+  const idx = allTypes.indexOf(type);
+  return COLOR_PALETTE[idx % COLOR_PALETTE.length];
+}
 
-// 노드 타입 한국어
-const NODE_TYPE_KR: Record<string, string> = {
-  Paper: "논문",
-  Problem: "문제",
-  Method: "방법론",
-  Dataset: "데이터셋",
-  Metric: "평가 지표",
-  Result: "결과",
-  Baseline: "베이스라인",
-  Limitation: "한계점",
-};
+function getEdgeColor(type: string, allTypes: string[]): string {
+  const idx = allTypes.indexOf(type);
+  return EDGE_PALETTE[idx % EDGE_PALETTE.length];
+}
 
-// 엣지 타입 한국어
-const EDGE_TYPE_KR: Record<string, string> = {
-  proposes: "제안",
-  addresses: "해결",
-  evaluates_on: "평가",
-  uses: "사용",
-  achieves: "달성",
-  measured_by: "측정",
-  outperforms: "능가",
-  suffers_from: "문제점",
-};
+function getNodeAbbr(type: string): string {
+  return type.slice(0, 2).toUpperCase();
+}
 
 type ViewMode = "network" | "cluster";
 
@@ -118,41 +96,7 @@ interface Props {
 
 const NODE_RADIUS = 18;
 
-// 가짜 AI 응답 생성 함수
-function generateFakeResponse(contextNodes: GraphNode[], question: string): string {
-  if (contextNodes.length === 0) {
-    return "컨텍스트에 선택된 노드가 없습니다. Ctrl+클릭으로 노드를 선택해주세요.";
-  }
-
-  const nodeNames = contextNodes.map((n) => `"${n.name}"`).join(", ");
-  const nodeTypes = contextNodes.map((n) => NODE_TYPE_KR[n.type] || n.type);
-
-  if (question.includes("관계") || question.includes("연결") || question.includes("connection")) {
-    if (contextNodes.length === 1) {
-      const node = contextNodes[0];
-      return `**${node.name}**에 대한 분석:\n\n이 ${NODE_TYPE_KR[node.type] || node.type}은(는) 논문의 핵심 요소 중 하나입니다.\n\n**설명:** ${node.description}\n\n이 노드는 다른 노드들과 다양한 관계를 맺고 있으며, 전체 연구의 맥락에서 중요한 역할을 합니다.`;
-    } else {
-      const relationshipAnalysis = contextNodes
-        .map((n, i) => `${i + 1}. **${n.name}** (${NODE_TYPE_KR[n.type]}): ${n.description.slice(0, 100)}...`)
-        .join("\n\n");
-
-      return `**선택된 ${contextNodes.length}개 노드 간의 관계 분석:**\n\n${relationshipAnalysis}\n\n**관계성 요약:**\n이 노드들은 음성 감정 인식(SER) 연구에서 서로 밀접하게 연결되어 있습니다. ${contextNodes[0].name}은(는) ${contextNodes.length > 1 ? contextNodes[1].name : "다른 요소들"}과 함께 연구의 핵심 프레임워크를 구성합니다.\n\n특히, 이들 간의 상호작용은 크로스-코퍼스 일반화 문제를 해결하는 데 중요한 역할을 합니다.`;
-    }
-  }
-
-  if (question.includes("설명") || question.includes("뭐") || question.includes("무엇")) {
-    return `**선택된 노드들에 대한 설명:**\n\n${contextNodes.map((n) => `- **${n.name}** (${NODE_TYPE_KR[n.type]})\n  ${n.description}`).join("\n\n")}`;
-  }
-
-  if (question.includes("중요") || question.includes("핵심") || question.includes("의미")) {
-    return `**${nodeNames}의 중요성:**\n\n선택하신 노드들은 이 연구에서 매우 중요한 역할을 합니다.\n\n${contextNodes.map((n) => `- **${n.name}**: 이 ${NODE_TYPE_KR[n.type]}은(는) 연구의 ${n.type === "Method" ? "방법론적 기반" : n.type === "Result" ? "성과 입증" : n.type === "Problem" ? "연구 동기" : "핵심 구성 요소"}을 담당합니다.`).join("\n\n")}\n\n이러한 요소들의 조합이 5%의 성능 향상이라는 유의미한 결과를 이끌어냈습니다.`;
-  }
-
-  // 기본 응답
-  return `**컨텍스트 노드:** ${nodeNames}\n\n질문하신 내용에 대해 분석해드리겠습니다.\n\n선택하신 ${contextNodes.length}개의 노드(${nodeTypes.join(", ")})는 이 논문에서 중요한 역할을 합니다. 각 노드는 크로스-코퍼스 음성 감정 인식 연구의 서로 다른 측면을 나타내며, 함께 연구의 전체적인 기여를 구성합니다.\n\n더 구체적인 질문이 있으시면 말씀해주세요!`;
-}
-
-export default function PaperGraphVisualizationKr({
+export default function MicroScopeVisualization({
   data,
   width = 1200,
   height = 800,
@@ -160,6 +104,42 @@ export default function PaperGraphVisualizationKr({
   subtitle,
   onBack,
 }: Props) {
+  const { t } = useTranslation();
+
+  // 가짜 AI 응답 생성 함수
+  function generateFakeResponse(contextNodes: GraphNode[], question: string): string {
+    if (contextNodes.length === 0) {
+      return t("graphVisualization.agent.noContext");
+    }
+
+    const nodeNames = contextNodes.map((n) => `"${n.name}"`).join(", ");
+    const nodeTypeLabels = contextNodes.map((n) => n.type);
+
+    if (question.includes("관계") || question.includes("연결") || question.includes("connection")) {
+      if (contextNodes.length === 1) {
+        const node = contextNodes[0];
+        return `**${node.name}** - ${t("graphVisualization.agent.analyzeOneIntro", { type: node.type })}\n\n**${t("graphVisualization.agent.descLabel")}:** ${node.description}\n\n${t("graphVisualization.agent.analyzeOneOutro")}`;
+      } else {
+        const relationshipAnalysis = contextNodes
+          .map((n, i) => `${i + 1}. **${n.name}** (${n.type}): ${n.description.slice(0, 100)}...`)
+          .join("\n\n");
+
+        return `**${t("graphVisualization.agent.analyzeMultipleTitle", { count: contextNodes.length })}**\n\n${relationshipAnalysis}\n\n**${t("graphVisualization.agent.relationSummaryTitle")}**\n${contextNodes[0].name}${t("graphVisualization.agent.analyzeMultipleSummary", { second: contextNodes.length > 1 ? contextNodes[1].name : t("graphVisualization.agent.otherElements") })}`;
+      }
+    }
+
+    if (question.includes("설명") || question.includes("뭐") || question.includes("무엇")) {
+      return `**${t("graphVisualization.agent.describeTitle")}**\n\n${contextNodes.map((n) => `- **${n.name}** (${n.type})\n  ${n.description}`).join("\n\n")}`;
+    }
+
+    if (question.includes("중요") || question.includes("핵심") || question.includes("의미")) {
+      return `**${t("graphVisualization.agent.importanceTitle", { names: nodeNames })}**\n\n${t("graphVisualization.agent.importanceBody")}\n\n${contextNodes.map((n) => `- **${n.name}** (${n.type}): ${n.description.slice(0, 80)}...`).join("\n\n")}`;
+    }
+
+    // 기본 응답
+    return `**${t("graphVisualization.agent.contextNodesLabel")}:** ${nodeNames}\n\n${t("graphVisualization.agent.defaultResponse", { count: contextNodes.length, types: nodeTypeLabels.join(", ") })}`;
+  }
+
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
@@ -277,6 +257,13 @@ export default function PaperGraphVisualizationKr({
     return Array.from(types);
   }, [processedData.nodes]);
 
+  // 엣지 타입 목록
+  const edgeTypes = useMemo(() => {
+    const types = new Set<string>();
+    processedData.edges.forEach((e) => types.add(e.type));
+    return Array.from(types);
+  }, [processedData.edges]);
+
   // 클러스터 위치 계산
   const clusterPositions = useMemo(() => {
     const positions: Record<string, { x: number; y: number }> = {};
@@ -348,40 +335,46 @@ export default function PaperGraphVisualizationKr({
     setEdges(processedData.edges);
   }, [processedData, dimensions.width, dimensions.height, viewMode]);
 
-  // Force 시뮬레이션 (Cluster 모드)
+  // Force 시뮬레이션 (Cluster 모드) - 타입 그루핑 없이 자유 배치
   useEffect(() => {
     if (processedData.nodes.length === 0 || viewMode !== "cluster" || dimensions.width === 0) return;
-    // 이미 레이아웃이 계산되었으면 재실행하지 않음
     if (layoutCalculatedRef.current.cluster) return;
     layoutCalculatedRef.current.cluster = true;
 
     const simNodes = processedData.nodes.map((n) => ({
       ...n,
-      x: clusterPositions[n.type]?.x || dimensions.width / 2,
-      y: clusterPositions[n.type]?.y || dimensions.height / 2,
+      x: dimensions.width / 2 + (Math.random() - 0.5) * 300,
+      y: dimensions.height / 2 + (Math.random() - 0.5) * 300,
     }));
+    const simEdges = processedData.edges
+      .map((e) => ({
+        source: simNodes.find((n) => n.id === e.source),
+        target: simNodes.find((n) => n.id === e.target),
+      }))
+      .filter((e) => e.source && e.target);
 
     const simulation = d3Force
       .forceSimulation(simNodes as any)
-      .force("charge", d3Force.forceManyBody().strength(-80))
-      .force("collision", d3Force.forceCollide(NODE_RADIUS + 20))
+      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.05))
+      .force("charge", d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -250 : -120)))
       .force(
-        "x",
-        d3Force.forceX((d: any) => clusterPositions[d.type]?.x || dimensions.width / 2).strength(0.5)
+        "link",
+        d3Force
+          .forceLink(simEdges as any)
+          .id((d: any) => d.id)
+          .distance(120)
+          .strength(0.6)
       )
-      .force(
-        "y",
-        d3Force.forceY((d: any) => clusterPositions[d.type]?.y || dimensions.height / 2).strength(0.5)
-      )
+      .force("collision", d3Force.forceCollide(NODE_RADIUS + 30))
       .stop();
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 300; i++) {
       simulation.tick();
     }
 
     setNodes(simNodes);
     setEdges(processedData.edges);
-  }, [processedData, dimensions.width, dimensions.height, viewMode, clusterPositions]);
+  }, [processedData, dimensions.width, dimensions.height, viewMode]);
 
   // 모드 변경 시 선택 초기화 및 레이아웃 플래그 리셋
   useEffect(() => {
@@ -578,7 +571,7 @@ export default function PaperGraphVisualizationKr({
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 12H5M12 19l-7-7 7-7" />
                   </svg>
-                  <span className="text-sm font-medium">돌아가기</span>
+                  <span className="text-sm font-medium">{t("graphVisualization.back")}</span>
                 </button>
               )}
               {title && (
@@ -597,10 +590,12 @@ export default function PaperGraphVisualizationKr({
           {/* 노드 타입 범례 */}
           <div className="mb-6">
             <h3 className="text-xs font-semibold text-text-primary mb-3 uppercase tracking-wider">
-              노드 유형
+              {t("graphVisualization.nodeTypes")}
             </h3>
             <div className="space-y-1.5">
-              {Object.entries(NODE_COLORS).map(([type, colors]) => (
+              {nodeTypes.map((type) => {
+                const colors = getNodeColors(type, nodeTypes);
+                return (
                 <div
                   key={type}
                   className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
@@ -612,24 +607,27 @@ export default function PaperGraphVisualizationKr({
                       boxShadow: `0 2px 4px ${colors.fill}40`,
                     }}
                   >
-                    {NODE_ABBR[type]?.charAt(0)}
+                    {getNodeAbbr(type)}
                   </div>
-                  <span className="text-xs text-text-secondary flex-1">{NODE_TYPE_KR[type]}</span>
+                  <span className="text-xs text-text-secondary flex-1">{type}</span>
                   <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
                     {nodeStats[type] || 0}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* 엣지 타입 범례 */}
           <div className="mb-6">
             <h3 className="text-xs font-semibold text-text-primary mb-3 uppercase tracking-wider">
-              관계 유형
+              {t("graphVisualization.relationTypes")}
             </h3>
             <div className="space-y-1.5">
-              {Object.entries(EDGE_COLORS).map(([type, color]) => (
+              {edgeTypes.map((type) => {
+                const color = getEdgeColor(type, edgeTypes);
+                return (
                 <div
                   key={type}
                   className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
@@ -657,28 +655,29 @@ export default function PaperGraphVisualizationKr({
                       markerEnd={`url(#legend-arrow-${type})`}
                     />
                   </svg>
-                  <span className="text-xs text-text-secondary flex-1">{EDGE_TYPE_KR[type]}</span>
+                  <span className="text-xs text-text-secondary flex-1">{type}</span>
                   <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
                     {edgeStats[type] || 0}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* 통계 */}
           <div className="p-3 bg-bg-tertiary/50 rounded-xl">
             <h3 className="text-xs font-semibold text-text-primary mb-2 uppercase tracking-wider">
-              통계
+              {t("graphVisualization.stats")}
             </h3>
             <div className="grid grid-cols-2 gap-2">
               <div className="text-center p-2 bg-bg-primary rounded-lg">
                 <p className="text-lg font-bold text-primary">{nodes.length}</p>
-                <p className="text-[10px] text-text-secondary">노드</p>
+                <p className="text-[10px] text-text-secondary">{t("graphVisualization.nodes")}</p>
               </div>
               <div className="text-center p-2 bg-bg-primary rounded-lg">
                 <p className="text-lg font-bold text-primary">{edges.length}</p>
-                <p className="text-[10px] text-text-secondary">엣지</p>
+                <p className="text-[10px] text-text-secondary">{t("graphVisualization.edges")}</p>
               </div>
             </div>
           </div>
@@ -686,13 +685,13 @@ export default function PaperGraphVisualizationKr({
           {/* 도움말 */}
           <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
             <p className="text-[10px] text-text-secondary leading-relaxed">
-              <strong className="text-text-primary">도움말:</strong>{" "}
+              <strong className="text-text-primary">{t("graphVisualization.help.title") + ":"}</strong>{" "}
               {viewMode === "network"
-                ? "스크롤로 확대/축소, 드래그로 이동. 노드 클릭으로 상세 정보 확인."
-                : "노드 클릭으로 클러스터 간 연결 표시."}
+                ? t("graphVisualization.help.network")
+                : t("graphVisualization.help.cluster")}
             </p>
             <p className="text-[10px] text-primary mt-2 leading-relaxed">
-              <strong>Ctrl+클릭:</strong> 노드를 컨텍스트에 추가하고 에이전트와 대화
+              <strong>{t("graphVisualization.help.ctrlClick")}</strong> {t("graphVisualization.help.ctrlClickDesc")}
             </p>
           </div>
         </div>
@@ -709,7 +708,7 @@ export default function PaperGraphVisualizationKr({
                   viewMode === "network" ? "text-primary" : "text-text-secondary"
                 }`}
               >
-                네트워크
+                {t("graphVisualization.viewMode.network")}
               </div>
               <div
                 onClick={() => setViewMode("cluster")}
@@ -717,7 +716,7 @@ export default function PaperGraphVisualizationKr({
                   viewMode === "cluster" ? "text-primary" : "text-text-secondary"
                 }`}
               >
-                클러스터
+                {t("graphVisualization.viewMode.cluster")}
               </div>
               <div
                 className={`absolute top-[2px] h-[28px] bg-bg-primary border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
@@ -739,19 +738,22 @@ export default function PaperGraphVisualizationKr({
           >
             {/* 그라디언트 정의 */}
             <defs>
-              {Object.entries(NODE_COLORS).map(([type, colors]) => (
-                <linearGradient
-                  key={`gradient-${type}`}
-                  id={`node-gradient-${type}`}
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor={colors.gradient} />
-                  <stop offset="100%" stopColor={colors.fill} />
-                </linearGradient>
-              ))}
+              {nodeTypes.map((type) => {
+                const colors = getNodeColors(type, nodeTypes);
+                return (
+                  <linearGradient
+                    key={`gradient-${type}`}
+                    id={`node-gradient-${type}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stopColor={colors.gradient} />
+                    <stop offset="100%" stopColor={colors.fill} />
+                  </linearGradient>
+                );
+              })}
               <filter id="node-shadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.15" />
               </filter>
@@ -762,68 +764,26 @@ export default function PaperGraphVisualizationKr({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
-              {Object.entries(EDGE_COLORS).map(([type, color]) => (
-                <marker
-                  key={`arrow-${type}`}
-                  id={`arrow-${type}`}
-                  markerWidth="6"
-                  markerHeight="6"
-                  refX="5"
-                  refY="3"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <path d="M0,0 L6,3 L0,6 Z" fill={color} />
-                </marker>
-              ))}
-              <marker
-                id="arrow-default"
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-                markerUnits="strokeWidth"
-              >
-                <path d="M0,0 L6,3 L0,6 Z" fill="#9CA3AF" />
-              </marker>
+              {edgeTypes.map((type) => {
+                const color = getEdgeColor(type, edgeTypes);
+                return (
+                  <marker
+                    key={`arrow-${type}`}
+                    id={`arrow-${type}`}
+                    markerWidth="6"
+                    markerHeight="6"
+                    refX="5"
+                    refY="3"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <path d="M0,0 L6,3 L0,6 Z" fill={color} />
+                  </marker>
+                );
+              })}
             </defs>
 
             <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-              {/* 클러스터 배경 */}
-              {viewMode === "cluster" &&
-                nodeTypes.map((type) => {
-                  const pos = clusterPositions[type];
-                  const colors = NODE_COLORS[type];
-                  if (!pos || !colors) return null;
-
-                  return (
-                    <g key={`cluster-bg-${type}`}>
-                      <circle cx={pos.x} cy={pos.y} r={80} fill={colors.fill} opacity={0.08} />
-                      <circle
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={80}
-                        fill="none"
-                        stroke={colors.fill}
-                        strokeWidth={1}
-                        strokeDasharray="4 4"
-                        opacity={0.3}
-                      />
-                      <text
-                        x={pos.x}
-                        y={pos.y - 90}
-                        textAnchor="middle"
-                        fill={colors.fill}
-                        fontSize="11"
-                        fontWeight="600"
-                        opacity={0.8}
-                      >
-                        {NODE_TYPE_KR[type]}
-                      </text>
-                    </g>
-                  );
-                })}
 
               {/* 엣지 */}
               {edges.map((edge, idx) => {
@@ -835,7 +795,7 @@ export default function PaperGraphVisualizationKr({
                 const isHovered = hoveredEdge === edge;
                 const isConnectedToSelected =
                   selectedNode && (edge.source === selectedNode.id || edge.target === selectedNode.id);
-                const color = EDGE_COLORS[edge.type] || "#9CA3AF";
+                const color = getEdgeColor(edge.type, edgeTypes);
                 const pathData = getEdgePath(source, target);
                 const isCrossCluster = viewMode === "cluster" && source.type !== target.type;
 
@@ -866,7 +826,7 @@ export default function PaperGraphVisualizationKr({
 
               {/* 노드 */}
               {nodes.map((node) => {
-                const colors = NODE_COLORS[node.type] || { fill: "#9CA3AF", stroke: "#6B7280", gradient: "#9CA3AF" };
+                const colors = getNodeColors(node.type, nodeTypes);
                 const isHovered = hoveredNode?.id === node.id;
                 const isSelected = selectedNode?.id === node.id;
                 const isContext = isInContext(node.id);
@@ -905,7 +865,7 @@ export default function PaperGraphVisualizationKr({
                       fill="white"
                       style={{ pointerEvents: "none" }}
                     >
-                      {NODE_ABBR[node.type] || "??"}
+                      {getNodeAbbr(node.type)}
                     </text>
                     <g style={{ opacity: isActive ? 1 : 0.7 }}>
                       <rect
@@ -962,14 +922,14 @@ export default function PaperGraphVisualizationKr({
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md flex-shrink-0"
                   style={{
-                    background: `linear-gradient(135deg, ${NODE_COLORS[selectedNode.type]?.gradient || "#9CA3AF"} 0%, ${NODE_COLORS[selectedNode.type]?.fill || "#9CA3AF"} 100%)`,
+                    background: `linear-gradient(135deg, ${getNodeColors(selectedNode.type, nodeTypes).gradient} 0%, ${getNodeColors(selectedNode.type, nodeTypes).fill} 100%)`,
                   }}
                 >
-                  {NODE_ABBR[selectedNode.type]?.charAt(0) || "?"}
+                  {getNodeAbbr(selectedNode.type)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="inline-block text-[10px] font-medium px-2 py-0.5 bg-bg-tertiary rounded-full text-text-secondary mb-1">
-                    {NODE_TYPE_KR[selectedNode.type]}
+                    {selectedNode.type}
                   </span>
                   <h3 className="text-sm font-semibold text-text-primary leading-tight">{selectedNode.name}</h3>
                 </div>
@@ -980,7 +940,7 @@ export default function PaperGraphVisualizationKr({
               </div>
 
               <h4 className="text-xs font-semibold text-text-primary mb-2 uppercase tracking-wider">
-                연결 ({edges.filter((e) => e.source === selectedNode.id || e.target === selectedNode.id).length})
+                {t("graphVisualization.connections")} ({edges.filter((e) => e.source === selectedNode.id || e.target === selectedNode.id).length})
               </h4>
               <div className="space-y-2">
                 {edges
@@ -989,7 +949,7 @@ export default function PaperGraphVisualizationKr({
                     const isSource = edge.source === selectedNode.id;
                     const otherNodeId = isSource ? edge.target : edge.source;
                     const otherNode = nodeById(otherNodeId);
-                    const color = EDGE_COLORS[edge.type] || "#9CA3AF";
+                    const color = getEdgeColor(edge.type, edgeTypes);
 
                     return (
                       <div
@@ -1002,7 +962,7 @@ export default function PaperGraphVisualizationKr({
                             className="px-1.5 py-0.5 rounded text-white text-[10px] font-medium"
                             style={{ backgroundColor: color }}
                           >
-                            {EDGE_TYPE_KR[edge.type]}
+                            {edge.type}
                           </span>
                           <span className="text-text-placeholder text-[10px]">{isSource ? "→" : "←"}</span>
                           {edge.confidence && (
@@ -1015,10 +975,10 @@ export default function PaperGraphVisualizationKr({
                           <div
                             className="w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold text-white flex-shrink-0"
                             style={{
-                              backgroundColor: NODE_COLORS[otherNode?.type || ""]?.fill || "#9CA3AF",
+                              backgroundColor: otherNode ? getNodeColors(otherNode.type, nodeTypes).fill : "#9CA3AF",
                             }}
                           >
-                            {NODE_ABBR[otherNode?.type || ""]?.charAt(0) || "?"}
+                            {otherNode ? getNodeAbbr(otherNode.type) : "?"}
                           </div>
                           <p className="text-text-primary truncate">{truncateText(otherNode?.name || otherNodeId, 30)}</p>
                         </div>
@@ -1031,9 +991,9 @@ export default function PaperGraphVisualizationKr({
             <div className="p-4">
               <div
                 className="inline-block px-2.5 py-1 rounded-lg text-white text-xs font-medium mb-3"
-                style={{ backgroundColor: EDGE_COLORS[hoveredEdge.type] || "#9CA3AF" }}
+                style={{ backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes) }}
               >
-                {EDGE_TYPE_KR[hoveredEdge.type]}
+                {hoveredEdge.type}
               </div>
               <p className="text-sm text-text-secondary leading-relaxed mb-3">{hoveredEdge.description}</p>
               {hoveredEdge.confidence && (
@@ -1043,7 +1003,7 @@ export default function PaperGraphVisualizationKr({
                       className="h-full rounded-full"
                       style={{
                         width: `${hoveredEdge.confidence * 100}%`,
-                        backgroundColor: EDGE_COLORS[hoveredEdge.type] || "#9CA3AF",
+                        backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes),
                       }}
                     />
                   </div>
@@ -1061,7 +1021,7 @@ export default function PaperGraphVisualizationKr({
           {/* 헤더 */}
           <div className="p-4 border-b border-text-tertiary/20 bg-bg-secondary/50">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-text-primary">AI 에이전트</h2>
+              <h2 className="text-lg font-bold text-text-primary">{t("graphVisualization.agent.title")}</h2>
               <button
                 onClick={() => setIsAgentOpen(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg-tertiary text-text-secondary"
@@ -1072,7 +1032,7 @@ export default function PaperGraphVisualizationKr({
 
             {/* 컨텍스트 노드 목록 */}
             <div>
-              <p className="text-xs text-text-secondary mb-2">선택된 컨텍스트 ({contextNodes.length}개)</p>
+              <p className="text-xs text-text-secondary mb-2">{t("graphVisualization.agent.selectedContext", { count: contextNodes.length })}</p>
               <div className="flex flex-wrap gap-1.5">
                 {contextNodes.map((node) => (
                   <div
@@ -1081,7 +1041,7 @@ export default function PaperGraphVisualizationKr({
                   >
                     <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: NODE_COLORS[node.type]?.fill || "#9CA3AF" }}
+                      style={{ backgroundColor: getNodeColors(node.type, nodeTypes).fill }}
                     />
                     <span className="text-text-primary max-w-[120px] truncate">{node.name}</span>
                     <button
@@ -1093,7 +1053,7 @@ export default function PaperGraphVisualizationKr({
                   </div>
                 ))}
                 {contextNodes.length === 0 && (
-                  <p className="text-xs text-text-placeholder">Ctrl+클릭으로 노드를 추가하세요</p>
+                  <p className="text-xs text-text-placeholder">{t("graphVisualization.agent.addNodeHint")}</p>
                 )}
               </div>
             </div>
@@ -1103,25 +1063,25 @@ export default function PaperGraphVisualizationKr({
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {chatMessages.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-text-secondary mb-2">선택한 노드에 대해 질문해보세요</p>
+                <p className="text-sm text-text-secondary mb-2">{t("graphVisualization.agent.askAboutNodes")}</p>
                 <div className="space-y-2">
                   <button
                     onClick={() => {
-                      setInputValue("이 노드들의 관계가 뭐야?");
+                      setInputValue(t("graphVisualization.agent.suggestRelationInput"));
                       handleSendMessage();
                     }}
                     className="block w-full text-left px-3 py-2 bg-bg-tertiary rounded-lg text-xs text-text-primary hover:bg-bg-tertiary/80"
                   >
-                    💡 이 노드들의 관계가 뭐야?
+                    {t("graphVisualization.agent.suggestRelation")}
                   </button>
                   <button
                     onClick={() => {
-                      setInputValue("이것들이 왜 중요해?");
+                      setInputValue(t("graphVisualization.agent.suggestImportanceInput"));
                       handleSendMessage();
                     }}
                     className="block w-full text-left px-3 py-2 bg-bg-tertiary rounded-lg text-xs text-text-primary hover:bg-bg-tertiary/80"
                   >
-                    💡 이것들이 왜 중요해?
+                    {t("graphVisualization.agent.suggestImportance")}
                   </button>
                 </div>
               </div>
@@ -1170,7 +1130,7 @@ export default function PaperGraphVisualizationKr({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                placeholder="질문을 입력하세요..."
+                placeholder={t("graphVisualization.agent.inputPlaceholder")}
                 className="flex-1 px-4 py-2 bg-bg-tertiary rounded-xl text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <button
@@ -1178,7 +1138,7 @@ export default function PaperGraphVisualizationKr({
                 disabled={!inputValue.trim() || isTyping}
                 className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
               >
-                전송
+                {t("graphVisualization.agent.send")}
               </button>
             </div>
           </div>

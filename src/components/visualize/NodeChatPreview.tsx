@@ -15,12 +15,10 @@ const PAGE = 10;
 
 export default function NodeChatPreview({
   threadId,
-  avatarUrl,
   onClose,
   onExpand,
 }: {
   threadId: string;
-  avatarUrl: string | null;
   onClose: () => void;
   onExpand: () => void;
 }) {
@@ -36,6 +34,7 @@ export default function NodeChatPreview({
   const [isExpanding, setIsExpanding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGraphData, setHasGraphData] = useState<boolean | null>(null);
+  const [graphData, setGraphData] = useState<{ nodes: object[]; edges: object[] } | null>(null);
 
   // 드래그 관련 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -100,8 +99,8 @@ export default function NodeChatPreview({
         const data = unwrapResponse(
           await api.microscope.getLatestGraphByNodeId(threadId),
         );
-        console.log(data);
         setHasGraphData(data.nodes.length > 0);
+        setGraphData(data);
       } catch {
         setHasGraphData(false);
       }
@@ -220,8 +219,10 @@ export default function NodeChatPreview({
   };
 
   const handleViewDetail = () => {
-    // navigate(`/visualize/detail/${threadId}`);
-    // onClose();
+    navigate(`/visualize/detail/${threadId}`, {
+      state: { graphData, nodeTitle: thread?.title ?? undefined },
+    });
+    onClose();
   };
 
   const handleAnalyze = async () => {
@@ -348,17 +349,10 @@ export default function NodeChatPreview({
                         className={`flex items-start gap-2 ${isExpanding ? "ml-20" : "ml-8"} min-w-0`}
                         style={{ maxWidth: isExpanding ? userMaxWidth : "85%" }}
                       >
-                        <img
-                          src={avatarUrl ?? logo}
-                          alt="Profile"
-                          crossOrigin="anonymous"
-                          referrerPolicy="no-referrer"
-                          className="rounded-full flex-shrink-0 w-6 h-6"
-                        />
                         <div
                           className={`text-text-primary bg-primary/10 rounded-2xl rounded-tr-sm px-3 py-2 ${
                             isExpanding ? "text-sm" : "text-[13px]"
-                          } break-words overflow-wrap-anywhere min-w-0`}
+                          } break-words min-w-0`}
                           style={{
                             wordBreak: "break-word",
                             overflowWrap: "anywhere",
@@ -370,7 +364,7 @@ export default function NodeChatPreview({
                       </div>
                     ) : (
                       <div
-                        className="flex items-start gap-2"
+                        className="flex items-start gap-2 min-w-0 overflow-hidden"
                         style={{
                           maxWidth: isExpanding ? assistantMaxWidth : "85%",
                         }}
@@ -381,7 +375,7 @@ export default function NodeChatPreview({
                           className="flex-shrink-0 w-6 h-6"
                         />
                         <div
-                          className={`bg-bg-tertiary/50 dark:bg-bg-tertiary/30 border border-base-border rounded-2xl rounded-tl-sm px-3 py-2 ${
+                          className={`bg-bg-tertiary/50 dark:bg-bg-tertiary/30 border border-base-border rounded-2xl rounded-tl-sm px-3 py-2 min-w-0 overflow-hidden ${
                             isExpanding ? "text-sm" : "text-[13px]"
                           }`}
                         >

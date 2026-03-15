@@ -17,6 +17,7 @@ import ToggleSidebarExpand from "../sidebar/ToggleSidebarExpand";
 import { GraphSummary } from "@/types/GraphSummary";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
+import { db } from "@/db/graphnode.db";
 
 // 패턴 타입 스타일
 const PATTERN_CONFIG = {
@@ -86,6 +87,22 @@ export default function VisualizeSidebar({
   onToggleSubcluster,
 }: VisualizeSidebarProps) {
   const { t } = useTranslation();
+  const [threadTitles, setThreadTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    db.threads.toArray().then((threads) => {
+      const map: Record<string, string> = {};
+      threads.forEach((t) => {
+        map[t.id] = t.title;
+      });
+      setThreadTitles(map);
+    });
+  }, []);
+
+  const getNodeLabel = (origId: string, maxLen: number) => {
+    const label = threadTitles[origId] || origId;
+    return label.length > maxLen ? `${label.slice(0, maxLen)}...` : label;
+  };
 
   // 그래프 업데이트 상태
   const [isUpdating, setIsUpdating] = useState(false);
@@ -548,9 +565,7 @@ export default function VisualizeSidebar({
                                               }`}
                                             />
                                             <span className="truncate flex-1">
-                                              {node.origId.length > 10
-                                                ? `${node.origId.slice(0, 10)}...`
-                                                : node.origId}
+                                              {getNodeLabel(node.origId, 10)}
                                             </span>
                                             <span className="text-[10px] text-text-tertiary ml-2">
                                               {node.numMessages}
@@ -586,9 +601,7 @@ export default function VisualizeSidebar({
                                     }`}
                                   />
                                   <span className="truncate flex-1">
-                                    {node.origId.length > 12
-                                      ? `${node.origId.slice(0, 12)}...`
-                                      : node.origId}
+                                    {getNodeLabel(node.origId, 12)}
                                   </span>
                                   <span className="text-xs text-text-tertiary ml-2">
                                     {node.numMessages}
