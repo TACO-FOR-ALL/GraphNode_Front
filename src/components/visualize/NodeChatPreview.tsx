@@ -350,7 +350,7 @@ export default function NodeChatPreview({
                         style={{ maxWidth: isExpanding ? userMaxWidth : "85%" }}
                       >
                         <div
-                          className={`text-text-primary bg-primary/10 rounded-2xl rounded-tr-sm px-3 py-2 ${
+                          className={`text-text-primary bg-bg-secondary rounded-2xl rounded-tr-sm px-3 py-2 ${
                             isExpanding ? "text-sm" : "text-[13px]"
                           } break-words min-w-0`}
                           style={{

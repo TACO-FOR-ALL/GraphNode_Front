@@ -282,14 +282,12 @@ export default function ChatWindow({
             className="flex items-start gap-3 ml-20"
             style={{ maxWidth: userMaxWidth }}
           >
-            <img
-              src={avatarUrl ?? logo}
-              alt="Profile"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-              className="w-6 h-6 rounded-full flex-shrink-0 mt-0"
-            />
-            <div className="flex-1 text-text-chat-bubble">{m.content}</div>
+            <div
+              className="flex-1 text-text-chat-bubble bg-bg-secondary rounded-2xl rounded-tr-sm px-4 py-3 break-words"
+              style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+            >
+              {m.content}
+            </div>
           </div>
         ) : (
           <div
