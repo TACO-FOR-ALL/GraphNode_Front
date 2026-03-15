@@ -335,40 +335,46 @@ export default function MicroScopeVisualization({
     setEdges(processedData.edges);
   }, [processedData, dimensions.width, dimensions.height, viewMode]);
 
-  // Force 시뮬레이션 (Cluster 모드)
+  // Force 시뮬레이션 (Cluster 모드) - 타입 그루핑 없이 자유 배치
   useEffect(() => {
     if (processedData.nodes.length === 0 || viewMode !== "cluster" || dimensions.width === 0) return;
-    // 이미 레이아웃이 계산되었으면 재실행하지 않음
     if (layoutCalculatedRef.current.cluster) return;
     layoutCalculatedRef.current.cluster = true;
 
     const simNodes = processedData.nodes.map((n) => ({
       ...n,
-      x: clusterPositions[n.type]?.x || dimensions.width / 2,
-      y: clusterPositions[n.type]?.y || dimensions.height / 2,
+      x: dimensions.width / 2 + (Math.random() - 0.5) * 300,
+      y: dimensions.height / 2 + (Math.random() - 0.5) * 300,
     }));
+    const simEdges = processedData.edges
+      .map((e) => ({
+        source: simNodes.find((n) => n.id === e.source),
+        target: simNodes.find((n) => n.id === e.target),
+      }))
+      .filter((e) => e.source && e.target);
 
     const simulation = d3Force
       .forceSimulation(simNodes as any)
-      .force("charge", d3Force.forceManyBody().strength(-80))
-      .force("collision", d3Force.forceCollide(NODE_RADIUS + 20))
+      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.05))
+      .force("charge", d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -250 : -120)))
       .force(
-        "x",
-        d3Force.forceX((d: any) => clusterPositions[d.type]?.x || dimensions.width / 2).strength(0.5)
+        "link",
+        d3Force
+          .forceLink(simEdges as any)
+          .id((d: any) => d.id)
+          .distance(120)
+          .strength(0.6)
       )
-      .force(
-        "y",
-        d3Force.forceY((d: any) => clusterPositions[d.type]?.y || dimensions.height / 2).strength(0.5)
-      )
+      .force("collision", d3Force.forceCollide(NODE_RADIUS + 30))
       .stop();
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 300; i++) {
       simulation.tick();
     }
 
     setNodes(simNodes);
     setEdges(processedData.edges);
-  }, [processedData, dimensions.width, dimensions.height, viewMode, clusterPositions]);
+  }, [processedData, dimensions.width, dimensions.height, viewMode]);
 
   // 모드 변경 시 선택 초기화 및 레이아웃 플래그 리셋
   useEffect(() => {
@@ -778,40 +784,6 @@ export default function MicroScopeVisualization({
             </defs>
 
             <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-              {/* 클러스터 배경 */}
-              {viewMode === "cluster" &&
-                nodeTypes.map((type) => {
-                  const pos = clusterPositions[type];
-                  const colors = getNodeColors(type, nodeTypes);
-                  if (!pos) return null;
-
-                  return (
-                    <g key={`cluster-bg-${type}`}>
-                      <circle cx={pos.x} cy={pos.y} r={80} fill={colors.fill} opacity={0.08} />
-                      <circle
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={80}
-                        fill="none"
-                        stroke={colors.fill}
-                        strokeWidth={1}
-                        strokeDasharray="4 4"
-                        opacity={0.3}
-                      />
-                      <text
-                        x={pos.x}
-                        y={pos.y - 90}
-                        textAnchor="middle"
-                        fill={colors.fill}
-                        fontSize="11"
-                        fontWeight="600"
-                        opacity={0.8}
-                      >
-                        {type}
-                      </text>
-                    </g>
-                  );
-                })}
 
               {/* 엣지 */}
               {edges.map((edge, idx) => {

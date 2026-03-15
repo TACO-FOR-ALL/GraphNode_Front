@@ -531,6 +531,18 @@
       "generating": "생성 중..."
     }
   },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "드래그 궤도 회전 · Ctrl+드래그 이동 · 스크롤 줌 · 더블클릭 초기화",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "우주 성운 · 중력 궤도",
+      "plasma": "PLASMA",
+      "plasmaDesc": "뉴런 네트워크 · 전기 펄스",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "결정체 기하학 · 오로라"
+    }
+  },
   "graphVisualization": {
     "back": "돌아가기",
     "nodeTypes": "노드 유형",

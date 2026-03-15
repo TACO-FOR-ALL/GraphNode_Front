@@ -531,6 +531,18 @@
       "generating": "Generating..."
     }
   },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "Drag to orbit · Ctrl+drag to pan · Scroll to zoom · Double-click to reset",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "Space Nebula · Gravity Orbit",
+      "plasma": "PLASMA",
+      "plasmaDesc": "Neural Network · Electric Pulse",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "Crystal Geometry · Aurora"
+    }
+  },
   "graphVisualization": {
     "back": "Back",
     "nodeTypes": "Node Types",

@@ -531,6 +531,18 @@
       "generating": "生成中..."
     }
   },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "拖拽旋转 · Ctrl+拖拽平移 · 滚轮缩放 · 双击重置",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "宇宙星云 · 引力轨道",
+      "plasma": "PLASMA",
+      "plasmaDesc": "神经网络 · 电脉冲",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "晶体几何 · 极光"
+    }
+  },
   "graphVisualization": {
     "back": "返回",
     "nodeTypes": "节点类型",

@@ -21,7 +21,8 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
-import VisualizeDetail from "./routes/VisualizeDetail";
+import VisualizeMicroscope from "./routes/VisualizeMicroscope";
+import GraphTestPage from "./routes/GraphTestPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
@@ -116,7 +117,7 @@ function MainLayout() {
   }, []);
 
   // Visualize 페이지에서는 AgentToolTipButton 안 보이기
-  const isVisualizePage = location.pathname.startsWith("/visualize");
+  const isVisualizePage = location.pathname.startsWith("/visualize") || location.pathname.startsWith("/graph-lab");
 
   const { t } = useTranslation();
 
@@ -256,14 +257,14 @@ function MainLayout() {
             <Route path="/visualize" element={<Visualize />} />
             <Route
               path="/visualize/detail/:nodeId"
-              element={<VisualizeDetail />}
+              element={<VisualizeMicroscope />}
             />
             <Route
               path="/settings"
               element={<Settings userInfo={me as Me} />}
             />
             <Route path="/note/:noteId?" element={<Note />} />
-            {/* <Route path="/test-graph" element={<TestPaperGraphPage />} /> */}
+            <Route path="/graph-lab" element={<GraphTestPage />} />
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}

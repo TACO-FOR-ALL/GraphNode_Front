@@ -531,6 +531,18 @@
       "generating": "生成中..."
     }
   },
+  "graphLab": {
+    "title": "GRAPH LAB",
+    "hudHint": "ドラッグで回転 · Ctrl+ドラッグで移動 · スクロールでズーム · ダブルクリックでリセット",
+    "styles": {
+      "cosmos": "COSMOS",
+      "cosmosDesc": "宇宙星雲 · 重力軌道",
+      "plasma": "PLASMA",
+      "plasmaDesc": "ニューラルネット · 電気パルス",
+      "crystal": "CRYSTAL",
+      "crystalDesc": "結晶幾何学 · オーロラ"
+    }
+  },
   "graphVisualization": {
     "back": "戻る",
     "nodeTypes": "ノードタイプ",
