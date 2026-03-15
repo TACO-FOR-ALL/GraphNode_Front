@@ -35,6 +35,69 @@ function safeStringify(children: React.ReactNode): string {
 }
 
 const components: Components = {
+  h1: ({ children }) => (
+    <h1 className="text-2xl font-bold mt-8 mb-4 pb-2 border-b border-base-border text-text-primary leading-tight">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-xl font-bold mt-7 mb-3 text-text-primary leading-tight">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-lg font-semibold mt-6 mb-2 text-text-primary leading-snug">
+      {children}
+    </h3>
+  ),
+  h4: ({ children }) => (
+    <h4 className="text-base font-semibold mt-5 mb-2 text-text-primary">
+      {children}
+    </h4>
+  ),
+  p: ({ children }) => (
+    <p className="my-3 leading-7 text-text-primary">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-3 pl-6 list-disc space-y-1.5 text-text-primary">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-3 pl-6 list-decimal space-y-1.5 text-text-primary">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => <li className="leading-7">{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote className="my-4 pl-4 border-l-4 border-base-border text-text-secondary italic">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-6 border-base-border" />,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-text-primary">{children}</strong>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
+  table: ({ children }) => (
+    <div className="my-4 overflow-x-auto">
+      <table className="w-full border-collapse text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-bg-tertiary">{children}</thead>
+  ),
+  th: ({ children }) => (
+    <th className="border border-base-border px-4 py-2 text-left font-semibold text-text-primary">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-base-border px-4 py-2 text-text-primary">
+      {children}
+    </td>
+  ),
+
   code: (props) => {
     const { className, children, ...rest } = props as CodePropsLike;
     const code = safeStringify(children);
@@ -123,8 +186,10 @@ const components: Components = {
 
 export default function MarkdownBubble({ text }: { text: string }) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-      {text}
-    </ReactMarkdown>
+    <div className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {text}
+      </ReactMarkdown>
+    </div>
   );
 }
