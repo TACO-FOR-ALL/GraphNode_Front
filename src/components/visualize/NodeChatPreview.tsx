@@ -34,6 +34,7 @@ export default function NodeChatPreview({
   const [isExpanding, setIsExpanding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGraphData, setHasGraphData] = useState<boolean | null>(null);
+  const [graphData, setGraphData] = useState<{ nodes: object[]; edges: object[] } | null>(null);
 
   // 드래그 관련 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -98,8 +99,8 @@ export default function NodeChatPreview({
         const data = unwrapResponse(
           await api.microscope.getLatestGraphByNodeId(threadId),
         );
-        console.log(data);
         setHasGraphData(data.nodes.length > 0);
+        setGraphData(data);
       } catch {
         setHasGraphData(false);
       }
@@ -218,8 +219,10 @@ export default function NodeChatPreview({
   };
 
   const handleViewDetail = () => {
-    // navigate(`/visualize/detail/${threadId}`);
-    // onClose();
+    navigate(`/visualize/detail/${threadId}`, {
+      state: { graphData, nodeTitle: thread?.title ?? undefined },
+    });
+    onClose();
   };
 
   const handleAnalyze = async () => {

@@ -521,5 +521,59 @@
   },
   "sync": {
     "pullFailed": "Failed to sync data from server. Please check your connection."
+  },
+  "visualizeDetail": {
+    "subtitle": "Knowledge Visualization via Microscope",
+    "noData": {
+      "title": "No Analysis Data",
+      "description": "A knowledge graph for this node has not been generated yet.\nRequest analysis to have Microscope analyze the conversation and generate a knowledge graph.",
+      "requestButton": "Request Analysis",
+      "generating": "Generating..."
+    }
+  },
+  "graphVisualization": {
+    "back": "Back",
+    "nodeTypes": "Node Types",
+    "relationTypes": "Relation Types",
+    "stats": "Statistics",
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "connections": "Connections",
+    "help": {
+      "title": "Help",
+      "network": "Scroll to zoom, drag to pan. Click a node to view details.",
+      "cluster": "Click a node to show cross-cluster connections.",
+      "ctrlClick": "Ctrl+Click:",
+      "ctrlClickDesc": "Add node to context and chat with the agent"
+    },
+    "viewMode": {
+      "network": "Network",
+      "cluster": "Cluster"
+    },
+    "agent": {
+      "title": "AI Agent",
+      "selectedContext": "Selected Context ({{count}})",
+      "addNodeHint": "Ctrl+Click to add nodes",
+      "askAboutNodes": "Ask about the selected nodes",
+      "suggestRelation": "💡 What is the relationship between these nodes?",
+      "suggestImportance": "💡 Why are these nodes important?",
+      "suggestRelationInput": "What is the relationship between these nodes?",
+      "suggestImportanceInput": "Why are these nodes important?",
+      "inputPlaceholder": "Enter your question...",
+      "send": "Send",
+      "noContext": "No nodes selected. Ctrl+Click to select nodes.",
+      "analyzeOneIntro": "This {{type}} is one of the key elements.",
+      "descLabel": "Description",
+      "analyzeOneOutro": "This node has various relationships with other nodes and plays an important role in the overall context.",
+      "analyzeMultipleTitle": "Relationship analysis of {{count}} selected nodes:",
+      "relationSummaryTitle": "Relationship Summary:",
+      "analyzeMultipleSummary": "forms the core framework together with {{second}}.",
+      "otherElements": "other elements",
+      "describeTitle": "Description of selected nodes:",
+      "importanceTitle": "Importance of {{names}}:",
+      "importanceBody": "The selected nodes play an important role.",
+      "contextNodesLabel": "Context nodes",
+      "defaultResponse": "Analyzing {{count}} nodes ({{types}}) you selected.\n\nFeel free to ask more specific questions!"
+    }
   }
 }

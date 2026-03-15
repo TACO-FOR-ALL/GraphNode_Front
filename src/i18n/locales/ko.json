@@ -521,5 +521,59 @@
   },
   "sync": {
     "pullFailed": "서버에서 데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요."
+  },
+  "visualizeDetail": {
+    "subtitle": "Microscope를 통한 지식 시각화",
+    "noData": {
+      "title": "분석 데이터가 없습니다",
+      "description": "이 노드에 대한 지식 그래프가 아직 생성되지 않았습니다.\n분석을 요청하면 Microscope가 대화를 분석하여 지식 그래프를 생성합니다.",
+      "requestButton": "분석 재요청",
+      "generating": "생성 중..."
+    }
+  },
+  "graphVisualization": {
+    "back": "돌아가기",
+    "nodeTypes": "노드 유형",
+    "relationTypes": "관계 유형",
+    "stats": "통계",
+    "nodes": "노드",
+    "edges": "엣지",
+    "connections": "연결",
+    "help": {
+      "title": "도움말",
+      "network": "스크롤로 확대/축소, 드래그로 이동. 노드 클릭으로 상세 정보 확인.",
+      "cluster": "노드 클릭으로 클러스터 간 연결 표시.",
+      "ctrlClick": "Ctrl+클릭:",
+      "ctrlClickDesc": "노드를 컨텍스트에 추가하고 에이전트와 대화"
+    },
+    "viewMode": {
+      "network": "네트워크",
+      "cluster": "클러스터"
+    },
+    "agent": {
+      "title": "AI 에이전트",
+      "selectedContext": "선택된 컨텍스트 ({{count}}개)",
+      "addNodeHint": "Ctrl+클릭으로 노드를 추가하세요",
+      "askAboutNodes": "선택한 노드에 대해 질문해보세요",
+      "suggestRelation": "💡 이 노드들의 관계가 뭐야?",
+      "suggestImportance": "💡 이것들이 왜 중요해?",
+      "suggestRelationInput": "이 노드들의 관계가 뭐야?",
+      "suggestImportanceInput": "이것들이 왜 중요해?",
+      "inputPlaceholder": "질문을 입력하세요...",
+      "send": "전송",
+      "noContext": "컨텍스트에 선택된 노드가 없습니다. Ctrl+클릭으로 노드를 선택해주세요.",
+      "analyzeOneIntro": "이 {{type}}은(는) 핵심 요소 중 하나입니다.",
+      "descLabel": "설명",
+      "analyzeOneOutro": "이 노드는 다른 노드들과 다양한 관계를 맺고 있으며, 전체 맥락에서 중요한 역할을 합니다.",
+      "analyzeMultipleTitle": "선택된 {{count}}개 노드 간의 관계 분석:",
+      "relationSummaryTitle": "관계성 요약:",
+      "analyzeMultipleSummary": "은(는) {{second}}과 함께 핵심 프레임워크를 구성합니다.",
+      "otherElements": "다른 요소들",
+      "describeTitle": "선택된 노드들에 대한 설명:",
+      "importanceTitle": "{{names}}의 중요성:",
+      "importanceBody": "선택하신 노드들은 중요한 역할을 합니다.",
+      "contextNodesLabel": "컨텍스트 노드",
+      "defaultResponse": "선택하신 {{count}}개의 노드({{types}})에 대해 분석해드리겠습니다.\n\n더 구체적인 질문이 있으시면 말씀해주세요!"
+    }
   }
 }
