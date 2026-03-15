@@ -2,7 +2,7 @@ import { db } from "@/db/graphnode.db";
 import { api } from "@/apiClient";
 import { mapNote, mapFolder, mapConversation } from "@/utils/dtoMappers";
 
-const SYNC_CURSOR_KEY = "graphnode_sync_cursor";
+const SYNC_CURSOR_KEY = "graphnode_syncronization";
 
 /**
  * 서버에서 변경된 데이터를 로컬 DB에 반영합니다 (Pull Sync).
