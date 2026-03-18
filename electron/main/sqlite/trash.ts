@@ -2,7 +2,11 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { getGraphNodeHomeDirectory } from "@graphnode/paths";
-import { getDefaultDatabaseLocation, readSQLiteSchema } from "@graphnode/storage";
+import {
+  applySQLiteCompatibilityMigrations,
+  getDefaultDatabaseLocation,
+  readSQLiteSchema,
+} from "@graphnode/storage";
 
 type TrashedNoteRow = {
   id: string;
@@ -44,6 +48,7 @@ async function openDatabase() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec(await getSchema());
+  applySQLiteCompatibilityMigrations(db);
   return db;
 }
 

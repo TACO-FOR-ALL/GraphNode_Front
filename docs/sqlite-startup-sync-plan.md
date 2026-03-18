@@ -33,10 +33,21 @@
 
 - `sqlite.sync.cursor`
 - `sqlite.bootstrap.state`
+- `sqlite.compat.migration.version`
 
 정의 위치:
 
-- `packages/storage/src/sync-bootstrap.js`
+- `packages/storage/src/sync-bootstrap.ts`
+- `packages/storage/src/sqlite-migrations.ts`
+
+설명:
+
+- `sqlite.sync.cursor`
+  - 마지막으로 서버와 맞춰진 sync 기준 시점
+- `sqlite.bootstrap.state`
+  - 현재 SQLite가 startup sync를 마쳐 사용 가능한 상태인지 표시
+- `sqlite.compat.migration.version`
+  - 과거 로컬 DB 구조를 현재 런타임 기준으로 정리했는지 표시하는 version key
 
 ### 2단계
 

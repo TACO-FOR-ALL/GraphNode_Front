@@ -7,6 +7,7 @@ import {
   SQLITE_SYNC_CURSOR_KEY,
 } from "./sync-bootstrap";
 import { getDefaultDatabaseLocation, readSQLiteSchema } from "./sqlite-plan";
+import { applySQLiteCompatibilityMigrations } from "./sqlite-migrations";
 
 interface SQLiteBootstrapMeta {
   state: string;
@@ -79,6 +80,7 @@ async function openDatabase(
 
   const db = new DatabaseSync(resolvedPath); // 기존 DB가 있으면 열고, 없으면 생성
   db.exec(await readSQLiteSchema()); // 필요한 테이블, 인덱스가 없으면 생성
+  applySQLiteCompatibilityMigrations(db);
 
   return { db, resolvedPath };
 }

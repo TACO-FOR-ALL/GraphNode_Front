@@ -14,6 +14,25 @@
 
 CLI도 같은 SQLite DB를 읽고 씁니다.
 
+## SQLite 호환 마이그레이션
+
+현재 SQLite를 열 때 `app_meta`에 저장된 compatibility migration version을 확인합니다.
+
+- key: `sqlite.compat.migration.version`
+- 구현 위치:
+  - `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-migrations.ts`
+
+현재 version은 `1`이며, 다음 항목을 1회성으로 정리합니다.
+
+- 과거 임베딩 실험 테이블
+  - `note_chunks`
+  - `embeddings`
+  - `embedding_jobs`
+- 관련 인덱스
+- migration 적용 결과는 `app_meta`에 기록되며, 같은 버전이면 다시 실행하지 않습니다.
+
+이미 version이 최신이면 migration은 다시 실행되지 않습니다.
+
 ## 남아 있는 Dexie 사용
 
 Dexie는 더 이상 active runtime path의 일부가 아닙니다.
@@ -33,6 +52,7 @@ Dexie는 더 이상 active runtime path의 일부가 아닙니다.
 - outbox coalescing이 `window.graphnodeAPI`를 통해 동작
 - trash 동작이 SQLite IPC를 통해 동작
 - 현재 SQLite runtime path 기준으로 build 통과
+- 실제 로컬 DB에서 예전 임베딩 실험 테이블이 제거됨
 
 ## 다음 정리 후보
 

@@ -3,6 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { getGraphNodeHomeDirectory } from "@graphnode/paths";
 import {
+  applySQLiteCompatibilityMigrations,
   SQLITE_BOOTSTRAP_STATE_KEY,
   SQLITE_SYNC_CURSOR_KEY,
   createBootstrapMeta,
@@ -120,6 +121,7 @@ async function openDatabase() {
 
   const db = new DatabaseSync(dbPath);
   db.exec(await getSchema());
+  applySQLiteCompatibilityMigrations(db);
   migrateLegacyThreadMessages(db);
   return db;
 }
@@ -169,6 +171,50 @@ function hasLegacyMessagesJsonColumn(db: DatabaseSync) {
   }>;
 
   return columns.some((column) => column.name === "messages_json");
+}
+
+function prepareThreadUpsertStatement(
+  db: DatabaseSync,
+  includeLegacyMessagesJson = hasLegacyMessagesJsonColumn(db),
+) {
+  if (includeLegacyMessagesJson) {
+    return db.prepare(`
+      INSERT INTO threads (id, title, updated_at, deleted_at, messages_json)
+      VALUES (?, ?, ?, NULL, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        updated_at = excluded.updated_at,
+        deleted_at = NULL,
+        messages_json = excluded.messages_json
+    `);
+  }
+
+  return db.prepare(`
+    INSERT INTO threads (id, title, updated_at, deleted_at)
+    VALUES (?, ?, ?, NULL)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      updated_at = excluded.updated_at,
+      deleted_at = NULL
+  `);
+}
+
+function runThreadUpsert(
+  stmt: ReturnType<DatabaseSync["prepare"]>,
+  thread: SyncedThread,
+  includeLegacyMessagesJson: boolean,
+) {
+  if (includeLegacyMessagesJson) {
+    stmt.run(
+      thread.id,
+      thread.title,
+      thread.updatedAt,
+      JSON.stringify(thread.messages),
+    );
+    return;
+  }
+
+  stmt.run(thread.id, thread.title, thread.updatedAt);
 }
 
 function replaceThreadMessages(
@@ -312,14 +358,11 @@ export async function applyStartupSyncToSQLite(
       deleteFolder.run(id);
     });
 
-    const upsertThread = db.prepare(`
-      INSERT INTO threads (id, title, updated_at, deleted_at)
-      VALUES (?, ?, ?, NULL)
-      ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        updated_at = excluded.updated_at,
-        deleted_at = NULL
-    `);
+    const includeLegacyMessagesJson = hasLegacyMessagesJsonColumn(db);
+    const upsertThread = prepareThreadUpsertStatement(
+      db,
+      includeLegacyMessagesJson,
+    );
     const deleteThread = db.prepare(`
       UPDATE threads
       SET deleted_at = ?
@@ -327,11 +370,7 @@ export async function applyStartupSyncToSQLite(
     `);
 
     payload.threads.upserts.forEach((thread) => {
-      upsertThread.run(
-        thread.id,
-        thread.title,
-        thread.updatedAt,
-      );
+      runThreadUpsert(upsertThread, thread, includeLegacyMessagesJson);
       replaceThreadMessages(db, thread.id, thread.messages);
     });
     payload.threads.deleteIds.forEach((id) => {
@@ -751,12 +790,9 @@ export async function searchSQLiteThreads(query: string) {
 export async function upsertSQLiteThread(thread: SyncedThread) {
   const db = await openDatabase();
   try {
-    db.prepare(`INSERT INTO threads (id, title, updated_at, deleted_at)
-      VALUES (?, ?, ?, NULL)
-      ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        updated_at = excluded.updated_at,
-        deleted_at = NULL`).run(thread.id, thread.title, thread.updatedAt);
+    const includeLegacyMessagesJson = hasLegacyMessagesJsonColumn(db);
+    const stmt = prepareThreadUpsertStatement(db, includeLegacyMessagesJson);
+    runThreadUpsert(stmt, thread, includeLegacyMessagesJson);
     replaceThreadMessages(db, thread.id, thread.messages);
     return { ok: true, thread };
   } finally {
@@ -768,14 +804,10 @@ export async function bulkUpsertSQLiteThreads(threads: SyncedThread[]) {
   const db = await openDatabase();
   try {
     db.exec("BEGIN");
-    const stmt = db.prepare(`INSERT INTO threads (id, title, updated_at, deleted_at)
-      VALUES (?, ?, ?, NULL)
-      ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        updated_at = excluded.updated_at,
-        deleted_at = NULL`);
+    const includeLegacyMessagesJson = hasLegacyMessagesJsonColumn(db);
+    const stmt = prepareThreadUpsertStatement(db, includeLegacyMessagesJson);
     for (const thread of threads) {
-      stmt.run(thread.id, thread.title, thread.updatedAt);
+      runThreadUpsert(stmt, thread, includeLegacyMessagesJson);
       replaceThreadMessages(db, thread.id, thread.messages);
     }
     db.exec("COMMIT");

@@ -8,6 +8,7 @@ export {
   getDefaultDatabaseLocation,
   readSQLiteSchema,
 } from "./sqlite-plan";
+export { applySQLiteCompatibilityMigrations } from "./sqlite-migrations";
 export { SQLITE_SCHEMA } from "./sqlite-schema";
 export {
   getSQLiteStatus,
