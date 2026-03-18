@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  IoBookOutline,
+  IoChatbubblesOutline,
+  IoCloudDownloadOutline,
+} from "react-icons/io5";
 import { threadRepo } from "@/managers/threadRepo";
 import DropJsonZone from "./DropJsonZone";
 import SettingsPanelLayout from "./SettingsPanelLayout";
@@ -21,7 +25,7 @@ export function isDeveloperToolsEnabled() {
   let viteDev = false;
 
   try {
-    viteDev = Boolean(Function("return import.meta.env.DEV")());
+    viteDev = import.meta.env.DEV === true;
   } catch {
     viteDev = false;
   }
@@ -195,20 +199,50 @@ export default function DataPrivacyPanel() {
           <button
             onClick={handleExportNotes}
             disabled={isExportingNotes || isExportingChats}
-            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
-            {isExportingNotes
-              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-              : t("settings.dataPrivacy.export.notes", "Export Notes")}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+                <IoBookOutline className="text-base" />
+              </div>
+              <IoCloudDownloadOutline
+                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingNotes ? "animate-pulse" : ""}`}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                {isExportingNotes
+                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+                  : t("settings.dataPrivacy.export.notes", "Export Notes")}
+              </p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {t("settings.dataPrivacy.export.notesHint", "Markdown files")}
+              </p>
+            </div>
           </button>
           <button
             onClick={handleExportChats}
             disabled={isExportingChats || isExportingNotes}
-            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
-            {isExportingChats
-              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-              : t("settings.dataPrivacy.export.chats", "Export Chats")}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/10 text-violet-500 group-hover:bg-violet-500/20 transition-colors">
+                <IoChatbubblesOutline className="text-base" />
+              </div>
+              <IoCloudDownloadOutline
+                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingChats ? "animate-pulse" : ""}`}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                {isExportingChats
+                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+                  : t("settings.dataPrivacy.export.chats", "Export Chats")}
+              </p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {t("settings.dataPrivacy.export.chatsHint", "JSON files")}
+              </p>
+            </div>
           </button>
         </div>
       </div>
