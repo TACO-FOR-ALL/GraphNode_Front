@@ -1,12 +1,14 @@
-import { db } from "@/db/graphnode.db";
 import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
-import sortItemByDate from "@/utils/sortItemByDate";
 import i18n from "@/i18n";
 import { getDefaultNoteContent } from "@/constants/defaultNotes";
 import { trashRepo } from "./trashRepo";
+import {
+  getPreferredNoteReadStorage,
+  getPreferredNoteWriteStorage,
+} from "./storage/selectors/noteStorageSelector";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -19,10 +21,10 @@ export const noteRepo = {
       createdAt: Date.now(),
     };
 
-    // transaction 안에서 실행되는 DB 작업은 전부 성공 또는 전부 실패 (rw = read write, 접근할 테이블 목록 전부 명시)
-    await db.transaction("rw", db.notes, db.outbox, async () => {
-      await db.notes.put(newNote);
+    const primaryWriteStorage = await getPreferredNoteWriteStorage();
 
+    await primaryWriteStorage.runNoteWriteTransaction(async () => {
+      await primaryWriteStorage.createNoteRecord(newNote);
       await outboxRepo.enqueueNoteCreate(newNote.id, {
         id: newNote.id,
         title: newNote.title,
@@ -35,19 +37,15 @@ export const noteRepo = {
   },
 
   async getAllNotes(): Promise<Note[]> {
-    return await db.notes.toArray();
+    return (await getPreferredNoteReadStorage()).listNotes();
   },
 
   async getNoteById(id: string): Promise<Note | null> {
-    return (await db.notes.get(id)) ?? null;
+    return (await getPreferredNoteReadStorage()).getNote(id);
   },
 
   async getNoteByQuery(query: string): Promise<Note[]> {
-    return await db.notes
-      .filter((note) =>
-        note.content.toLowerCase().includes(query.toLowerCase()),
-      )
-      .toArray();
+    return (await getPreferredNoteReadStorage()).searchNotes(query);
   },
 
   async updateNoteById(id: string, content: string) {
@@ -56,17 +54,18 @@ export const noteRepo = {
 
     const title = extractTitleFromMarkdown(content);
     const updatedAt = Date.now();
+    const primaryWriteStorage = await getPreferredNoteWriteStorage();
 
-    await db.transaction("rw", db.notes, db.outbox, async () => {
-      await db.notes.update(id, {
-        title: title,
+    await primaryWriteStorage.runNoteWriteTransaction(async () => {
+      await primaryWriteStorage.updateNoteRecord(id, {
+        title,
         content,
-        updatedAt: updatedAt,
+        updatedAt,
       });
 
       await outboxRepo.enqueueNoteUpdate(id, {
-        title: title,
-        content: content,
+        title,
+        content,
       });
     });
 
@@ -79,9 +78,10 @@ export const noteRepo = {
   ): Promise<Note | null> {
     const note = await this.getNoteById(noteId);
     if (!note) return null;
+    const primaryWriteStorage = await getPreferredNoteWriteStorage();
 
-    await db.transaction("rw", db.notes, db.outbox, async () => {
-      await db.notes.update(noteId, {
+    await primaryWriteStorage.runNoteWriteTransaction(async () => {
+      await primaryWriteStorage.moveNoteRecord(noteId, {
         folderId,
         updatedAt: Date.now(),
       });
@@ -117,15 +117,14 @@ export const noteRepo = {
   },
 
   async upsertMany(newOnes: Note[]): Promise<void> {
-    const sorted = sortItemByDate(newOnes);
-    await db.notes.bulkPut(sorted);
+    await (await getPreferredNoteWriteStorage()).bulkPutNotes(newOnes);
   },
 
   async deleteMany(ids: string[]): Promise<void> {
-    await db.notes.bulkDelete(ids);
+    await (await getPreferredNoteWriteStorage()).bulkDeleteNotes(ids);
   },
 
   async clearAll(): Promise<void> {
-    await db.notes.clear();
+    await (await getPreferredNoteWriteStorage()).clearNotes();
   },
 };
