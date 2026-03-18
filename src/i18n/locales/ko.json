@@ -345,6 +345,20 @@
         "title": "데이터 가져오기",
         "subtitle": "외부 소스에서 데이터를 가져옵니다"
       },
+      "export": {
+        "title": "내 데이터 내보내기",
+        "subtitle": "선택한 디렉토리에 노트와 채팅 기록을 저장합니다",
+        "notes": "노트 내보내기",
+        "chats": "채팅 내보내기",
+        "exporting": "내보내는 중...",
+        "toast": {
+          "notesSuccess": "노트 {{count}}개를 내보냈습니다",
+          "chatsSuccess": "채팅 {{count}}개를 내보냈습니다",
+          "cancelled": "내보내기를 취소했습니다",
+          "notesError": "노트 내보내기에 실패했습니다",
+          "chatsError": "채팅 내보내기에 실패했습니다"
+        }
+      },
       "trash": {
         "title": "휴지통",
         "subtitle": "삭제된 항목은 30일간 보관됩니다",
@@ -516,8 +530,24 @@
         "description": "Model Context Protocol(MCP)은 AI 어시스턴트가 외부 도구 및 데이터 소스에 연결하여 내장 기능을 넘어 능력을 확장할 수 있게 합니다.",
         "docsLink": "MCP 문서 보기 (GraphNode)",
         "learnMore": "MCP에 대해 더 알아보기 (공식)"
+        }
+      },
+      "cli": {
+        "title": "터미널 CLI",
+        "subtitle": "현재 macOS 또는 Windows 사용자용 graphnode 명령을 설치합니다",
+        "unsupported": "자동 CLI 설치는 현재 macOS와 Windows에서만 지원됩니다.",
+        "installed": "이 사용자에 대해 CLI가 설치되어 있습니다.",
+        "notInstalled": "이 사용자에 대해 CLI가 아직 설치되지 않았습니다.",
+        "commandPath": "명령 경로",
+        "shellConfigPath": "셸 설정 파일",
+        "install": "CLI 설치",
+        "installing": "설치 중...",
+        "installedBadge": "설치됨",
+        "toast": {
+          "success": "CLI가 설치되었습니다. 새 터미널 창에서 graphnode를 사용하세요.",
+          "error": "CLI 설치에 실패했습니다."
+        }
       }
-    }
   },
   "sync": {
     "pullFailed": "서버에서 데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요."

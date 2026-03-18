@@ -345,6 +345,20 @@
         "title": "Import Data",
         "subtitle": "Import your data from external sources"
       },
+      "export": {
+        "title": "Export My Data",
+        "subtitle": "Save your notes and conversations to a directory you choose",
+        "notes": "Export Notes",
+        "chats": "Export Chats",
+        "exporting": "Exporting...",
+        "toast": {
+          "notesSuccess": "Exported {{count}} notes",
+          "chatsSuccess": "Exported {{count}} conversations",
+          "cancelled": "Export cancelled",
+          "notesError": "Failed to export notes",
+          "chatsError": "Failed to export conversations"
+        }
+      },
       "trash": {
         "title": "Trash",
         "subtitle": "Deleted items are kept for 30 days",
@@ -516,8 +530,24 @@
         "description": "Model Context Protocol (MCP) allows AI assistants to connect to external tools and data sources, extending their capabilities beyond built-in features.",
         "docsLink": "View MCP documentation (GraphNode)",
         "learnMore": "Learn more about MCP (Official)"
+        }
+      },
+      "cli": {
+        "title": "Terminal CLI",
+        "subtitle": "Install the graphnode command for your current macOS or Windows user",
+        "unsupported": "Automatic CLI install is currently supported on macOS and Windows only.",
+        "installed": "CLI is installed for this user.",
+        "notInstalled": "CLI is not installed for this user yet.",
+        "commandPath": "Command path",
+        "shellConfigPath": "Shell config",
+        "install": "Install CLI",
+        "installing": "Installing...",
+        "installedBadge": "Installed",
+        "toast": {
+          "success": "CLI installed. Open a new terminal window to use graphnode.",
+          "error": "Failed to install the CLI."
+        }
       }
-    }
   },
   "sync": {
     "pullFailed": "Failed to sync data from server. Please check your connection."

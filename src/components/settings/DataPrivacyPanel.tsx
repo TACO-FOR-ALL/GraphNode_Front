@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { threadRepo } from "@/managers/threadRepo";
 import DropJsonZone from "./DropJsonZone";
@@ -13,12 +14,33 @@ import { useOnboardingStore } from "@/store/useOnboardingStore";
 import { useChangelogStore } from "@/store/useChangelogStore";
 import { useToastStore } from "@/store/useToastStore";
 import { unwrapResponse } from "@/utils/httpResponse";
+import { folderRepo } from "@/managers/folderRepo";
+import { trashRepo } from "@/managers/trashRepo";
+
+export function isDeveloperToolsEnabled() {
+  let viteDev = false;
+
+  try {
+    viteDev = Boolean(Function("return import.meta.env.DEV")());
+  } catch {
+    viteDev = false;
+  }
+
+  return (
+    viteDev ||
+    (globalThis as { __GRAPHNODE_TEST_DEVTOOLS__?: boolean })
+      .__GRAPHNODE_TEST_DEVTOOLS__ === true
+  );
+}
 
 export default function DataPrivacyPanel() {
   const { t } = useTranslation();
   const [showChatConfirm, setShowChatConfirm] = useState(false);
   const [showNoteConfirm, setShowNoteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExportingNotes, setIsExportingNotes] = useState(false);
+  const [isExportingChats, setIsExportingChats] = useState(false);
+
   const { resetOnboarding, startOnboarding } = useOnboardingStore();
   const { resetLastSeenVersion, setModalOpen } = useChangelogStore();
   const { addToast } = useToastStore();
@@ -28,6 +50,8 @@ export default function DataPrivacyPanel() {
     try {
       unwrapResponse(await api.conversations.deleteAll());
       await threadRepo.clearAll();
+      await trashRepo.clearThreadsTrash();
+      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("thread");
       setShowChatConfirm(false);
       addToast({
         message: t("settings.dataPrivacy.clearChats.toast.success"),
@@ -52,6 +76,10 @@ export default function DataPrivacyPanel() {
       unwrapResponse(await api.note.deleteAllNotes());
       unwrapResponse(await api.note.deleteAllFolders());
       await noteRepo.clearAll();
+      await folderRepo.clearAll();
+      await trashRepo.clearNotesAndFoldersTrash();
+      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("note");
+      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("folder");
       setShowNoteConfirm(false);
       addToast({
         message: t("settings.dataPrivacy.clearNotes.toast.success"),
@@ -70,6 +98,74 @@ export default function DataPrivacyPanel() {
     }
   };
 
+  const handleExportNotes = async () => {
+    setIsExportingNotes(true);
+    try {
+      const notes = await noteRepo.getAllNotes();
+      const result =
+        await window.graphnodeAPI.exportSQLiteNotesToDirectory(notes);
+
+      if (result.canceled) {
+        addToast({
+          message: t("settings.dataPrivacy.export.toast.cancelled"),
+          type: "info",
+        });
+        return;
+      }
+
+      addToast({
+        message: t("settings.dataPrivacy.export.toast.notesSuccess", {
+          count: result.count ?? notes.length,
+        }),
+        type: "success",
+      });
+    } catch (err) {
+      addToast({
+        message:
+          err instanceof Error
+            ? err.message
+            : t("settings.dataPrivacy.export.toast.notesError"),
+        type: "error",
+      });
+    } finally {
+      setIsExportingNotes(false);
+    }
+  };
+
+  const handleExportChats = async () => {
+    setIsExportingChats(true);
+    try {
+      const threads = await threadRepo.getThreadList();
+      const result =
+        await window.graphnodeAPI.exportSQLiteThreadsToDirectory(threads);
+
+      if (result.canceled) {
+        addToast({
+          message: t("settings.dataPrivacy.export.toast.cancelled"),
+          type: "info",
+        });
+        return;
+      }
+
+      addToast({
+        message: t("settings.dataPrivacy.export.toast.chatsSuccess", {
+          count: result.count ?? threads.length,
+        }),
+        type: "success",
+      });
+    } catch (err) {
+      addToast({
+        message:
+          err instanceof Error
+            ? err.message
+            : t("settings.dataPrivacy.export.toast.chatsError"),
+        type: "error",
+      });
+    } finally {
+      setIsExportingChats(false);
+    }
+  };
+
   return (
     <SettingsPanelLayout>
       {/* Import Data Section */}
@@ -84,6 +180,36 @@ export default function DataPrivacyPanel() {
         <div className="flex gap-4 w-full mt-4">
           <DropJsonZone />
           <DropMdZone />
+        </div>
+      </div>
+      {/* Export Data Section */}
+      <div className="mt-8 w-full">
+        <SettingCategoryTitle
+          title={t("settings.dataPrivacy.export.title", "Export My Data")}
+          subtitle={t(
+            "settings.dataPrivacy.export.subtitle",
+            "Save your notes and conversations to a directory you choose",
+          )}
+        />
+        <div className="flex gap-3 w-full mt-4">
+          <button
+            onClick={handleExportNotes}
+            disabled={isExportingNotes || isExportingChats}
+            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isExportingNotes
+              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+              : t("settings.dataPrivacy.export.notes", "Export Notes")}
+          </button>
+          <button
+            onClick={handleExportChats}
+            disabled={isExportingChats || isExportingNotes}
+            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isExportingChats
+              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+              : t("settings.dataPrivacy.export.chats", "Export Chats")}
+          </button>
         </div>
       </div>
       {/* Trash Section */}
@@ -145,7 +271,7 @@ export default function DataPrivacyPanel() {
           handleClearTarget={handleClearNotes}
         />
       </div>
-      {import.meta.env.DEV && (
+      {isDeveloperToolsEnabled() && (
         <div className="mt-8 w-full">
           <SettingCategoryTitle
             title="Developer Tools"
@@ -179,6 +305,10 @@ export default function DataPrivacyPanel() {
                 <button
                   onClick={async () => {
                     await threadRepo.clearAll();
+                    await trashRepo.clearThreadsTrash();
+                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                      "thread",
+                    );
                     const result = await api.conversations.deleteAll();
                     console.log(result);
                   }}
@@ -211,6 +341,27 @@ export default function DataPrivacyPanel() {
                   className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
                 >
                   get server notes
+                </button>
+                <button
+                  onClick={async () => {
+                    await noteRepo.clearAll();
+                    await folderRepo.clearAll();
+                    await trashRepo.clearNotesAndFoldersTrash();
+                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                      "note",
+                    );
+                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                      "folder",
+                    );
+                    const results = await Promise.all([
+                      api.note.deleteAllNotes(),
+                      api.note.deleteAllFolders(),
+                    ]);
+                    console.log(results);
+                  }}
+                  className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
+                >
+                  delete server, client notes
                 </button>
               </div>
             </div>
