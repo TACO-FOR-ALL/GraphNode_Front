@@ -5,6 +5,8 @@ declare module "@graphnode/paths" {
 }
 
 declare module "@graphnode/storage" {
+  import type { DatabaseSync } from "node:sqlite";
+
   export const NOTE_ENTITY: string;
   export const THREAD_ENTITY: string;
   export const FOLDER_ENTITY: string;
@@ -29,4 +31,5 @@ declare module "@graphnode/storage" {
 
   export function readSQLiteSchema(): Promise<string>;
   export function getDefaultDatabaseLocation(homeDirectory: string): string;
+  export function applySQLiteCompatibilityMigrations(db: DatabaseSync): void;
 }

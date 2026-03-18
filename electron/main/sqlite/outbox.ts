@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getGraphNodeHomeDirectory } from "@graphnode/paths";
 import {
+  applySQLiteCompatibilityMigrations,
   getDefaultDatabaseLocation,
   readSQLiteSchema,
 } from "@graphnode/storage";
@@ -39,6 +40,7 @@ async function openDatabase() {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec(await getSchema());
+  applySQLiteCompatibilityMigrations(db);
   return db;
 }
 

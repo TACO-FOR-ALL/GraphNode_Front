@@ -29,7 +29,9 @@ GraphNode의 현재 활성 로컬 런타임 저장소는 `SQLite`입니다.
 
 SQLite 스키마 정의 위치:
 
-- `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-schema.js`
+- `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-schema.ts`
+- 읽기 쉬운 참고본:
+  - `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-schema.sql`
 
 현재 동기화/런타임에서 사용하는 주요 테이블:
 
@@ -37,13 +39,25 @@ SQLite 스키마 정의 위치:
 - `folders`
 - `threads`
 - `outbox_ops`
-- `trash_notes`
-- `trash_threads`
-- `trash_folders`
+- `trashed_notes`
+- `trashed_threads`
+- `trashed_folders`
 - `app_meta`
 
 현재 기본 SQLite 스키마에는 임베딩/벡터 검색용 테이블을 포함하지 않습니다.
 관련 구조는 실제 요구사항이 정리된 뒤 별도 migration으로 추가할 예정입니다.
+
+추가로, 현재 런타임 스키마와 과거 실험 스키마 차이를 정리하기 위한
+compatibility migration이 존재합니다.
+
+- 구현 위치:
+  - `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-migrations.ts`
+- version key:
+  - `sqlite.compat.migration.version`
+- 저장 위치:
+  - `app_meta`
+
+현재 version은 `1`이며, 과거 임베딩 실험 테이블과 인덱스를 1회성으로 정리합니다.
 
 ## Pull 동기화 흐름
 
@@ -85,7 +99,7 @@ Pull sync 진입점:
 
 bootstrap meta key 정의:
 
-- `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sync-bootstrap.js`
+- `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sync-bootstrap.ts`
 
 ## Push sync / outbox loop
 

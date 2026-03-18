@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  IoBookOutline,
+  IoChatbubblesOutline,
+  IoCloudDownloadOutline,
+} from "react-icons/io5";
 import { threadRepo } from "@/managers/threadRepo";
 import DropJsonZone from "./DropJsonZone";
 import SettingsPanelLayout from "./SettingsPanelLayout";
@@ -10,28 +14,11 @@ import { noteRepo } from "@/managers/noteRepo";
 import DropMdZone from "./DropMdZone";
 import DangerZoneItem from "./DangerZoneItem";
 import TrashPanel from "./TrashPanel";
-import { useOnboardingStore } from "@/store/useOnboardingStore";
-import { useChangelogStore } from "@/store/useChangelogStore";
 import { useToastStore } from "@/store/useToastStore";
 import { unwrapResponse } from "@/utils/httpResponse";
 import { folderRepo } from "@/managers/folderRepo";
 import { trashRepo } from "@/managers/trashRepo";
-
-export function isDeveloperToolsEnabled() {
-  let viteDev = false;
-
-  try {
-    viteDev = Boolean(Function("return import.meta.env.DEV")());
-  } catch {
-    viteDev = false;
-  }
-
-  return (
-    viteDev ||
-    (globalThis as { __GRAPHNODE_TEST_DEVTOOLS__?: boolean })
-      .__GRAPHNODE_TEST_DEVTOOLS__ === true
-  );
-}
+import DeveloperToolsPanel, { isDeveloperToolsEnabled } from "./DeveloperToolsPanel";
 
 export default function DataPrivacyPanel() {
   const { t } = useTranslation();
@@ -41,8 +28,6 @@ export default function DataPrivacyPanel() {
   const [isExportingNotes, setIsExportingNotes] = useState(false);
   const [isExportingChats, setIsExportingChats] = useState(false);
 
-  const { resetOnboarding, startOnboarding } = useOnboardingStore();
-  const { resetLastSeenVersion, setModalOpen } = useChangelogStore();
   const { addToast } = useToastStore();
 
   const handleClearChats = async () => {
@@ -195,20 +180,50 @@ export default function DataPrivacyPanel() {
           <button
             onClick={handleExportNotes}
             disabled={isExportingNotes || isExportingChats}
-            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
-            {isExportingNotes
-              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-              : t("settings.dataPrivacy.export.notes", "Export Notes")}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+                <IoBookOutline className="text-base" />
+              </div>
+              <IoCloudDownloadOutline
+                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingNotes ? "animate-pulse" : ""}`}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                {isExportingNotes
+                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+                  : t("settings.dataPrivacy.export.notes", "Export Notes")}
+              </p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {t("settings.dataPrivacy.export.notesHint", "Markdown files")}
+              </p>
+            </div>
           </button>
           <button
             onClick={handleExportChats}
             disabled={isExportingChats || isExportingNotes}
-            className="px-4 py-2 text-sm font-medium text-text-primary bg-bg-secondary hover:bg-bg-tertiary rounded-lg transition-colors disabled:opacity-50"
+            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
-            {isExportingChats
-              ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-              : t("settings.dataPrivacy.export.chats", "Export Chats")}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/10 text-violet-500 group-hover:bg-violet-500/20 transition-colors">
+                <IoChatbubblesOutline className="text-base" />
+              </div>
+              <IoCloudDownloadOutline
+                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingChats ? "animate-pulse" : ""}`}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                {isExportingChats
+                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
+                  : t("settings.dataPrivacy.export.chats", "Export Chats")}
+              </p>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {t("settings.dataPrivacy.export.chatsHint", "JSON files")}
+              </p>
+            </div>
           </button>
         </div>
       </div>
@@ -271,182 +286,7 @@ export default function DataPrivacyPanel() {
           handleClearTarget={handleClearNotes}
         />
       </div>
-      {isDeveloperToolsEnabled() && (
-        <div className="mt-8 w-full">
-          <SettingCategoryTitle
-            title="Developer Tools"
-            subtitle="For testing purposes only"
-          />
-          <div className="w-full mt-4 bg-bg-secondary rounded-lg border border-dashed border-text-tertiary divide-y divide-text-tertiary/20">
-            {/* Chat */}
-            <div className="p-4">
-              <p className="text-[10px] font-semibold text-text-tertiary mb-3 uppercase tracking-widest">
-                Chat
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={async () => {
-                    const result = await threadRepo.getThreadList();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get client chat
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.conversations.list();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get server chat
-                </button>
-                <button
-                  onClick={async () => {
-                    await threadRepo.clearAll();
-                    await trashRepo.clearThreadsTrash();
-                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
-                      "thread",
-                    );
-                    const result = await api.conversations.deleteAll();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  delete server, client chat
-                </button>
-              </div>
-            </div>
-            {/* Notes */}
-            <div className="p-4">
-              <p className="text-[10px] font-semibold text-text-tertiary mb-3 uppercase tracking-widest">
-                Notes
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={async () => {
-                    const result = await noteRepo.getAllNotes();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get client notes
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.note.listNotes();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get server notes
-                </button>
-                <button
-                  onClick={async () => {
-                    await noteRepo.clearAll();
-                    await folderRepo.clearAll();
-                    await trashRepo.clearNotesAndFoldersTrash();
-                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
-                      "note",
-                    );
-                    await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
-                      "folder",
-                    );
-                    const results = await Promise.all([
-                      api.note.deleteAllNotes(),
-                      api.note.deleteAllFolders(),
-                    ]);
-                    console.log(results);
-                  }}
-                  className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  delete server, client notes
-                </button>
-              </div>
-            </div>
-            {/* Graph */}
-            <div className="p-4">
-              <p className="text-[10px] font-semibold text-text-tertiary mb-3 uppercase tracking-widest">
-                Graph
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={async () => {
-                    const result = await api.graphAi.generateGraph();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  generate graph
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.graph.getSnapshot();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get graph
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.graphAi.requestSummary();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  generate summary
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.graphAi.getSummary();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  get summary
-                </button>
-                <button
-                  onClick={async () => {
-                    const result = await api.graphAi.deleteGraph();
-                    console.log(result);
-                  }}
-                  className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  delete graph
-                </button>
-              </div>
-            </div>
-            {/* UI */}
-            <div className="p-4">
-              <p className="text-[10px] font-semibold text-text-tertiary mb-3 uppercase tracking-widest">
-                UI
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    resetOnboarding();
-                    startOnboarding();
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  restart onboarding
-                </button>
-                <button
-                  onClick={() => {
-                    resetLastSeenVersion();
-                    setModalOpen(true);
-                  }}
-                  className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
-                >
-                  show changelog
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {isDeveloperToolsEnabled() && <DeveloperToolsPanel />}
     </SettingsPanelLayout>
   );
 }

@@ -187,6 +187,34 @@ GraphNode_Front/
   - `~/.graphnode/graphnode.db`
 - Renderer는 `window.graphnodeAPI`를 통해 Electron main IPC를 거쳐 SQLite에 접근합니다.
 - 노트/폴더/스레드 변경은 repository 계층을 통해 처리해 SQLite + Outbox 동기화 일관성을 유지합니다.
+- SQLite를 열 때 `app_meta` 기반의 **compatibility migration version**을 확인해,
+  이전 실험 스키마나 레거시 잔존 구조를 1회성으로 정리합니다.
+
+### SQLite 호환 마이그레이션
+
+기존 사용자 로컬 DB에는 현재 런타임에서 더 이상 사용하지 않는 테이블이나
+실험용 스키마가 남아 있을 수 있습니다. 이를 위해 SQLite를 여는 시점에
+호환 마이그레이션을 수행합니다.
+
+- 구현 위치:
+  - `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-migrations.ts`
+- 버전 기록 key:
+  - `sqlite.compat.migration.version`
+- 저장 위치:
+  - `app_meta`
+- 새 로컬 DB 변경이 필요할 때는:
+  1. migration version 증가
+  2. 해당 버전용 정리/변환 로직 추가
+  3. README 및 관련 문서 갱신
+
+> 이미 같은 버전의 migration이 적용된 DB라면 다시 실행하지 않습니다.
+> 현재 기준 `CURRENT_COMPAT_MIGRATION_VERSION = 1`이며, 다음 항목을 1회성으로 정리합니다.
+
+- 예전 임베딩 실험 테이블
+  - `note_chunks`
+  - `embeddings`
+  - `embedding_jobs`
+- 관련 인덱스
 
 현재 핵심 repo:
 
