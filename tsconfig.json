@@ -17,6 +17,7 @@
   },
   "include": [
     "src",
+    "packages",
     "electron",
     "src/assets.d.ts",
     "vite.config.ts",
