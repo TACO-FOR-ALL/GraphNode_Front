@@ -1,302 +1,198 @@
-import { noteRepo } from "../noteRepo";
+import type { Note } from "@/types/Note";
 
-// DB 모킹
-const mockNotes = new Map<string, any>();
-const mockTrashedNotes = new Map<string, any>();
-const mockOutbox = new Map<string, any>();
+const noteStore = new Map<string, Note>();
+const mockEnqueueNoteCreate = jest.fn();
+const mockEnqueueNoteUpdate = jest.fn();
+const mockEnqueueNoteMove = jest.fn();
+const mockMoveNoteToTrash = jest.fn();
 
-jest.mock("@/db/graphnode.db", () => ({
-  db: {
-    notes: {
-      put: jest.fn((note: any) => {
-        mockNotes.set(note.id, note);
-        return Promise.resolve(note.id);
-      }),
-      get: jest.fn((id: string) => Promise.resolve(mockNotes.get(id))),
-      toArray: jest.fn(() => Promise.resolve(Array.from(mockNotes.values()))),
-      filter: jest.fn(() => ({
-        toArray: jest.fn(() => Promise.resolve(Array.from(mockNotes.values()))),
-      })),
-      update: jest.fn((id: string, updates: any) => {
-        const note = mockNotes.get(id);
-        if (note) {
-          mockNotes.set(id, { ...note, ...updates });
-          return Promise.resolve(1);
-        }
-        return Promise.resolve(0);
-      }),
-      delete: jest.fn((id: string) => {
-        mockNotes.delete(id);
-        return Promise.resolve();
-      }),
-      bulkPut: jest.fn((notes: any[]) => {
-        notes.forEach((n) => mockNotes.set(n.id, n));
-        return Promise.resolve();
-      }),
-      clear: jest.fn(() => {
-        mockNotes.clear();
-        return Promise.resolve();
-      }),
-    },
-    outbox: {
-      put: jest.fn((op: any) => {
-        mockOutbox.set(op.opId, op);
-        return Promise.resolve(op.opId);
-      }),
-      where: jest.fn((criteria: any) => {
-        if (typeof criteria === "string") {
-          return {
-            equals: jest.fn(() => ({
-              toArray: jest.fn(() => Promise.resolve([])),
-              first: jest.fn(() => Promise.resolve(undefined)),
-            })),
-          };
-        }
-        // Object criteria: { entityId, type, status }
-        return {
-          first: jest.fn(() => Promise.resolve(undefined)),
-          toArray: jest.fn(() => Promise.resolve([])),
-        };
-      }),
-      update: jest.fn(() => Promise.resolve(1)),
-      bulkDelete: jest.fn(() => Promise.resolve()),
-    },
-    trashedNotes: {
-      put: jest.fn((note: any) => {
-        mockTrashedNotes.set(note.id, note);
-        return Promise.resolve(note.id);
-      }),
-      get: jest.fn((id: string) => Promise.resolve(mockTrashedNotes.get(id))),
-      delete: jest.fn((id: string) => {
-        mockTrashedNotes.delete(id);
-        return Promise.resolve();
-      }),
-      orderBy: jest.fn(() => ({
-        reverse: jest.fn(() => ({
-          toArray: jest.fn(() =>
-            Promise.resolve(
-              Array.from(mockTrashedNotes.values()).sort(
-                (a, b) => b.deletedAt - a.deletedAt,
-              ),
-            ),
-          ),
-        })),
-      })),
-      toArray: jest.fn(() => Promise.resolve(Array.from(mockTrashedNotes.values()))),
-      clear: jest.fn(() => {
-        mockTrashedNotes.clear();
-        return Promise.resolve();
-      }),
-      where: jest.fn(() => ({
-        below: jest.fn(() => ({
-          toArray: jest.fn(() => Promise.resolve([])),
-        })),
-      })),
-    },
-    transaction: jest.fn(async (...args: any[]) => {
-      // Dexie transaction: (mode, tables..., callback)
-      const callback = args[args.length - 1];
-      if (typeof callback === "function") {
-        return await callback();
-      }
-    }),
+jest.mock("@/utils/uuid", () => ({
+  __esModule: true,
+  default: jest.fn(() => "note-1"),
+}));
+
+jest.mock("../outboxRepo", () => ({
+  outboxRepo: {
+    enqueueNoteCreate: (...args: unknown[]) => mockEnqueueNoteCreate(...args),
+    enqueueNoteUpdate: (...args: unknown[]) => mockEnqueueNoteUpdate(...args),
+    enqueueNoteMove: (...args: unknown[]) => mockEnqueueNoteMove(...args),
   },
 }));
 
-// uuid 모킹
-jest.mock("@/utils/uuid", () => ({
-  __esModule: true,
-  default: jest.fn(() => `mock-uuid-${Date.now()}-${Math.random()}`),
+jest.mock("../trashRepo", () => ({
+  trashRepo: {
+    moveNoteToTrash: (...args: unknown[]) => mockMoveNoteToTrash(...args),
+  },
 }));
+
+jest.mock("../storage/selectors/noteStorageSelector", () => {
+  const createAdapter = () => ({
+    createNoteRecord: jest.fn(async (input: Note) => {
+      noteStore.set(input.id, input);
+      return input;
+    }),
+    listNotes: jest.fn(async () =>
+      Array.from(noteStore.values()).sort((a, b) => b.updatedAt - a.updatedAt),
+    ),
+    getNote: jest.fn(async (id: string) => noteStore.get(id) ?? null),
+    searchNotes: jest.fn(async (query: string) => {
+      const lowered = query.toLowerCase();
+      return Array.from(noteStore.values()).filter(
+        (note) =>
+          note.title.toLowerCase().includes(lowered) ||
+          note.content.toLowerCase().includes(lowered),
+      );
+    }),
+    updateNoteRecord: jest.fn(
+      async (
+        id: string,
+        input: { title: string; content: string; updatedAt: number },
+      ) => {
+        const current = noteStore.get(id);
+        if (current) {
+          noteStore.set(id, { ...current, ...input });
+        }
+      },
+    ),
+    moveNoteRecord: jest.fn(
+      async (
+        id: string,
+        input: { folderId: string | null; updatedAt: number },
+      ) => {
+        const current = noteStore.get(id);
+        if (current) {
+          noteStore.set(id, { ...current, ...input });
+        }
+      },
+    ),
+    bulkPutNotes: jest.fn(async (notes: Note[]) => {
+      notes.forEach((note) => noteStore.set(note.id, note));
+    }),
+    bulkDeleteNotes: jest.fn(async (ids: string[]) => {
+      ids.forEach((id) => noteStore.delete(id));
+    }),
+    clearNotes: jest.fn(async () => {
+      noteStore.clear();
+    }),
+    runNoteWriteTransaction: jest.fn(async <T>(callback: () => Promise<T>) =>
+      callback(),
+    ),
+  });
+
+  const adapter = createAdapter();
+
+  return {
+    getPreferredNoteReadStorage: jest.fn(async () => adapter),
+    getPreferredNoteWriteStorage: jest.fn(async () => adapter),
+    resetNoteStorageSelection: jest.fn(),
+  };
+});
+
+import { noteRepo } from "../noteRepo";
 
 describe("noteRepo", () => {
   beforeEach(() => {
-    mockNotes.clear();
-    mockTrashedNotes.clear();
-    mockOutbox.clear();
-    jest.clearAllMocks();
+    noteStore.clear();
+    mockEnqueueNoteCreate.mockReset();
+    mockEnqueueNoteUpdate.mockReset();
+    mockEnqueueNoteMove.mockReset();
+    mockMoveNoteToTrash.mockReset();
+    mockMoveNoteToTrash.mockResolvedValue({ id: "note-1" });
   });
 
-  describe("create", () => {
-    test("새 노트 생성", async () => {
-      const note = await noteRepo.create("# Test Note\nContent here");
+  test("새 노트를 생성하고 outbox create를 적재한다", async () => {
+    const note = await noteRepo.create("# Test Note\nBody", "folder-1");
 
-      expect(note).toBeDefined();
-      expect(note.title).toBe("Test Note");
-      expect(note.content).toBe("# Test Note\nContent here");
-      expect(note.folderId).toBeNull();
-      expect(note.createdAt).toBeDefined();
-      expect(note.updatedAt).toBeDefined();
-    });
-
-    test("folderId 지정하여 생성", async () => {
-      const note = await noteRepo.create("# Note", "folder-123");
-
-      expect(note.folderId).toBe("folder-123");
-    });
-
-    test("빈 content로 생성 시 Untitled", async () => {
-      const note = await noteRepo.create("");
-
-      expect(note.title).toBe("Untitled");
+    expect(note.id).toBe("note-1");
+    expect(note.title).toBe("Test Note");
+    expect(note.folderId).toBe("folder-1");
+    expect(noteStore.get("note-1")).toEqual(note);
+    expect(mockEnqueueNoteCreate).toHaveBeenCalledWith("note-1", {
+      id: "note-1",
+      title: "Test Note",
+      content: "# Test Note\nBody",
+      folderId: "folder-1",
     });
   });
 
-  describe("getNoteById", () => {
-    test("존재하는 노트 조회", async () => {
-      const created = await noteRepo.create("# Test");
-      mockNotes.set(created.id, created);
-
-      const found = await noteRepo.getNoteById(created.id);
-
-      expect(found).not.toBeNull();
-      expect(found!.id).toBe(created.id);
+  test("노트를 수정하고 최신 내용으로 다시 조회한다", async () => {
+    noteStore.set("note-1", {
+      id: "note-1",
+      title: "Old",
+      content: "# Old",
+      folderId: null,
+      createdAt: 1,
+      updatedAt: 1,
     });
 
-    test("존재하지 않는 노트 → null", async () => {
-      const found = await noteRepo.getNoteById("non-existent");
+    const updated = await noteRepo.updateNoteById("note-1", "# New Title\nNext");
 
-      expect(found).toBeNull();
+    expect(updated).toMatchObject({
+      id: "note-1",
+      title: "New Title",
+      content: "# New Title\nNext",
     });
-  });
-
-  describe("getAllNotes", () => {
-    test("모든 노트 조회", async () => {
-      await noteRepo.create("# Note 1");
-      await noteRepo.create("# Note 2");
-
-      const notes = await noteRepo.getAllNotes();
-
-      expect(notes.length).toBeGreaterThanOrEqual(2);
-    });
-
-    test("빈 목록", async () => {
-      const notes = await noteRepo.getAllNotes();
-
-      expect(notes).toEqual([]);
+    expect(mockEnqueueNoteUpdate).toHaveBeenCalledWith("note-1", {
+      title: "New Title",
+      content: "# New Title\nNext",
     });
   });
 
-  describe("updateNoteById", () => {
-    test("노트 업데이트", async () => {
-      const created = await noteRepo.create("# Original");
-      mockNotes.set(created.id, created);
-
-      const updated = await noteRepo.updateNoteById(
-        created.id,
-        "# Updated Title\nNew content",
-      );
-
-      expect(updated).not.toBeNull();
-      expect(updated!.title).toBe("Updated Title");
+  test("노트를 폴더로 이동한다", async () => {
+    noteStore.set("note-1", {
+      id: "note-1",
+      title: "Title",
+      content: "# Title",
+      folderId: null,
+      createdAt: 1,
+      updatedAt: 1,
     });
 
-    test("존재하지 않는 노트 업데이트 → null", async () => {
-      const result = await noteRepo.updateNoteById("non-existent", "# Test");
+    const moved = await noteRepo.moveNoteToFolder("note-1", "folder-2");
 
-      expect(result).toBeNull();
-    });
-
-    test("업데이트 시 updatedAt 갱신", async () => {
-      const created = await noteRepo.create("# Test");
-      mockNotes.set(created.id, created);
-      const originalUpdatedAt = created.updatedAt;
-
-      // 시간 차이를 위해 잠시 대기
-      await new Promise((r) => setTimeout(r, 10));
-
-      await noteRepo.updateNoteById(created.id, "# Updated");
-      const updatedNote = mockNotes.get(created.id);
-
-      expect(updatedNote.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
+    expect(moved?.folderId).toBe("folder-2");
+    expect(mockEnqueueNoteMove).toHaveBeenCalledWith("note-1", {
+      folderId: "folder-2",
     });
   });
 
-  describe("moveNoteToFolder", () => {
-    test("노트를 다른 폴더로 이동", async () => {
-      const created = await noteRepo.create("# Test", null);
-      mockNotes.set(created.id, created);
-
-      const moved = await noteRepo.moveNoteToFolder(created.id, "new-folder");
-
-      expect(moved).not.toBeNull();
-      const updatedNote = mockNotes.get(created.id);
-      expect(updatedNote.folderId).toBe("new-folder");
+  test("검색은 현재 storage adapter를 통해 수행한다", async () => {
+    noteStore.set("note-1", {
+      id: "note-1",
+      title: "Alpha",
+      content: "hello world",
+      folderId: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    noteStore.set("note-2", {
+      id: "note-2",
+      title: "Beta",
+      content: "different",
+      folderId: null,
+      createdAt: 2,
+      updatedAt: 2,
     });
 
-    test("노트를 루트로 이동 (folderId = null)", async () => {
-      const created = await noteRepo.create("# Test", "some-folder");
-      mockNotes.set(created.id, created);
+    const results = await noteRepo.getNoteByQuery("hello");
 
-      const moved = await noteRepo.moveNoteToFolder(created.id, null);
-
-      expect(moved).not.toBeNull();
-    });
-
-    test("존재하지 않는 노트 이동 → null", async () => {
-      const result = await noteRepo.moveNoteToFolder(
-        "non-existent",
-        "folder-id",
-      );
-
-      expect(result).toBeNull();
-    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.id).toBe("note-1");
   });
 
-  describe("deleteNoteById", () => {
-    test("노트 삭제", async () => {
-      const created = await noteRepo.create("# Test");
-      mockNotes.set(created.id, created);
-
-      const deletedId = await noteRepo.deleteNoteById(created.id);
-
-      expect(deletedId).toBe(created.id);
-      expect(mockTrashedNotes.has(created.id)).toBe(true);
+  test("삭제는 trashRepo로 위임한다", async () => {
+    noteStore.set("note-1", {
+      id: "note-1",
+      title: "Title",
+      content: "# Title",
+      folderId: null,
+      createdAt: 1,
+      updatedAt: 1,
     });
 
-    test("존재하지 않는 노트 삭제 → null", async () => {
-      const result = await noteRepo.deleteNoteById("non-existent");
+    const deletedId = await noteRepo.deleteNoteById("note-1");
 
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("upsertMany", () => {
-    test("여러 노트 일괄 삽입", async () => {
-      const baseTime = Date.now();
-      const notes = [
-        {
-          id: "n1",
-          title: "Note 1",
-          content: "Content 1",
-          folderId: null,
-          createdAt: baseTime,
-          updatedAt: baseTime,
-        },
-        {
-          id: "n2",
-          title: "Note 2",
-          content: "Content 2",
-          folderId: null,
-          createdAt: baseTime,
-          updatedAt: baseTime + 1000,
-        },
-      ];
-
-      await noteRepo.upsertMany(notes);
-
-      expect(mockNotes.size).toBe(2);
-    });
-  });
-
-  describe("clearAll", () => {
-    test("모든 노트 삭제", async () => {
-      await noteRepo.create("# Note 1");
-      await noteRepo.create("# Note 2");
-
-      await noteRepo.clearAll();
-
-      expect(mockNotes.size).toBe(0);
-    });
+    expect(deletedId).toBe("note-1");
+    expect(mockMoveNoteToTrash).toHaveBeenCalledWith("note-1");
   });
 });

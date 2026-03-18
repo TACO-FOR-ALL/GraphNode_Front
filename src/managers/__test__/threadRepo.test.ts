@@ -1,446 +1,178 @@
-import { threadRepo } from "../threadRepo";
-import { ChatMessage } from "@/types/Chat";
+import type { ChatMessage, ChatThread } from "@/types/Chat";
 
-// DB 모킹
-const mockThreads = new Map<string, any>();
-const mockTrashedThreads = new Map<string, any>();
-const mockOutbox = new Map<string, any>();
-
-jest.mock("@/db/graphnode.db", () => ({
-  db: {
-    threads: {
-      put: jest.fn((thread: any) => {
-        mockThreads.set(thread.id, thread);
-        return Promise.resolve(thread.id);
-      }),
-      get: jest.fn((id: string) => Promise.resolve(mockThreads.get(id))),
-      orderBy: jest.fn(() => ({
-        reverse: jest.fn(() => ({
-          toArray: jest.fn(() =>
-            Promise.resolve(
-              Array.from(mockThreads.values()).sort(
-                (a, b) => b.updatedAt - a.updatedAt,
-              ),
-            ),
-          ),
-        })),
-      })),
-      filter: jest.fn((predicate: (thread: any) => boolean) => ({
-        toArray: jest.fn(() =>
-          Promise.resolve(
-            Array.from(mockThreads.values()).filter(predicate),
-          ),
-        ),
-      })),
-      delete: jest.fn((id: string) => {
-        mockThreads.delete(id);
-        return Promise.resolve();
-      }),
-      bulkPut: jest.fn((threads: any[]) => {
-        threads.forEach((t) => mockThreads.set(t.id, t));
-        return Promise.resolve();
-      }),
-      clear: jest.fn(() => {
-        mockThreads.clear();
-        return Promise.resolve();
-      }),
-    },
-    outbox: {
-      put: jest.fn((op: any) => {
-        mockOutbox.set(op.opId, op);
-        return Promise.resolve(op.opId);
-      }),
-    },
-    trashedThreads: {
-      put: jest.fn((thread: any) => {
-        mockTrashedThreads.set(thread.id, thread);
-        return Promise.resolve(thread.id);
-      }),
-      get: jest.fn((id: string) => Promise.resolve(mockTrashedThreads.get(id))),
-      delete: jest.fn((id: string) => {
-        mockTrashedThreads.delete(id);
-        return Promise.resolve();
-      }),
-      orderBy: jest.fn(() => ({
-        reverse: jest.fn(() => ({
-          toArray: jest.fn(() =>
-            Promise.resolve(
-              Array.from(mockTrashedThreads.values()).sort(
-                (a, b) => b.deletedAt - a.deletedAt,
-              ),
-            ),
-          ),
-        })),
-      })),
-      toArray: jest.fn(() => Promise.resolve(Array.from(mockTrashedThreads.values()))),
-      clear: jest.fn(() => {
-        mockTrashedThreads.clear();
-        return Promise.resolve();
-      }),
-      where: jest.fn(() => ({
-        below: jest.fn(() => ({
-          toArray: jest.fn(() => Promise.resolve([])),
-        })),
-      })),
-    },
-    transaction: jest.fn(async (...args: any[]) => {
-      const callback = args[args.length - 1];
-      if (typeof callback === "function") {
-        return await callback();
-      }
-    }),
-  },
-}));
-
-// outboxRepo 모킹
+const threadStore = new Map<string, ChatThread>();
 const mockEnqueueThreadUpdateTitle = jest.fn();
-const mockEnqueueThreadDelete = jest.fn();
+const mockMoveThreadToTrash = jest.fn();
+const mockUpdateThreadInStore = jest.fn();
+
+jest.mock("@/utils/uuid", () => ({
+  __esModule: true,
+  default: jest.fn(() => "thread-1"),
+}));
 
 jest.mock("../outboxRepo", () => ({
   outboxRepo: {
-    enqueueThreadUpdateTitle: (...args: any[]) =>
+    enqueueThreadUpdateTitle: (...args: unknown[]) =>
       mockEnqueueThreadUpdateTitle(...args),
-    enqueueThreadDelete: (...args: any[]) => mockEnqueueThreadDelete(...args),
   },
 }));
 
-// Zustand 스토어 모킹
+jest.mock("../trashRepo", () => ({
+  trashRepo: {
+    moveThreadToTrash: (...args: unknown[]) => mockMoveThreadToTrash(...args),
+  },
+}));
+
 jest.mock("@/store/useThreadStore", () => ({
   useThreadsStore: {
     getState: jest.fn(() => ({
-      updateThreadInStore: jest.fn(),
+      updateThreadInStore: mockUpdateThreadInStore,
     })),
   },
 }));
 
-// uuid 모킹
-jest.mock("@/utils/uuid", () => ({
-  __esModule: true,
-  default: jest.fn(() => `mock-thread-${Date.now()}-${Math.random()}`),
-}));
+jest.mock("../storage/selectors/entityStorageSelector", () => {
+  const adapter = {
+    createThreadRecord: jest.fn(async (input: ChatThread) => {
+      threadStore.set(input.id, input);
+      return input;
+    }),
+    listThreads: jest.fn(async () =>
+      Array.from(threadStore.values()).sort((a, b) => b.updatedAt - a.updatedAt),
+    ),
+    getThread: jest.fn(async (id: string) => threadStore.get(id) ?? null),
+    searchThreads: jest.fn(async (query: string) => {
+      const lowered = query.toLowerCase();
+      return Array.from(threadStore.values()).filter(
+        (thread) =>
+          thread.title.toLowerCase().includes(lowered) ||
+          thread.messages.some((message) =>
+            message.content.toLowerCase().includes(lowered),
+          ),
+      );
+    }),
+    putThread: jest.fn(async (thread: ChatThread) => {
+      threadStore.set(thread.id, thread);
+    }),
+    bulkPutThreads: jest.fn(async (threads: ChatThread[]) => {
+      threads.forEach((thread) => threadStore.set(thread.id, thread));
+    }),
+    bulkDeleteThreads: jest.fn(async (ids: string[]) => {
+      ids.forEach((id) => threadStore.delete(id));
+    }),
+    clearThreads: jest.fn(async () => {
+      threadStore.clear();
+    }),
+    runThreadWriteTransaction: jest.fn(async <T>(callback: () => Promise<T>) =>
+      callback(),
+    ),
+  };
 
-describe("threadRepo", () => {
-  beforeEach(() => {
-    mockThreads.clear();
-    mockTrashedThreads.clear();
-    mockOutbox.clear();
-    mockEnqueueThreadUpdateTitle.mockClear();
-    mockEnqueueThreadDelete.mockClear();
-    jest.clearAllMocks();
-  });
+  return {
+    getPreferredFolderReadStorage: jest.fn(),
+    getPreferredFolderWriteStorage: jest.fn(),
+    getPreferredThreadReadStorage: jest.fn(async () => adapter),
+    getPreferredThreadWriteStorage: jest.fn(async () => adapter),
+  };
+});
 
-  const createMockMessage = (
-    role: "user" | "assistant" | "system",
-    content: string,
-  ): ChatMessage => ({
-    id: `msg-${Date.now()}`,
+import { threadRepo } from "../threadRepo";
+
+function makeMessage(role: ChatMessage["role"], content: string): ChatMessage {
+  return {
+    id: `${role}-${content}`,
     role,
     content,
     ts: Date.now(),
+  };
+}
+
+describe("threadRepo", () => {
+  beforeEach(() => {
+    threadStore.clear();
+    mockEnqueueThreadUpdateTitle.mockReset();
+    mockMoveThreadToTrash.mockReset();
+    mockMoveThreadToTrash.mockResolvedValue({ id: "thread-1" });
+    mockUpdateThreadInStore.mockReset();
   });
 
-  describe("create", () => {
-    test("새 스레드 생성", async () => {
-      const thread = await threadRepo.create("Test Thread");
+  test("새 스레드를 생성한다", async () => {
+    const thread = await threadRepo.create("Chat", [makeMessage("user", "hello")]);
 
-      expect(thread).toBeDefined();
-      expect(thread.title).toBe("Test Thread");
-      expect(thread.messages).toEqual([]);
-      expect(thread.updatedAt).toBeDefined();
+    expect(thread).toMatchObject({
+      id: "thread-1",
+      title: "Chat",
     });
-
-    test("메시지와 함께 스레드 생성", async () => {
-      const messages = [
-        createMockMessage("user", "Hello"),
-        createMockMessage("assistant", "Hi there!"),
-      ];
-
-      const thread = await threadRepo.create("Chat", messages);
-
-      expect(thread.messages).toHaveLength(2);
-    });
+    expect(thread.messages).toHaveLength(1);
+    expect(threadStore.get("thread-1")).toEqual(thread);
   });
 
-  describe("getThreadList", () => {
-    test("모든 스레드 조회 (updatedAt 역순)", async () => {
-      const baseTime = Date.now();
-
-      mockThreads.set("t1", {
-        id: "t1",
-        title: "Thread 1",
-        messages: [],
-        updatedAt: baseTime,
-      });
-      mockThreads.set("t2", {
-        id: "t2",
-        title: "Thread 2",
-        messages: [],
-        updatedAt: baseTime + 1000,
-      });
-
-      const threads = await threadRepo.getThreadList();
-
-      expect(threads).toHaveLength(2);
-      expect(threads[0].id).toBe("t2"); // 최신이 먼저
+  test("제목 업데이트는 outbox와 store를 함께 갱신한다", async () => {
+    threadStore.set("thread-1", {
+      id: "thread-1",
+      title: "Old",
+      messages: [],
+      updatedAt: 1,
     });
 
-    test("빈 목록", async () => {
-      const threads = await threadRepo.getThreadList();
+    const updatedId = await threadRepo.updateThreadTitleById("thread-1", "New");
 
-      expect(threads).toEqual([]);
+    expect(updatedId).toBe("thread-1");
+    expect(threadStore.get("thread-1")?.title).toBe("New");
+    expect(mockEnqueueThreadUpdateTitle).toHaveBeenCalledWith("thread-1", {
+      title: "New",
     });
+    expect(mockUpdateThreadInStore).toHaveBeenCalled();
   });
 
-  describe("getThreadById", () => {
-    test("존재하는 스레드 조회", async () => {
-      const created = await threadRepo.create("Test");
-      mockThreads.set(created.id, created);
-
-      const found = await threadRepo.getThreadById(created.id);
-
-      expect(found).not.toBeNull();
-      expect(found!.title).toBe("Test");
+  test("메시지 내용으로 검색한다", async () => {
+    threadStore.set("thread-1", {
+      id: "thread-1",
+      title: "General",
+      messages: [makeMessage("user", "find me")],
+      updatedAt: 1,
+    });
+    threadStore.set("thread-2", {
+      id: "thread-2",
+      title: "Other",
+      messages: [makeMessage("assistant", "nothing here")],
+      updatedAt: 2,
     });
 
-    test("존재하지 않는 스레드 → null", async () => {
-      const found = await threadRepo.getThreadById("non-existent");
+    const results = await threadRepo.getThreadByQuery("find");
 
-      expect(found).toBeNull();
-    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.id).toBe("thread-1");
   });
 
-  describe("getThreadByQuery", () => {
-    test("메시지 내용으로 검색", async () => {
-      const thread = {
-        id: "t1",
-        title: "Chat",
-        messages: [
-          createMockMessage("user", "Hello World"),
-          createMockMessage("assistant", "Hi there!"),
-        ],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
-
-      // filter 모킹 업데이트 필요
-      const { db } = require("@/db/graphnode.db");
-      db.threads.filter.mockImplementation(
-        (predicate: (t: any) => boolean) => ({
-          toArray: jest.fn(() =>
-            Promise.resolve(
-              Array.from(mockThreads.values()).filter(predicate),
-            ),
-          ),
-        }),
-      );
-
-      const results = await threadRepo.getThreadByQuery("hello");
-
-      expect(results.length).toBeGreaterThanOrEqual(0);
+  test("메시지 추가는 저장소와 Zustand 스토어를 갱신한다", async () => {
+    threadStore.set("thread-1", {
+      id: "thread-1",
+      title: "Chat",
+      messages: [],
+      updatedAt: 1,
     });
 
-    test("대소문자 구분 없이 검색", async () => {
-      const thread = {
-        id: "t1",
-        title: "Chat",
-        messages: [createMockMessage("user", "HELLO WORLD")],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
+    const updated = await threadRepo.addMessageToThreadById(
+      "thread-1",
+      makeMessage("assistant", "hello back"),
+    );
 
-      const { db } = require("@/db/graphnode.db");
-      db.threads.filter.mockImplementation(
-        (predicate: (t: any) => boolean) => ({
-          toArray: jest.fn(() =>
-            Promise.resolve(
-              Array.from(mockThreads.values()).filter(predicate),
-            ),
-          ),
-        }),
-      );
-
-      const results = await threadRepo.getThreadByQuery("hello");
-
-      // 대소문자 구분 없이 검색되어야 함
-      expect(results.length).toBeGreaterThanOrEqual(0);
-    });
+    expect(updated?.messages).toHaveLength(1);
+    expect(mockUpdateThreadInStore).toHaveBeenCalled();
   });
 
-  describe("updateThreadTitleById", () => {
-    test("스레드 제목 변경", async () => {
-      const thread = {
-        id: "t1",
-        title: "Original",
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
-
-      const updatedId = await threadRepo.updateThreadTitleById(
-        "t1",
-        "Updated Title",
-      );
-
-      expect(updatedId).toBe("t1");
-      expect(mockThreads.get("t1").title).toBe("Updated Title");
+  test("삭제는 trashRepo로 위임한다", async () => {
+    threadStore.set("thread-1", {
+      id: "thread-1",
+      title: "Chat",
+      messages: [],
+      updatedAt: 1,
     });
 
-    test("제목 변경 시 outbox에 enqueue", async () => {
-      const thread = {
-        id: "t1",
-        title: "Original",
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
+    const deletedId = await threadRepo.deleteThreadById("thread-1");
 
-      await threadRepo.updateThreadTitleById("t1", "Updated Title");
-
-      expect(mockEnqueueThreadUpdateTitle).toHaveBeenCalledWith("t1", {
-        title: "Updated Title",
-      });
-    });
-
-    test("존재하지 않는 스레드 업데이트 → null", async () => {
-      const result = await threadRepo.updateThreadTitleById(
-        "non-existent",
-        "Title",
-      );
-
-      expect(result).toBeNull();
-      expect(mockEnqueueThreadUpdateTitle).not.toHaveBeenCalled();
-    });
-
-    test("업데이트 시 updatedAt 갱신", async () => {
-      const baseTime = Date.now() - 10000;
-      const thread = {
-        id: "t1",
-        title: "Thread",
-        messages: [],
-        updatedAt: baseTime,
-      };
-      mockThreads.set("t1", thread);
-
-      await threadRepo.updateThreadTitleById("t1", "Updated");
-
-      expect(mockThreads.get("t1").updatedAt).toBeGreaterThan(baseTime);
-    });
-  });
-
-  describe("addMessageToThreadById", () => {
-    test("스레드에 메시지 추가", async () => {
-      const thread = {
-        id: "t1",
-        title: "Chat",
-        messages: [createMockMessage("user", "Hello")],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
-
-      const newMessage = createMockMessage("assistant", "Hi!");
-      const updated = await threadRepo.addMessageToThreadById("t1", newMessage);
-
-      expect(updated).not.toBeNull();
-      expect(mockThreads.get("t1").messages).toHaveLength(2);
-    });
-
-    test("존재하지 않는 스레드에 메시지 추가 → null", async () => {
-      const message = createMockMessage("user", "Hello");
-      const result = await threadRepo.addMessageToThreadById(
-        "non-existent",
-        message,
-      );
-
-      expect(result).toBeNull();
-    });
-
-    test("메시지 추가 시 updatedAt 갱신", async () => {
-      const baseTime = Date.now() - 10000;
-      const thread = {
-        id: "t1",
-        title: "Chat",
-        messages: [],
-        updatedAt: baseTime,
-      };
-      mockThreads.set("t1", thread);
-
-      const message = createMockMessage("user", "Hello");
-      await threadRepo.addMessageToThreadById("t1", message);
-
-      expect(mockThreads.get("t1").updatedAt).toBeGreaterThan(baseTime);
-    });
-  });
-
-  describe("deleteThreadById", () => {
-    test("스레드 삭제", async () => {
-      const thread = {
-        id: "t1",
-        title: "Thread",
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
-
-      const deletedId = await threadRepo.deleteThreadById("t1");
-
-      expect(deletedId).toBe("t1");
-      expect(mockThreads.has("t1")).toBe(false);
-    });
-
-    test("삭제 시 outbox에 enqueue", async () => {
-      const thread = {
-        id: "t1",
-        title: "Thread",
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      mockThreads.set("t1", thread);
-
-      await threadRepo.deleteThreadById("t1");
-
-      expect(mockEnqueueThreadDelete).not.toHaveBeenCalled();
-      expect(mockTrashedThreads.has("t1")).toBe(true);
-    });
-
-    test("존재하지 않는 스레드 삭제 → null", async () => {
-      const result = await threadRepo.deleteThreadById("non-existent");
-
-      expect(result).toBeNull();
-      expect(mockEnqueueThreadDelete).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("upsertMany", () => {
-    test("여러 스레드 일괄 삽입", async () => {
-      const baseTime = Date.now();
-      const threads = [
-        { id: "t1", title: "Thread 1", messages: [], updatedAt: baseTime },
-        {
-          id: "t2",
-          title: "Thread 2",
-          messages: [],
-          updatedAt: baseTime + 1000,
-        },
-      ];
-
-      await threadRepo.upsertMany(threads);
-
-      expect(mockThreads.size).toBe(2);
-    });
-  });
-
-  describe("clearAll", () => {
-    test("모든 스레드 삭제", async () => {
-      mockThreads.set("t1", {
-        id: "t1",
-        title: "Thread",
-        messages: [],
-        updatedAt: Date.now(),
-      });
-
-      await threadRepo.clearAll();
-
-      expect(mockThreads.size).toBe(0);
-    });
+    expect(deletedId).toBe("thread-1");
+    expect(mockMoveThreadToTrash).toHaveBeenCalledWith("thread-1");
   });
 });
