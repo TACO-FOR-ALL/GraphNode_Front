@@ -1,4 +1,4 @@
-# Testing Strategy
+# 테스트 전략
 
 ## 목적
 
@@ -25,6 +25,9 @@ Repository / 데이터 계층:
 - `src/managers/__test__/folderRepo.test.ts`
 - `src/managers/__test__/threadRepo.test.ts`
 - `src/managers/__test__/outboxRepo.test.ts`
+- `src/managers/__test__/storageSelectors.sqlite.test.ts`
+- `src/managers/__test__/outboxRepo.sqlite.test.ts`
+- `src/managers/__test__/trashRepo.sqlite.test.ts`
 
 스토어 계층:
 
@@ -51,7 +54,8 @@ Repository / 데이터 계층:
 - Arrange-Act-Assert 구조를 유지합니다.
 - 테스트명은 행동과 기대 결과를 함께 적습니다.
 - 시간 의존 로직은 `Date.now` mock으로 고정합니다.
-- Repository 테스트는 Dexie 상태를 각 테스트마다 초기화합니다.
+- SQLite 전환 이후의 repository/outbox/trash 테스트는 `window.graphnodeAPI` mock을 사용합니다.
+- 레거시 테스트는 Dexie mock을 유지하되, 새 테스트는 SQLite IPC 기준으로 작성합니다.
 - Outbox 테스트는 coalescing 규칙을 명시적으로 검증합니다.
 
 ## 권장 보강 영역
