@@ -2,18 +2,29 @@
   "name": "graphnode_front",
   "version": "1.0.0",
   "description": "TACO 4기 GraphNode의 프론트앤드 코드입니다.",
+  "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
-    "dist": "vite build && electron-builder",
-    "dist:mac:arm": "electron-builder --mac --arm64",
-    "dist:mac:intel": "electron-builder --mac --x64",
+    "graphnode": "node apps/cli/src/index.js",
+    "graphnode:doctor": "node apps/cli/src/index.js doctor",
+    "graphnode:demo": "node apps/cli/src/index.js demo",
+    "graphnode:bundle": "npm --prefix ./apps/cli run build",
+    "graphnode:pack": "npm --prefix ./apps/cli run build && npm pack --dry-run --cache /tmp/graphnode-npm-cache ./apps/cli",
+    "graphnode:release-check": "npm --prefix ./apps/cli run build && npm --prefix ./apps/cli run smoke && npm run graphnode:pack",
+    "dist": "npm run graphnode:bundle && vite build && electron-builder",
+    "dist:mac:arm": "npm run graphnode:bundle && electron-builder --mac --arm64",
+    "dist:mac:intel": "npm run graphnode:bundle && electron-builder --mac --x64",
     "dist:mac:all": "npm run dist:mac:arm && npm run dist:mac:intel",
-    "dist:windows": "electron-builder --windows"
+    "dist:windows": "npm run graphnode:bundle && electron-builder --windows"
   },
   "build": {
     "appId": "com.graphnode.app",
@@ -33,6 +44,20 @@
       "dist-electron/**/*",
       "package.json",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "apps/cli/dist",
+        "to": "cli/dist"
+      },
+      {
+        "from": "apps/cli/README.md",
+        "to": "cli/README.md"
+      },
+      {
+        "from": "packaging/cli/install-graphnode-cli.sh.example",
+        "to": "cli/install-graphnode-cli.sh"
+      }
     ],
     "mac": {
       "icon": "build/icon.icns",
@@ -99,6 +124,8 @@
     "vite-plugin-electron": "^0.29.0"
   },
   "dependencies": {
+    "@graphnode/paths": "file:packages/paths",
+    "@graphnode/storage": "file:packages/storage",
     "@taco_tsinghua/graphnode-sdk": "^0.1.71",
     "@tanstack/react-query": "^5.90.5",
     "@tiptap/core": "^3.11.0",

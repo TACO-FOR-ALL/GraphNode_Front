@@ -1,10 +1,13 @@
 import sortItemByDate from "@/utils/sortItemByDate";
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
-import { db } from "@/db/graphnode.db";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { outboxRepo } from "./outboxRepo";
 import { trashRepo } from "./trashRepo";
+import {
+  getPreferredThreadReadStorage,
+  getPreferredThreadWriteStorage,
+} from "./storage/selectors/entityStorageSelector";
 
 export const threadRepo = {
   async create(
@@ -17,27 +20,22 @@ export const threadRepo = {
       messages,
       updatedAt: Date.now(),
     };
-    await db.threads.put(newThread);
+    const writeStorage = await getPreferredThreadWriteStorage();
+    await writeStorage.createThreadRecord(newThread);
     return newThread;
   },
 
   async getThreadList(): Promise<ChatThread[]> {
-    const rows = await db.threads.orderBy("updatedAt").reverse().toArray();
+    const rows = await (await getPreferredThreadReadStorage()).listThreads();
     return rows ?? [];
   },
 
   async getThreadById(id: string): Promise<ChatThread | null> {
-    return (await db.threads.get(id)) ?? null;
+    return (await getPreferredThreadReadStorage()).getThread(id);
   },
 
   async getThreadByQuery(query: string): Promise<ChatThread[]> {
-    return await db.threads
-      .filter((thread) =>
-        thread.messages.some((message) =>
-          message.content.toLowerCase().includes(query.toLowerCase()),
-        ),
-      )
-      .toArray();
+    return (await getPreferredThreadReadStorage()).searchThreads(query);
   },
 
   async updateThreadTitleById(id: string, title: string) {
@@ -45,9 +43,10 @@ export const threadRepo = {
     if (!thread) return null;
 
     const updated = { ...thread, title, updatedAt: Date.now() };
+    const writeStorage = await getPreferredThreadWriteStorage();
 
-    await db.transaction("rw", db.threads, db.outbox, async () => {
-      await db.threads.put(updated);
+    await writeStorage.runThreadWriteTransaction(async () => {
+      await writeStorage.putThread(updated);
       await outboxRepo.enqueueThreadUpdateTitle(id, { title: title });
 
       // Zustand 상태 반영 (타이틀 변경)
@@ -66,7 +65,7 @@ export const threadRepo = {
       messages: [...thread.messages, message],
       updatedAt: Date.now(),
     };
-    await db.threads.put(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
     // Zustand 상태도 업데이트 (메시지 추가)
     useThreadsStore.getState().updateThreadInStore(updated);
@@ -88,7 +87,7 @@ export const threadRepo = {
       ),
       updatedAt: Date.now(),
     };
-    await db.threads.put(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
     // Zustand 상태도 업데이트
     useThreadsStore.getState().updateThreadInStore(updated);
@@ -104,7 +103,7 @@ export const threadRepo = {
       messages: thread.messages.filter((msg) => msg.id !== messageId),
       updatedAt: Date.now(),
     };
-    await db.threads.put(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
     // Zustand 상태도 업데이트
     useThreadsStore.getState().updateThreadInStore(updated);
@@ -123,16 +122,15 @@ export const threadRepo = {
   },
 
   async upsertMany(newOnes: ChatThread[]): Promise<void> {
-    const sorted = sortItemByDate(newOnes);
-    await db.threads.bulkPut(sorted);
+    await (await getPreferredThreadWriteStorage()).bulkPutThreads(newOnes);
   },
 
   async deleteMany(ids: string[]): Promise<void> {
-    await db.threads.bulkDelete(ids);
+    await (await getPreferredThreadWriteStorage()).bulkDeleteThreads(ids);
   },
 
   async clearAll(): Promise<void> {
-    await db.threads.clear();
+    await (await getPreferredThreadWriteStorage()).clearThreads();
   },
 };
 

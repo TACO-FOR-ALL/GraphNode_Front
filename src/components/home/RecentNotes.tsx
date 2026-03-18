@@ -2,7 +2,6 @@ import { FaPlus } from "react-icons/fa6";
 import { IoIosMore } from "react-icons/io";
 import { noteRepo } from "@/managers/noteRepo";
 import { useQuery } from "@tanstack/react-query";
-
 import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
 import { seperateTitleAndContentFromMarkdown } from "@/utils/extractTitleFromMarkdown";
@@ -13,7 +12,7 @@ export default function RecentNotes() {
   const { t } = useTranslation();
 
   const { data: notes } = useQuery<Note[]>({
-    queryKey: ["notes"],
+    queryKey: ["recent-notes"],
     queryFn: () => noteRepo.getAllNotes(),
   });
 

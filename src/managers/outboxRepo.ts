@@ -1,17 +1,84 @@
-import { db } from "@/db/graphnode.db";
-import uuid from "@/utils/uuid";
 import type { OutboxOp, OutboxOpType } from "@/types/Outbox";
-import type { NoteCreate, NoteUpdate } from "@/types/Note";
 import type { FolderCreate, FolderUpdate } from "@/types/Folder";
+import type { NoteCreate, NoteUpdate } from "@/types/Note";
 import type { ConversationUpdate } from "@/types/Conversation";
+import uuid from "@/utils/uuid";
 
-/**
- * Coalesce 기준
- * (A) note.delete enqueue 시: 해당 noteId의 기존 pending op(create/update/move)를 전부 제거하고 delete만 남김
- * (B) note.create가 pending이면: 이후 update/move는 create payload에 흡수(merge)하고 새 op 만들지 않음
- * (C) note.update는 noteId당 1개만 유지: 이미 있으면 payload 덮어쓰기
- * (D) note.move도 NoteUpdateDto로 처리하며 noteId당 1개만 유지: 이미 있으면 payload 덮어쓰기
- */
+function requireGraphNodeAPI() {
+  if (!window.graphnodeAPI) {
+    throw new Error("graphnodeAPI is not available");
+  }
+
+  return window.graphnodeAPI;
+}
+
+function getEntityType(type: OutboxOpType) {
+  if (type.startsWith("note.")) return "note";
+  if (type.startsWith("folder.")) return "folder";
+  return "thread";
+}
+
+function makeOp(
+  entityId: string,
+  type: OutboxOpType,
+  payload: unknown,
+  now: number,
+): OutboxOp & { entityType: string } {
+  return {
+    opId: uuid(),
+    entityId,
+    entityType: getEntityType(type),
+    type,
+    payload,
+    status: "pending",
+    retryCount: 0,
+    nextRetryAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function mergeIntoCreatePayload(
+  createPayload: NoteCreate,
+  incomingType: OutboxOpType,
+  incomingPayload: NoteUpdate,
+) {
+  switch (incomingType) {
+    case "note.update":
+      return {
+        ...createPayload,
+        ...incomingPayload,
+      };
+    case "note.move":
+      return {
+        ...createPayload,
+        folderId: incomingPayload.folderId ?? null,
+      };
+    default:
+      return createPayload;
+  }
+}
+
+async function listEntityOps(entityId: string) {
+  return requireGraphNodeAPI().listSQLiteOutboxByEntityId(entityId);
+}
+
+async function putOp(op: OutboxOp & { entityType: string }) {
+  await requireGraphNodeAPI().putSQLiteOutbox(op);
+}
+
+async function updateOp(opId: string, updates: Record<string, unknown>) {
+  await requireGraphNodeAPI().updateSQLiteOutbox(opId, updates);
+}
+
+async function deleteOps(opIds: string[]) {
+  if (opIds.length === 0) {
+    return;
+  }
+
+  await requireGraphNodeAPI().bulkDeleteSQLiteOutbox(opIds);
+}
+
 export const outboxRepo = {
   async enqueueNoteCreate(noteId: string, payload: NoteCreate) {
     await enqueueWithCoalesce("note.create", noteId, payload);
@@ -35,6 +102,7 @@ export const outboxRepo = {
   ) {
     await enqueueWithCoalesce("thread.update", threadId, payload);
   },
+
   async enqueueThreadDelete(threadId: string) {
     await enqueueWithCoalesce("thread.delete", threadId, null);
   },
@@ -50,12 +118,20 @@ export const outboxRepo = {
   async enqueueFolderDelete(folderId: string) {
     await enqueueWithCoalesce("folder.delete", folderId, null);
   },
+
+  async listOpsByEntityIds(entityIds: string[]) {
+    if (!window.graphnodeAPI?.listSQLiteOutboxByEntityIds) {
+      return [];
+    }
+
+    return window.graphnodeAPI.listSQLiteOutboxByEntityIds(entityIds);
+  },
 };
 
 async function enqueueWithCoalesce(
   type: OutboxOpType,
   entityId: string,
-  payload: any,
+  payload: unknown,
 ) {
   const now = Date.now();
 
@@ -63,148 +139,30 @@ async function enqueueWithCoalesce(
     throw new Error("entityId is required");
   }
 
-  await db.transaction("rw", db.outbox, async () => {
-    // (A) delete: 관련 op 정리 후 delete만 남김
-    if (type === "note.delete") {
-      const related = await db.outbox
-        .where("entityId")
-        .equals(entityId)
-        .toArray();
-      const pendingOnly = related.filter((r) => r.status === "pending");
-      if (pendingOnly.length) {
-        await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
-      }
-      await db.outbox.put(
-        makeOp(entityId, "note.delete", { id: entityId }, now),
-      );
-      return;
-    }
-
-    // (A-2) thread.delete: 관련 thread.update op 정리 후 delete만 남김
-    if (type === "thread.delete") {
-      const related = await db.outbox
-        .where("entityId")
-        .equals(entityId)
-        .toArray();
-      const pendingOnly = related.filter((r) => r.status === "pending");
-      if (pendingOnly.length) {
-        await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
-      }
-      await db.outbox.put(makeOp(entityId, "thread.delete", null, now));
-      return;
-    }
-
-    // (A-3) thread.update: threadId당 1개로 coalesce
-    if (type === "thread.update") {
-      const existing = await db.outbox
-        .where({
-          entityId,
-          type: "thread.update" as const,
-          status: "pending" as const,
-        })
-        .first();
-
-      if (existing) {
-        await db.outbox.update(existing.opId, {
-          payload,
-          status: "pending",
-          nextRetryAt: now,
-          updatedAt: now,
-          lastError: undefined,
-        });
-        return;
-      }
-
-      await db.outbox.put(makeOp(entityId, "thread.update", payload, now));
-      return;
-    }
-
-    // ── Folder ops ─────────────────────────────────────────────────────────
-
-    // folder.delete: 관련 pending op 정리 후 delete만 남김
-    if (type === "folder.delete") {
-      const related = await db.outbox
-        .where("entityId")
-        .equals(entityId)
-        .toArray();
-      const pendingOnly = related.filter((r) => r.status === "pending");
-      if (pendingOnly.length) {
-        await db.outbox.bulkDelete(pendingOnly.map((r) => r.opId));
-      }
-      await db.outbox.put(makeOp(entityId, "folder.delete", null, now));
-      return;
-    }
-
-    // folder.create pending + folder.update incoming → merge into create payload
-    if (type === "folder.update") {
-      const pendingCreate = await db.outbox
-        .where({
-          entityId,
-          type: "folder.create" as const,
-          status: "pending" as const,
-        })
-        .first();
-      if (pendingCreate) {
-        const merged = {
-          ...(pendingCreate.payload as FolderCreate),
-          ...(payload as FolderUpdate),
-        };
-        await db.outbox.update(pendingCreate.opId, {
-          payload: merged,
-          nextRetryAt: now,
-          updatedAt: now,
-          lastError: undefined,
-        });
-        return;
-      }
-
-      // folder.update: 1개로 coalesce
-      const existing = await db.outbox
-        .where({
-          entityId,
-          type: "folder.update" as const,
-          status: "pending" as const,
-        })
-        .first();
-      if (existing) {
-        await db.outbox.update(existing.opId, {
-          payload: {
-            ...(existing.payload as FolderUpdate),
-            ...(payload as FolderUpdate),
-          },
-          nextRetryAt: now,
-          updatedAt: now,
-          lastError: undefined,
-        });
-        return;
-      }
-
-      await db.outbox.put(makeOp(entityId, "folder.update", payload, now));
-      return;
-    }
-
-    if (type === "folder.create") {
-      await db.outbox.put(makeOp(entityId, "folder.create", payload, now));
-      return;
-    }
-
-    // (B) create가 이미 pending이면: create payload에 update/move를 흡수
-    const pendingCreate = await db.outbox
-      .where({
+  if (type === "note.delete" || type === "thread.delete" || type === "folder.delete") {
+    const related = await listEntityOps(entityId);
+    const pendingOnly = related.filter((op) => op.status === "pending");
+    await deleteOps(pendingOnly.map((op) => op.opId));
+    await putOp(
+      makeOp(
         entityId,
-        type: "note.create" as const,
-        status: "pending" as const,
-      })
-      .first();
-
-    if (pendingCreate) {
-      const merged = mergeIntoCreatePayload(
-        pendingCreate.payload as NoteCreate,
         type,
+        type === "note.delete" ? { id: entityId } : null,
+        now,
+      ),
+    );
+    return;
+  }
+
+  if (type === "thread.update") {
+    const existing = await requireGraphNodeAPI().getSQLitePendingOutbox(
+      entityId,
+      "thread.update",
+    );
+
+    if (existing) {
+      await updateOp(existing.opId, {
         payload,
-      );
-      await db.outbox.update(pendingCreate.opId, {
-        payload: merged,
         status: "pending",
         nextRetryAt: now,
         updatedAt: now,
@@ -213,70 +171,103 @@ async function enqueueWithCoalesce(
       return;
     }
 
-    // (C) update/move는 noteId당 1개로 coalesce
-    if (type === "note.update" || type === "note.move") {
-      const existing = await db.outbox
-        .where({ entityId, type: type as any, status: "pending" as const })
-        .first();
-
-      if (existing) {
-        await db.outbox.update(existing.opId, {
-          payload,
-          status: "pending",
-          nextRetryAt: now,
-          updatedAt: now,
-          lastError: undefined,
-        });
-        return;
-      }
-
-      await db.outbox.put(makeOp(entityId, type, payload, now));
-      return;
-    }
-
-    // (D) create가 없으면 create는 그대로 enqueue
-    if (type === "note.create") {
-      await db.outbox.put(makeOp(entityId, "note.create", payload, now));
-      return;
-    }
-
-    // fallback
-    await db.outbox.put(makeOp(entityId, type, payload, now));
-  });
-}
-
-function makeOp(
-  entityId: string,
-  type: OutboxOpType,
-  payload: any,
-  now: number,
-): OutboxOp {
-  return {
-    opId: uuid(),
-    entityId,
-    type,
-    payload,
-    status: "pending",
-    retryCount: 0,
-    nextRetryAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function mergeIntoCreatePayload(
-  existing: NoteCreate,
-  incomingType: OutboxOpType,
-  incomingPayload: any,
-): NoteCreate {
-  if (incomingType === "note.update" || incomingType === "note.move") {
-    const u = incomingPayload as NoteUpdate;
-    return {
-      id: existing.id,
-      content: u.content ?? existing.content,
-      title: u.title ?? existing.title,
-      folderId: u.folderId ?? existing.folderId ?? null,
-    };
+    await putOp(makeOp(entityId, "thread.update", payload, now));
+    return;
   }
-  return existing;
+
+  if (type === "folder.update") {
+    const pendingCreate = await requireGraphNodeAPI().getSQLitePendingOutbox(
+      entityId,
+      "folder.create",
+    );
+
+    if (pendingCreate) {
+      const merged = {
+        ...(pendingCreate.payload as FolderCreate),
+        ...(payload as FolderUpdate),
+      };
+      await updateOp(pendingCreate.opId, {
+        payload: merged,
+        nextRetryAt: now,
+        updatedAt: now,
+        lastError: undefined,
+      });
+      return;
+    }
+
+    const existing = await requireGraphNodeAPI().getSQLitePendingOutbox(
+      entityId,
+      "folder.update",
+    );
+
+    if (existing) {
+      await updateOp(existing.opId, {
+        payload: {
+          ...(existing.payload as FolderUpdate),
+          ...(payload as FolderUpdate),
+        },
+        nextRetryAt: now,
+        updatedAt: now,
+        lastError: undefined,
+      });
+      return;
+    }
+
+    await putOp(makeOp(entityId, "folder.update", payload, now));
+    return;
+  }
+
+  if (type === "folder.create") {
+    await putOp(makeOp(entityId, "folder.create", payload, now));
+    return;
+  }
+
+  const pendingCreate = await requireGraphNodeAPI().getSQLitePendingOutbox(
+    entityId,
+    "note.create",
+  );
+
+  if (pendingCreate) {
+    const merged = mergeIntoCreatePayload(
+      pendingCreate.payload as NoteCreate,
+      type,
+      payload as NoteUpdate,
+    );
+    await updateOp(pendingCreate.opId, {
+      payload: merged,
+      status: "pending",
+      nextRetryAt: now,
+      updatedAt: now,
+      lastError: undefined,
+    });
+    return;
+  }
+
+  if (type === "note.update" || type === "note.move") {
+    const existing = await requireGraphNodeAPI().getSQLitePendingOutbox(
+      entityId,
+      type,
+    );
+
+    if (existing) {
+      await updateOp(existing.opId, {
+        payload,
+        status: "pending",
+        nextRetryAt: now,
+        updatedAt: now,
+        lastError: undefined,
+      });
+      return;
+    }
+
+    await putOp(makeOp(entityId, type, payload, now));
+    return;
+  }
+
+  if (type === "note.create") {
+    await putOp(makeOp(entityId, "note.create", payload, now));
+    return;
+  }
+
+  await putOp(makeOp(entityId, type, payload, now));
 }

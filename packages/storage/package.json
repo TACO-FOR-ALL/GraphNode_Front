@@ -1,0 +1,12 @@
+{
+  "name": "@graphnode/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@graphnode/paths": "file:../paths"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

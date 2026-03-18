@@ -7,6 +7,7 @@ import exposeWindowBridge from "./window";
 import exposeFileBridge from "./file";
 import exposeNotificationBridge from "./notificationBridge";
 import exposeMCPBridge from "./mcpBridge";
+import exposeGraphNodeBridge from "./graphnodeBridge";
 
 export function exposeAllBridges() {
   exposeAuthBridge();
@@ -17,4 +18,5 @@ export function exposeAllBridges() {
   exposeFileBridge();
   exposeNotificationBridge();
   exposeMCPBridge();
+  exposeGraphNodeBridge();
 }

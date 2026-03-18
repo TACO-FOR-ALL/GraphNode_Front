@@ -2,6 +2,10 @@ import { useGraphGenerationStore } from "@/store/useGraphGenerationStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
+jest.mock("@/utils/sound", () => ({
+  playSound: jest.fn(),
+}));
+
 type NotificationEvent = {
   type:
     | "CONNECTED"

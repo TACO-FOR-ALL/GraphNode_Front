@@ -1,0 +1,36 @@
+{
+  "name": "@graphnode/cli",
+  "version": "0.1.0",
+  "description": "GraphNode command line interface",
+  "private": false,
+  "license": "ISC",
+  "type": "module",
+  "bin": {
+    "graphnode": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "keywords": [
+    "graphnode",
+    "cli",
+    "notes",
+    "sqlite"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "prepare": "npm run build",
+    "smoke": "node ./dist/index.js help && node ./dist/index.js version && node ./dist/index.js sqlite status",
+    "start": "node src/index.js",
+    "doctor": "node src/index.js doctor",
+    "demo": "node src/index.js demo"
+  }
+}

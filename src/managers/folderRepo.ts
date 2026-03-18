@@ -1,8 +1,11 @@
-import { db } from "@/db/graphnode.db";
 import { Folder } from "@/types/Folder";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
 import { trashRepo } from "./trashRepo";
+import {
+  getPreferredFolderReadStorage,
+  getPreferredFolderWriteStorage,
+} from "./storage/selectors/entityStorageSelector";
 
 export const folderRepo = {
   async create(name: string, parentId: string | null = null): Promise<Folder> {
@@ -14,8 +17,9 @@ export const folderRepo = {
       updatedAt: Date.now(),
     };
 
-    await db.transaction("rw", db.folders, db.outbox, async () => {
-      await db.folders.put(newFolder);
+    const writeStorage = await getPreferredFolderWriteStorage();
+    await writeStorage.runFolderWriteTransaction(async () => {
+      await writeStorage.createFolderRecord(newFolder);
       await outboxRepo.enqueueFolderCreate(newFolder.id, { name, parentId });
     });
 
@@ -23,21 +27,19 @@ export const folderRepo = {
   },
 
   async getFolderList(): Promise<Folder[]> {
-    const rows = await db.folders.orderBy("updatedAt").reverse().toArray();
+    const rows = await (await getPreferredFolderReadStorage()).listFolders();
     return rows ?? [];
   },
 
   async getFolderById(id: string): Promise<Folder | null> {
-    return (await db.folders.get(id)) ?? null;
+    return (await getPreferredFolderReadStorage()).getFolder(id);
   },
 
   async getFoldersByParentId(parentId: string | null): Promise<Folder[]> {
     if (parentId === null) {
-      return await db.folders
-        .filter((folder) => folder.parentId === null)
-        .toArray();
+      return (await getPreferredFolderReadStorage()).getFoldersByParentId(null);
     }
-    return await db.folders.where("parentId").equals(parentId).toArray();
+    return (await getPreferredFolderReadStorage()).getFoldersByParentId(parentId);
   },
 
   async updateFolderById(
@@ -47,8 +49,10 @@ export const folderRepo = {
     const folder = await this.getFolderById(id);
     if (!folder) return null;
 
-    await db.transaction("rw", db.folders, db.outbox, async () => {
-      await db.folders.update(id, { ...updates, updatedAt: Date.now() });
+    const updatedAt = Date.now();
+    const writeStorage = await getPreferredFolderWriteStorage();
+    await writeStorage.runFolderWriteTransaction(async () => {
+      await writeStorage.updateFolderRecord(id, { ...updates, updatedAt });
       await outboxRepo.enqueueFolderUpdate(id, updates);
     });
 
@@ -70,5 +74,17 @@ export const folderRepo = {
     if (!trashed) return null;
 
     return id;
+  },
+
+  async upsertMany(folders: Folder[]): Promise<void> {
+    await (await getPreferredFolderWriteStorage()).bulkPutFolders(folders);
+  },
+
+  async deleteMany(ids: string[]): Promise<void> {
+    await (await getPreferredFolderWriteStorage()).bulkDeleteFolders(ids);
+  },
+
+  async clearAll(): Promise<void> {
+    await (await getPreferredFolderWriteStorage()).clearFolders();
   },
 };

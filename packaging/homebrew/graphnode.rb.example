@@ -1,0 +1,19 @@
+class Graphnode < Formula
+  desc "GraphNode command line interface"
+  homepage "https://github.com/your-org/graphnode"
+  url "https://github.com/your-org/graphnode/releases/download/cli-v0.1.0/graphnode-cli-0.1.0.tgz"
+  sha256 "REPLACE_WITH_TARBALL_SHA256"
+  license "ISC"
+
+  depends_on "node"
+
+  def install
+    libexec.install Dir["*"]
+    (bin/"graphnode").write_env_script libexec/"dist/index.js", PATH
+  end
+
+  test do
+    output = shell_output("#{bin}/graphnode version")
+    assert_match "0.1.0", output
+  end
+end

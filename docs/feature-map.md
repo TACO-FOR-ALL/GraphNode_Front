@@ -1,4 +1,4 @@
-# Feature Map
+# 기능 맵
 
 이 문서는 GraphNode Front의 화면 진입점과 핵심 모듈 책임을 빠르게 파악하기 위한 요약 문서입니다.
 
@@ -10,7 +10,7 @@
 - `/note/:noteId?`: 마크다운 노트 편집
 - `/visualize`: 그래프 생성 및 시각화
 - `/visualize/:nodeId`: 특정 노드 상세 그래프 조회
-- `/settings`: 계정, 알림, 언어, MCP 등 설정 패널
+- `/settings`: 계정, 알림, 언어, MCP, Data Privacy 등 설정 패널
 
 ## 앱 부팅 시 수행되는 핵심 작업
 
@@ -54,15 +54,17 @@
 
 - `src/routes/Settings.tsx`: 설정 카테고리 엔트리
 - `src/components/settings/MCPPanel.tsx`: MCP 서버 관리
-- `src/components/settings/ApiKeyManager.tsx`: OpenAI 등 API 키 관리
+- `src/components/settings/ApiKeyManager.tsx`: API 키 관리
+- `src/components/settings/DataPrivacyPanel.tsx`: import/export, CLI 설치, 데이터 삭제
 - `electron/main/mcp/*`: 내장/커스텀 MCP 서버 런타임
 
 ## 상태와 데이터 흐름
 
 - UI/환경설정 상태: `src/store/*`의 Zustand 스토어
 - 서버 캐시: React Query
-- 로컬 영속성: `src/db/graphnode.db.ts`의 Dexie 스키마
-- 동기화: `src/managers/outboxRepo.ts`, `src/managers/syncWorker.ts`, `src/managers/syncNoteWorker.ts`
+- 로컬 영속성(활성): SQLite
+- 로컬 영속성(레거시): `src/legacy/indexeddb/graphnode.db.ts`
+- 동기화: `src/managers/outboxRepo.ts`, `src/managers/syncWorker.ts`, `src/managers/pullWorker.ts`
 - 실시간 알림: `src/managers/notificationClient.ts`, `src/store/useNotificationStore.ts`
 
 ## 처음 읽어볼 파일 추천

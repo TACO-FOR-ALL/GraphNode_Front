@@ -4,6 +4,7 @@ import windowIPC from "./window";
 import keytarIPC from "./keytar";
 import fileIPC from "./file";
 import mcpIPC from "./mcp";
+import graphNodeIPC from "./graphnode";
 
 export default function ipc() {
   systemIPC();
@@ -12,4 +13,5 @@ export default function ipc() {
   keytarIPC();
   fileIPC();
   mcpIPC();
+  graphNodeIPC();
 }

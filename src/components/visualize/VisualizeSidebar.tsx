@@ -17,7 +17,7 @@ import ToggleSidebarExpand from "../sidebar/ToggleSidebarExpand";
 import { GraphSummary } from "@/types/GraphSummary";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
-import { db } from "@/db/graphnode.db";
+import threadRepo from "@/managers/threadRepo";
 
 // 패턴 타입 스타일
 const PATTERN_CONFIG = {
@@ -90,10 +90,10 @@ export default function VisualizeSidebar({
   const [threadTitles, setThreadTitles] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    db.threads.toArray().then((threads) => {
+    threadRepo.getThreadList().then((threads) => {
       const map: Record<string, string> = {};
-      threads.forEach((t) => {
-        map[t.id] = t.title;
+      threads.forEach((thread) => {
+        map[thread.id] = thread.title;
       });
       setThreadTitles(map);
     });

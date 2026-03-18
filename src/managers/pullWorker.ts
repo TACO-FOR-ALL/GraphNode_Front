@@ -1,6 +1,9 @@
-import { db } from "@/db/graphnode.db";
 import { api } from "@/apiClient";
 import { mapNote, mapFolder, mapConversation } from "@/utils/dtoMappers";
+import { noteRepo } from "./noteRepo";
+import { folderRepo } from "./folderRepo";
+import { threadRepo } from "./threadRepo";
+import { outboxRepo } from "./outboxRepo";
 
 const SYNC_CURSOR_KEY = "graphnode_syncronization";
 
@@ -22,49 +25,60 @@ export async function pullOnce() {
   }
 
   const { notes, folders, conversations, serverTime } = result.data;
+  const sqliteSyncPayload = {
+    notes: {
+      upserts: notes.filter((n) => !n.deletedAt).map(mapNote),
+      deleteIds: notes.filter((n) => n.deletedAt).map((n) => n.id),
+    },
+    folders: {
+      upserts: folders.filter((f) => !f.deletedAt).map(mapFolder),
+      deleteIds: folders.filter((f) => f.deletedAt).map((f) => f.id),
+    },
+    threads: {
+      upserts: conversations
+        .filter((c) => !c.deletedAt)
+        .map(mapConversation),
+      deleteIds: conversations.filter((c) => c.deletedAt).map((c) => c.id),
+    },
+    serverTime,
+  };
 
   // ── Notes ──────────────────────────────────────────────────────────────
   if (notes.length > 0) {
     const deletedIds = notes.filter((n) => n.deletedAt).map((n) => n.id);
     const active = notes.filter((n) => !n.deletedAt);
+    const ids = notes.map((n) => n.id);
+    const ops = await outboxRepo.listOpsByEntityIds(ids);
+    const locked = new Set(
+      ops
+        .filter((op) => op.status === "pending" || op.status === "processing")
+        .map((op) => op.entityId),
+    );
 
-    await db.transaction("rw", db.notes, db.outbox, async () => {
-      const ids = notes.map((n) => n.id);
-      const ops = await db.outbox.where("entityId").anyOf(ids).toArray();
-      const locked = new Set(
-        ops
-          .filter((op) => op.status === "pending" || op.status === "processing")
-          .map((op) => op.entityId),
-      );
+    const toUpsert = active.filter((n) => !locked.has(n.id)).map(mapNote);
+    if (toUpsert.length > 0) await noteRepo.upsertMany(toUpsert);
 
-      const toUpsert = active.filter((n) => !locked.has(n.id)).map(mapNote);
-      if (toUpsert.length > 0) await db.notes.bulkPut(toUpsert);
-
-      const toDelete = deletedIds.filter((id) => !locked.has(id));
-      if (toDelete.length > 0) await db.notes.bulkDelete(toDelete);
-    });
+    const toDelete = deletedIds.filter((id) => !locked.has(id));
+    if (toDelete.length > 0) await noteRepo.deleteMany(toDelete);
   }
 
   // ── Folders ────────────────────────────────────────────────────────────
   if (folders.length > 0) {
     const deletedIds = folders.filter((f) => f.deletedAt).map((f) => f.id);
     const active = folders.filter((f) => !f.deletedAt);
+    const ids = folders.map((f) => f.id);
+    const ops = await outboxRepo.listOpsByEntityIds(ids);
+    const locked = new Set(
+      ops
+        .filter((op) => op.status === "pending" || op.status === "processing")
+        .map((op) => op.entityId),
+    );
 
-    await db.transaction("rw", db.folders, db.outbox, async () => {
-      const ids = folders.map((f) => f.id);
-      const ops = await db.outbox.where("entityId").anyOf(ids).toArray();
-      const locked = new Set(
-        ops
-          .filter((op) => op.status === "pending" || op.status === "processing")
-          .map((op) => op.entityId),
-      );
+    const toUpsert = active.filter((f) => !locked.has(f.id)).map(mapFolder);
+    if (toUpsert.length > 0) await folderRepo.upsertMany(toUpsert);
 
-      const toUpsert = active.filter((f) => !locked.has(f.id)).map(mapFolder);
-      if (toUpsert.length > 0) await db.folders.bulkPut(toUpsert);
-
-      const toDelete = deletedIds.filter((id) => !locked.has(id));
-      if (toDelete.length > 0) await db.folders.bulkDelete(toDelete);
-    });
+    const toDelete = deletedIds.filter((id) => !locked.has(id));
+    if (toDelete.length > 0) await folderRepo.deleteMany(toDelete);
   }
 
   // ── Conversations / Threads ────────────────────────────────────────────
@@ -73,26 +87,31 @@ export async function pullOnce() {
       .filter((c) => c.deletedAt)
       .map((c) => c.id);
     const active = conversations.filter((c) => !c.deletedAt);
+    const ids = conversations.map((c) => c.id);
+    const ops = await outboxRepo.listOpsByEntityIds(ids);
+    const locked = new Set(
+      ops
+        .filter((op) => op.status === "pending" || op.status === "processing")
+        .map((op) => op.entityId),
+    );
 
-    await db.transaction("rw", db.threads, db.outbox, async () => {
-      const ids = conversations.map((c) => c.id);
-      const ops = await db.outbox.where("entityId").anyOf(ids).toArray();
-      const locked = new Set(
-        ops
-          .filter((op) => op.status === "pending" || op.status === "processing")
-          .map((op) => op.entityId),
-      );
+    const toUpsert = active
+      .filter((c) => !locked.has(c.id))
+      .map(mapConversation);
+    if (toUpsert.length > 0) await threadRepo.upsertMany(toUpsert);
 
-      const toUpsert = active
-        .filter((c) => !locked.has(c.id))
-        .map(mapConversation);
-      if (toUpsert.length > 0) await db.threads.bulkPut(toUpsert);
-
-      const toDelete = deletedIds.filter((id) => !locked.has(id));
-      if (toDelete.length > 0) await db.threads.bulkDelete(toDelete);
-    });
+    const toDelete = deletedIds.filter((id) => !locked.has(id));
+    if (toDelete.length > 0) await threadRepo.deleteMany(toDelete);
   }
 
   // ── 커서 저장 ─────────────────────────────────────────────────────────
   localStorage.setItem(SYNC_CURSOR_KEY, serverTime);
+
+  if (window.graphnodeAPI?.applyStartupSync) {
+    try {
+      await window.graphnodeAPI.applyStartupSync(sqliteSyncPayload);
+    } catch (error) {
+      console.error("SQLite startup sync failed:", error);
+    }
+  }
 }

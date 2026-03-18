@@ -2,7 +2,7 @@
 // Windows: C:\Users\<User>\AppData\Roaming\<appName>\IndexedDB
 // macOS: ~/Library/Application Support/<appName>/IndexedDB
 import Dexie, { Table } from "dexie";
-import type { ChatThread } from "../types/Chat";
+import type { ChatThread } from "../../types/Chat";
 import { Note } from "@/types/Note";
 import { Folder } from "@/types/Folder";
 import { OutboxOp } from "@/types/Outbox";

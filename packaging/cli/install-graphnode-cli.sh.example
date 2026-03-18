@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+APP_RESOURCES_DIR="${1:-/Applications/GraphNode.app/Contents/Resources}"
+CLI_SOURCE="$APP_RESOURCES_DIR/cli/dist/index.js"
+TARGET_BIN_DIR="${HOME}/.local/bin"
+TARGET_LINK="$TARGET_BIN_DIR/graphnode"
+
+if [ ! -f "$CLI_SOURCE" ]; then
+  echo "Bundled CLI not found at: $CLI_SOURCE" >&2
+  exit 1
+fi
+
+mkdir -p "$TARGET_BIN_DIR"
+ln -sf "$CLI_SOURCE" "$TARGET_LINK"
+chmod +x "$CLI_SOURCE"
+
+echo "Installed graphnode -> $TARGET_LINK"
+echo "Make sure ${TARGET_BIN_DIR} is on your PATH."

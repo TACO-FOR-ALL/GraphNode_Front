@@ -345,6 +345,20 @@
         "title": "导入数据",
         "subtitle": "从外部来源导入您的数据"
       },
+      "export": {
+        "title": "导出我的数据",
+        "subtitle": "将笔记和对话保存到您选择的目录",
+        "notes": "导出笔记",
+        "chats": "导出聊天",
+        "exporting": "导出中...",
+        "toast": {
+          "notesSuccess": "已导出 {{count}} 条笔记",
+          "chatsSuccess": "已导出 {{count}} 条对话",
+          "cancelled": "已取消导出",
+          "notesError": "导出笔记失败",
+          "chatsError": "导出对话失败"
+        }
+      },
       "trash": {
         "title": "回收站",
         "subtitle": "已删除的项目将保留30天",
@@ -516,6 +530,22 @@
         "description": "Model Context Protocol（MCP）允许 AI 助手连接到外部工具和数据源，扩展其内置功能之外的能力。",
         "docsLink": "查看 MCP 文档（GraphNode）",
         "learnMore": "了解更多关于 MCP（官方）"
+      },
+      "cli": {
+        "title": "终端 CLI",
+        "subtitle": "为当前 macOS 或 Windows 用户安装 graphnode 命令",
+        "unsupported": "目前仅支持在 macOS 和 Windows 上自动安装 CLI。",
+        "installed": "该用户已安装 CLI。",
+        "notInstalled": "该用户尚未安装 CLI。",
+        "commandPath": "命令路径",
+        "shellConfigPath": "Shell 配置文件",
+        "install": "安装 CLI",
+        "installing": "安装中...",
+        "installedBadge": "已安装",
+        "toast": {
+          "success": "CLI 安装完成。请打开新的终端窗口后使用 graphnode。",
+          "error": "CLI 安装失败。"
+        }
       }
     }
   },

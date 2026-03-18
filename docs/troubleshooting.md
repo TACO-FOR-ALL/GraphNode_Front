@@ -1,4 +1,4 @@
-# Troubleshooting
+# 트러블슈팅
 
 ## 1) `npm run dev`는 되는데 API 호출이 실패함
 

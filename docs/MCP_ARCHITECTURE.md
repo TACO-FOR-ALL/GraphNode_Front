@@ -49,7 +49,7 @@ src/
 
 ## 각 파일의 역할
 
-### Electron Main Process
+### Electron 메인 프로세스
 
 | 파일 | 역할 |
 |------|------|
@@ -59,7 +59,7 @@ src/
 | `mcp/MCPClient.ts` | 개별 MCP 서버와 JSON-RPC 통신. 도구 호출, 리소스 읽기 등 실제 프로토콜 구현 |
 | `mcp/builtins/index.ts` | Filesystem, Notion, Google Calendar 등 기본 제공 서버의 메타데이터 및 설정 |
 
-### Renderer Process (React)
+### Renderer 프로세스 (React)
 
 | 파일 | 역할 |
 |------|------|
