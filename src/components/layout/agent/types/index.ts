@@ -14,7 +14,7 @@ export type ChatSession = {
   updatedAt: number;
 };
 
-export type SourceType = "chat" | "note";
+export type SourceType = "chat" | "note" | "node";
 
 export type SelectedSource = {
   type: SourceType;

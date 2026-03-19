@@ -92,7 +92,8 @@
     "newChat": "New Chat",
     "noChat": "No saved conversations yet",
     "selectChat": "Please select a chat on the left or start a new chat.",
-    "helpMessage": "How can I help you?"
+    "helpMessage": "How can I help you?",
+    "copied": "Copied!"
   },
   "notes": {
     "workspace": "workspace",
@@ -126,6 +127,7 @@
       "viewDetail": "View Detail",
       "deletedConversation": "This conversation has been deleted.",
       "analyzeWithMicroscope": "Analyze with Microscope",
+      "analyzing": "Analyzing...",
       "viewAnalysis": "View Analysis"
     },
     "error": {
@@ -199,12 +201,44 @@
       "body": "Failed to generate graph: {{error}}"
     },
     "graphSummary": {
+      "requestedTitle": "Graph Summary Started",
+      "requestedBody": "Graph summary generation has started.",
       "completedTitle": "Graph Summary Complete",
       "completedBody": "Graph summary has been completed."
     },
     "graphSummaryFailed": {
       "title": "Graph Summary Failed",
       "body": "Failed to generate graph summary: {{error}}"
+    },
+    "graphSummaryRequestFailed": {
+      "title": "Graph Summary Request Failed",
+      "body": "Failed to request graph summary generation."
+    },
+    "graphGenerationRequestFailed": {
+      "title": "Graph Generation Request Failed",
+      "body": "Failed to request graph generation."
+    },
+    "addConversation": {
+      "requestedTitle": "Update Started",
+      "requestedBody": "Graph update with new conversations has started.",
+      "requestFailedTitle": "Update Request Failed",
+      "requestFailedBody": "Failed to request graph update with new conversations.",
+      "completedTitle": "Update Complete",
+      "completedBody": "New conversations have been added to the graph.",
+      "failedTitle": "Update Failed",
+      "failedBody": "Failed to update the graph with new conversations."
+    },
+    "microscope": {
+      "ingestRequestedTitle": "Analysis Started",
+      "ingestRequestedBody": "Microscope analysis has started.",
+      "ingestRequestFailedTitle": "Analysis Request Failed",
+      "ingestRequestFailedBody": "Failed to request microscope analysis.",
+      "documentCompletedTitle": "Analysis Complete",
+      "documentCompletedBody": "Microscope document analysis has been completed.",
+      "documentFailedTitle": "Analysis Failed",
+      "documentFailedBody": "Microscope document analysis has failed.",
+      "workspaceCompletedTitle": "Workspace Analysis Complete",
+      "workspaceCompletedBody": "Microscope workspace analysis has been completed."
     },
     "test": {
       "title": "Test Notification",
@@ -214,6 +248,11 @@
       "title": "Notification",
       "body": "You have a new notification."
     }
+  },
+  "microscope": {
+    "sidebarEmpty": "Select a node to view\nanalysis details",
+    "noWorkspaces": "No analyses yet",
+    "selectToView": "Select an item from the sidebar"
   },
   "settings": {
     "title": "Settings",
@@ -530,24 +569,24 @@
         "description": "Model Context Protocol (MCP) allows AI assistants to connect to external tools and data sources, extending their capabilities beyond built-in features.",
         "docsLink": "View MCP documentation (GraphNode)",
         "learnMore": "Learn more about MCP (Official)"
-        }
-      },
-      "cli": {
-        "title": "Terminal CLI",
-        "subtitle": "Install the graphnode command for your current macOS or Windows user",
-        "unsupported": "Automatic CLI install is currently supported on macOS and Windows only.",
-        "installed": "CLI is installed for this user.",
-        "notInstalled": "CLI is not installed for this user yet.",
-        "commandPath": "Command path",
-        "shellConfigPath": "Shell config",
-        "install": "Install CLI",
-        "installing": "Installing...",
-        "installedBadge": "Installed",
-        "toast": {
-          "success": "CLI installed. Open a new terminal window to use graphnode.",
-          "error": "Failed to install the CLI."
-        }
       }
+    },
+    "cli": {
+      "title": "Terminal CLI",
+      "subtitle": "Install the graphnode command for your current macOS or Windows user",
+      "unsupported": "Automatic CLI install is currently supported on macOS and Windows only.",
+      "installed": "CLI is installed for this user.",
+      "notInstalled": "CLI is not installed for this user yet.",
+      "commandPath": "Command path",
+      "shellConfigPath": "Shell config",
+      "install": "Install CLI",
+      "installing": "Installing...",
+      "installedBadge": "Installed",
+      "toast": {
+        "success": "CLI installed. Open a new terminal window to use graphnode.",
+        "error": "Failed to install the CLI."
+      }
+    }
   },
   "sync": {
     "pullFailed": "Failed to sync data from server. Please check your connection."
@@ -597,8 +636,8 @@
       "selectedContext": "Selected Context ({{count}})",
       "addNodeHint": "Ctrl+Click to add nodes",
       "askAboutNodes": "Ask about the selected nodes",
-      "suggestRelation": "💡 What is the relationship between these nodes?",
-      "suggestImportance": "💡 Why are these nodes important?",
+      "suggestRelation": "What is the relationship between these nodes?",
+      "suggestImportance": "Why are these nodes important?",
       "suggestRelationInput": "What is the relationship between these nodes?",
       "suggestImportanceInput": "Why are these nodes important?",
       "inputPlaceholder": "Enter your question...",

@@ -92,7 +92,8 @@
     "newChat": "新建对话",
     "noChat": "还没有保存的对话",
     "selectChat": "请先选择一个对话或开始新对话。",
-    "helpMessage": "怎么帮到您？"
+    "helpMessage": "怎么帮到您？",
+    "copied": "已复制"
   },
   "notes": {
     "workspace": "工作区",
@@ -126,6 +127,7 @@
       "viewDetail": "查看详情",
       "deletedConversation": "该对话已被删除。",
       "analyzeWithMicroscope": "用Microscope分析",
+      "analyzing": "分析中...",
       "viewAnalysis": "查看分析结果"
     },
     "error": {
@@ -199,12 +201,44 @@
       "body": "图结构生成失败: {{error}}"
     },
     "graphSummary": {
+      "requestedTitle": "图摘要已开始",
+      "requestedBody": "图摘要生成已开始。",
       "completedTitle": "图结构摘要完成",
       "completedBody": "图结构摘要已完成。"
     },
     "graphSummaryFailed": {
       "title": "图结构摘要失败",
       "body": "图结构摘要生成失败: {{error}}"
+    },
+    "graphSummaryRequestFailed": {
+      "title": "图摘要请求失败",
+      "body": "图摘要生成请求失败。"
+    },
+    "graphGenerationRequestFailed": {
+      "title": "图生成请求失败",
+      "body": "图生成请求失败。"
+    },
+    "addConversation": {
+      "requestedTitle": "更新已开始",
+      "requestedBody": "通过新对话更新图结构已开始。",
+      "requestFailedTitle": "更新请求失败",
+      "requestFailedBody": "图更新请求失败。",
+      "completedTitle": "更新完成",
+      "completedBody": "新对话已添加到图中。",
+      "failedTitle": "更新失败",
+      "failedBody": "将新对话添加到图中失败。"
+    },
+    "microscope": {
+      "ingestRequestedTitle": "分析已开始",
+      "ingestRequestedBody": "Microscope分析已开始。",
+      "ingestRequestFailedTitle": "分析请求失败",
+      "ingestRequestFailedBody": "Microscope分析请求失败。",
+      "documentCompletedTitle": "分析完成",
+      "documentCompletedBody": "Microscope文档分析已完成。",
+      "documentFailedTitle": "分析失败",
+      "documentFailedBody": "Microscope文档分析失败。",
+      "workspaceCompletedTitle": "工作区分析完成",
+      "workspaceCompletedBody": "Microscope工作区分析已完成。"
     },
     "test": {
       "title": "测试通知",
@@ -214,6 +248,11 @@
       "title": "通知",
       "body": "您有一条新通知。"
     }
+  },
+  "microscope": {
+    "sidebarEmpty": "选择节点后\n将显示分析信息",
+    "noWorkspaces": "暂无分析记录",
+    "selectToView": "请从左侧选择项目"
   },
   "settings": {
     "my": {
@@ -597,8 +636,8 @@
       "selectedContext": "已选上下文 ({{count}}个)",
       "addNodeHint": "Ctrl+点击添加节点",
       "askAboutNodes": "询问关于所选节点的问题",
-      "suggestRelation": "💡 这些节点有什么关系？",
-      "suggestImportance": "💡 为什么这些节点很重要？",
+      "suggestRelation": "这些节点有什么关系？",
+      "suggestImportance": "为什么这些节点很重要？",
       "suggestRelationInput": "这些节点有什么关系？",
       "suggestImportanceInput": "为什么这些节点很重要？",
       "inputPlaceholder": "输入您的问题...",

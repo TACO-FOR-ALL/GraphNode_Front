@@ -20,7 +20,7 @@ interface AiAgentChatBoxProps {
 
 export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
   const { t } = useTranslation();
-  const { response } = useAgentToolBoxStore();
+  const { response, microscopeNodes, setMicroscopeNodes } = useAgentToolBoxStore();
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   // Custom hooks
@@ -59,13 +59,21 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
     }
   }, [response, setMessages]);
 
+  // Sync microscope nodes → source chips
+  useEffect(() => {
+    if (microscopeNodes && microscopeNodes.length > 0) {
+      microscopeNodes.forEach((node) => addSource("node", node.id, node.name));
+    }
+  }, [microscopeNodes]);
+
   // Handlers
   const handleClose = useCallback(() => {
     startNewSession();
     clearSources();
     reset();
+    setMicroscopeNodes(null);
     setIsOpen(false);
-  }, [startNewSession, clearSources, reset, setIsOpen]);
+  }, [startNewSession, clearSources, reset, setMicroscopeNodes, setIsOpen]);
 
   const handleStartNewChat = useCallback(() => {
     startNewSession();
@@ -88,6 +96,19 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
       sendMessage(message);
     },
     [selectedSources, sendMessage, t]
+  );
+
+  const handleMicroscopeAction = useCallback(
+    (action: "relationship" | "importance") => {
+      const nodeNames =
+        microscopeNodes?.map((n) => n.name).join(", ") ?? "";
+      const message =
+        action === "relationship"
+          ? `${t("graphVisualization.agent.suggestRelationInput")}${nodeNames ? ` (${nodeNames})` : ""}`
+          : `${t("graphVisualization.agent.suggestImportanceInput")}${nodeNames ? ` (${nodeNames})` : ""}`;
+      sendMessage(message);
+    },
+    [microscopeNodes, sendMessage, t]
   );
 
   const hasMessages = messages.length > 0;
@@ -117,6 +138,9 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
             onSummary={() => handleQuickAction("summary")}
             onNote={() => handleQuickAction("note")}
             alertMessage={alertMessage}
+            microscopeNodes={microscopeNodes}
+            onRelationship={() => handleMicroscopeAction("relationship")}
+            onImportance={() => handleMicroscopeAction("importance")}
           />
         )}
       </section>
@@ -124,7 +148,13 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
       <AgentInputArea
         selectedSources={selectedSources}
         onAddSource={addSource}
-        onRemoveSource={removeSource}
+        onRemoveSource={(id) => {
+          removeSource(id);
+          if (microscopeNodes?.some((n) => n.id === id)) {
+            const updated = microscopeNodes.filter((n) => n.id !== id);
+            setMicroscopeNodes(updated.length > 0 ? updated : null);
+          }
+        }}
         onSend={sendMessage}
         isProcessing={isProcessing}
       />

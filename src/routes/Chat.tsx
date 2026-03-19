@@ -13,7 +13,7 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
 
   return (
     <div
-      className="h-full pt-16 bg-bg-primary flex flex-col"
+      className="h-full min-h-0 overflow-hidden bg-bg-primary flex flex-col box-border"
       style={{
         width,
         margin: "0 auto",
@@ -24,7 +24,7 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
       <div className="h-8 flex-shrink-0" />
 
       {/* 채팅창 - flex-1로 남은 공간 차지 */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ChatWindow
           threadId={threadId || undefined}
           isTyping={isTyping}

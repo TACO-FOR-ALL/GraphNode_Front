@@ -3,11 +3,59 @@ import StreamingMarkdownBubble from "./StreamingMarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import { useToastStore } from "@/store/useToastStore";
 import type { ChatMessage } from "../types/Chat";
 import { useTranslation } from "react-i18next";
 import logo from "@/assets/icons/logo.svg";
+import { FiCopy, FiCheck, FiRefreshCw, FiTrash2 } from "react-icons/fi";
+import threadRepo from "@/managers/threadRepo";
 
 const PAGE = 10;
+
+function ChatSkeleton({
+  assistantMaxWidth,
+  userMaxWidth,
+}: {
+  assistantMaxWidth: string;
+  userMaxWidth: string;
+}) {
+  const assistantSkeleton = (lines: number[]) => (
+    <div className="flex justify-start items-start mb-10">
+      <div style={{ maxWidth: assistantMaxWidth }} className="w-full">
+        <div className="rounded-2xl p-6 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] flex items-start gap-3">
+          <div className="w-6 h-6 rounded-full bg-bg-tertiary flex-shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-2.5 flex-1">
+            {lines.map((w, i) => (
+              <div
+                key={i}
+                className="h-3 bg-bg-tertiary rounded-full"
+                style={{ width: `${w}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const userSkeleton = (widthPct: number) => (
+    <div className="flex justify-end items-start mb-10">
+      <div style={{ maxWidth: userMaxWidth, width: `${widthPct}%` }}>
+        <div className="h-10 bg-bg-tertiary rounded-2xl rounded-tr-sm" />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 animate-pulse">
+      {assistantSkeleton([72, 100, 85, 60])}
+      {userSkeleton(38)}
+      {assistantSkeleton([100, 80, 95])}
+      {userSkeleton(28)}
+      {assistantSkeleton([65, 88])}
+    </div>
+  );
+}
 
 export default function ChatWindow({
   avatarUrl,
@@ -27,6 +75,7 @@ export default function ChatWindow({
   const [containerHeight, setContainerHeight] = useState(0);
   const [userMessageHeight, setUserMessageHeight] = useState(0);
   const [aiResponseHeight, setAiResponseHeight] = useState(0);
+  const [isLoading, setIsLoading] = useState(!!threadId);
 
   // 컨테이너 높이 측정
   useEffect(() => {
@@ -52,6 +101,22 @@ export default function ChatWindow({
   );
   const refreshThread = useThreadsStore((state) => state.refreshThread);
   const { isExpanded } = useSidebarExpandStore();
+  const addToast = useToastStore((s) => s.addToast);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  const handleCopyMessage = async (messageId: string, content: string) => {
+    await navigator.clipboard.writeText(content);
+    addToast({ type: "success", message: t("chat.copied") });
+    setCopiedMessageId(messageId);
+    setTimeout(() => setCopiedMessageId(null), 2000);
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!threadId) return;
+
+    await threadRepo.deleteMessageFromThreadById(threadId, messageId);
+    addToast({ type: "success", message: t("chat.deleted", "Message deleted") });
+  };
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
@@ -60,6 +125,7 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (threadId) {
+      setIsLoading(true);
       setVisibleCount(PAGE);
       refreshThread(threadId);
       requestAnimationFrame(() => {
@@ -70,22 +136,29 @@ export default function ChatWindow({
     }
   }, [threadId, refreshThread]);
 
+  useEffect(() => {
+    if (thread !== null) {
+      setIsLoading(false);
+    }
+  }, [thread]);
+
   const allMessages = useMemo<ChatMessage[]>(() => {
     const msgs = thread?.messages ?? [];
     return msgs.slice().sort((a, b) => a.ts - b.ts);
   }, [thread?.messages]);
 
   const total = allMessages.length;
-  const startIndex = Math.max(0, total - visibleCount);
+  const pagedStartIndex = Math.max(0, total - visibleCount);
+  const lastMessage = total > 0 ? allMessages[total - 1] : null;
+  const hasActiveTurn =
+    !!lastMessage &&
+    (isTyping ||
+      lastMessage.role === "user" ||
+      (lastMessage.role === "assistant" && lastMessage.content === ""));
+  const startIndex = hasActiveTurn ? 0 : pagedStartIndex;
   const visible = total ? allMessages.slice(startIndex) : [];
   const lastVisibleMessage =
     visible.length > 0 ? visible[visible.length - 1] : null;
-  const hasActiveTurn =
-    !!lastVisibleMessage &&
-    (isTyping ||
-      lastVisibleMessage.role === "user" ||
-      (lastVisibleMessage.role === "assistant" &&
-        lastVisibleMessage.content === ""));
 
   // 이전 메시지(history)와 현재 활성 턴(가장 최근 user + 그 이후 assistant들) 분리
   const { history, currentTurn } = useMemo(() => {
@@ -291,23 +364,53 @@ export default function ChatWindow({
           </div>
         ) : (
           <div
-            className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)]"
+            className="flex flex-col items-start"
             style={{ maxWidth: assistantMaxWidth }}
           >
-            <img
-              src={logo}
-              alt="Profile"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-              className="w-6 h-6 flex-shrink-0 pt-1"
-              style={{ marginTop: 0 }}
-            />
-            <div className="flex flex-col min-w-0 overflow-hidden">
-              <StreamingMarkdownBubble
-                text={m.content}
-                isStreaming={isLastAssistantMessage && isTyping}
+            <div className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] w-full">
+              <img
+                src={logo}
+                alt="Profile"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                className="w-6 h-6 flex-shrink-0 pt-1"
+                style={{ marginTop: 0 }}
               />
+              <div className="flex flex-col min-w-0 overflow-hidden">
+                <StreamingMarkdownBubble
+                  text={m.content}
+                  isStreaming={isLastAssistantMessage && isTyping}
+                />
+              </div>
             </div>
+            {!(isLastAssistantMessage && isTyping) && (
+              <div className="flex items-center gap-2.5 mt-2 ml-1.5">
+                <div
+                  onClick={() => handleCopyMessage(m.id, m.content)}
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+                >
+                  {copiedMessageId === m.id ? (
+                    <FiCheck size={13} />
+                  ) : (
+                    <FiCopy size={13} />
+                  )}
+                </div>
+                <div
+                  // TODO: retry 기능 구현
+                  onClick={() => {}}
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+                >
+                  <FiRefreshCw size={13} />
+                </div>
+                <div
+                  onClick={() => void handleDeleteMessage(m.id)}
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-red-500 hover:bg-bg-secondary transition-colors"
+                  title={t("chat.deleteMessage", "Delete message")}
+                >
+                  <FiTrash2 size={13} />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -321,14 +424,19 @@ export default function ChatWindow({
       </div>
     );
   }
-  if (!thread) {
-    return <div className="p-4">{t("chat.noChat")}</div>;
+  if (isLoading || !thread) {
+    return (
+      <ChatSkeleton
+        assistantMaxWidth={assistantMaxWidth}
+        userMaxWidth={userMaxWidth}
+      />
+    );
   }
 
   return (
     <div
       ref={wrapRef}
-      className="h-full overflow-y-auto"
+      className="h-full min-h-0 overflow-y-auto overscroll-contain"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",

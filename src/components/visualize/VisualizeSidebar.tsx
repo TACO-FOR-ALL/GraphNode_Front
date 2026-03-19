@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useConversationUpdateStore } from "@/store/useConversationUpdateStore";
 import { useTranslation } from "react-i18next";
 import {
   FiChevronRight,
@@ -104,15 +105,15 @@ export default function VisualizeSidebar({
     return label.length > maxLen ? `${label.slice(0, maxLen)}...` : label;
   };
 
-  // 그래프 업데이트 상태
-  const [isUpdating, setIsUpdating] = useState(false);
+  // 그래프 업데이트 상태 (SSE 이벤트 연동)
+  const { isUpdating, setUpdating } = useConversationUpdateStore();
 
   // 컴포넌트 마운트 시 그래프 상태 확인
   useEffect(() => {
     const checkGraphStatus = async () => {
       try {
         const { status } = unwrapResponse(await api.graph.getStats());
-        setIsUpdating(status === "UPDATING" || status === "CREATING");
+        setUpdating(status === "UPDATING" || status === "CREATING");
       } catch {
         // 에러 시 무시
       }
@@ -265,12 +266,12 @@ export default function VisualizeSidebar({
 
   const onUpdateGraph = async () => {
     if (isUpdating) return;
-    setIsUpdating(true);
+    setUpdating(true);
     try {
       const result = await api.graphAi.addNode();
       console.log(result);
     } catch {
-      setIsUpdating(false);
+      setUpdating(false);
     }
   };
 

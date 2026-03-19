@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { IoIosArrowDown } from "react-icons/io";
-import { FaArrowRight } from "react-icons/fa6";
 import { noteRepo } from "@/managers/noteRepo";
 import { threadRepo } from "@/managers/threadRepo";
 import type { Note } from "@/types/Note";
@@ -11,6 +10,7 @@ import AgentAutoResizeTextarea from "@/components/AgentAutoResizeTextArea";
 import SourceSelectorDropdown from "./SourceSelectorDropdown";
 import SelectedSourceChip from "./SelectedSourceChip";
 import type { SelectedSource, SourceType } from "../types";
+import { FaArrowRight } from "react-icons/fa6";
 
 interface AgentInputAreaProps {
   selectedSources: SelectedSource[];
@@ -81,17 +81,18 @@ export default function AgentInputArea({
       {/* Source selection */}
       <div className="flex items-center gap-[6px] mb-2 flex-wrap">
         <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => !isProcessing && setShowSourceDropdown(!showSourceDropdown)}
-            className={`flex items-center gap-1 text-[10px] px-2 py-[4px] pb-[5px] border-[1px] text-text-secondary border-text-placeholder rounded-full ${
+          <div
+            onClick={() =>
+              !isProcessing && setShowSourceDropdown(!showSourceDropdown)
+            }
+            className={`flex items-center gap-1 text-[10px] px-2 py-[5px] border-[1px] text-text-secondary border-text-placeholder rounded-full ${
               isProcessing
                 ? "opacity-50 cursor-not-allowed"
                 : "hover:bg-bg-tertiary cursor-pointer"
             }`}
-            disabled={isProcessing}
           >
             @
-          </button>
+          </div>
           {showSourceDropdown && (
             <SourceSelectorDropdown
               threads={allThreads}
@@ -130,14 +131,14 @@ export default function AgentInputArea({
         <button
           onClick={handleSend}
           disabled={!input.trim() || isProcessing}
-          className={`w-5 h-5 flex items-center justify-center rounded-full text-white cursor-pointer ${
+          className={`w-5 h-7 flex items-center justify-center rounded-full text-white cursor-pointer ${
             !input.trim() || isProcessing ? "bg-text-placeholder" : "bg-primary"
           }`}
         >
           {isProcessing ? (
             <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            <FaArrowRight className="w-3 h-3" />
+            <FaArrowRight className="w-3 h-3 flex-shrink-0" />
           )}
         </button>
       </div>

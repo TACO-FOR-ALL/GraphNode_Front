@@ -30,6 +30,7 @@ import { useImageCompression } from "@/hooks/useImageCompression";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useToastStore } from "@/store/useToastStore";
 import { useTranslation } from "react-i18next";
+import normalizeMathMarkdown from "@/utils/normalizeMathMarkdown";
 
 const lowlight = createLowlight(common);
 
@@ -175,10 +176,11 @@ export default ({ noteId }: { noteId: string | null }) => {
           const note = await noteRepo.getNoteById(noteId);
 
           if (note) {
-            editor.commands.setContent(note.content, {
+            const normalizedContent = normalizeMathMarkdown(note.content);
+            editor.commands.setContent(normalizedContent, {
               contentType: "markdown",
             });
-            latestMarkdownRef.current = note.content;
+            latestMarkdownRef.current = normalizedContent;
             lastEditedNoteIdRef.current = note.id;
             setCurrentNoteId(note.id);
           } else {

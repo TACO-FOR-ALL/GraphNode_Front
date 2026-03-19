@@ -21,7 +21,7 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
-import VisualizeMicroscope from "./routes/VisualizeMicroscope";
+import MicroscopePage from "./routes/MicroscopePage";
 import GraphTestPage from "./routes/GraphTestPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
@@ -222,6 +222,7 @@ function MainLayout() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       <WebAppFrameBar />
@@ -255,10 +256,8 @@ function MainLayout() {
               element={<Chat avatarUrl={me?.profile?.avatarUrl ?? null} />}
             />
             <Route path="/visualize" element={<Visualize />} />
-            <Route
-              path="/visualize/detail/:nodeId"
-              element={<VisualizeMicroscope />}
-            />
+            <Route path="/microscope" element={<MicroscopePage />} />
+            <Route path="/microscope/:nodeId" element={<MicroscopePage />} />
             <Route
               path="/settings"
               element={<Settings userInfo={me as Me} />}
