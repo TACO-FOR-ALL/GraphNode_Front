@@ -12,6 +12,51 @@ import threadRepo from "@/managers/threadRepo";
 
 const PAGE = 10;
 
+function ChatSkeleton({
+  assistantMaxWidth,
+  userMaxWidth,
+}: {
+  assistantMaxWidth: string;
+  userMaxWidth: string;
+}) {
+  const assistantSkeleton = (lines: number[]) => (
+    <div className="flex justify-start items-start mb-10">
+      <div style={{ maxWidth: assistantMaxWidth }} className="w-full">
+        <div className="rounded-2xl p-6 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] flex items-start gap-3">
+          <div className="w-6 h-6 rounded-full bg-bg-tertiary flex-shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-2.5 flex-1">
+            {lines.map((w, i) => (
+              <div
+                key={i}
+                className="h-3 bg-bg-tertiary rounded-full"
+                style={{ width: `${w}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const userSkeleton = (widthPct: number) => (
+    <div className="flex justify-end items-start mb-10">
+      <div style={{ maxWidth: userMaxWidth, width: `${widthPct}%` }}>
+        <div className="h-10 bg-bg-tertiary rounded-2xl rounded-tr-sm" />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 animate-pulse">
+      {assistantSkeleton([72, 100, 85, 60])}
+      {userSkeleton(38)}
+      {assistantSkeleton([100, 80, 95])}
+      {userSkeleton(28)}
+      {assistantSkeleton([65, 88])}
+    </div>
+  );
+}
+
 export default function ChatWindow({
   avatarUrl,
   threadId,
@@ -30,6 +75,7 @@ export default function ChatWindow({
   const [containerHeight, setContainerHeight] = useState(0);
   const [userMessageHeight, setUserMessageHeight] = useState(0);
   const [aiResponseHeight, setAiResponseHeight] = useState(0);
+  const [isLoading, setIsLoading] = useState(!!threadId);
 
   // 컨테이너 높이 측정
   useEffect(() => {
@@ -79,6 +125,7 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (threadId) {
+      setIsLoading(true);
       setVisibleCount(PAGE);
       refreshThread(threadId);
       requestAnimationFrame(() => {
@@ -88,6 +135,12 @@ export default function ChatWindow({
       });
     }
   }, [threadId, refreshThread]);
+
+  useEffect(() => {
+    if (thread !== null) {
+      setIsLoading(false);
+    }
+  }, [thread]);
 
   const allMessages = useMemo<ChatMessage[]>(() => {
     const msgs = thread?.messages ?? [];
@@ -371,8 +424,13 @@ export default function ChatWindow({
       </div>
     );
   }
-  if (!thread) {
-    return <div className="p-4">{t("chat.noChat")}</div>;
+  if (isLoading || !thread) {
+    return (
+      <ChatSkeleton
+        assistantMaxWidth={assistantMaxWidth}
+        userMaxWidth={userMaxWidth}
+      />
+    );
   }
 
   return (
