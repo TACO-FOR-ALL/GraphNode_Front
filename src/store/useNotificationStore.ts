@@ -9,6 +9,7 @@ import { useGraphGenerationStore } from "./useGraphGenerationStore";
 import { useConversationUpdateStore } from "./useConversationUpdateStore";
 import { useMicroscopeGenerationStore } from "./useMicroscopeGenerationStore";
 import { playSound } from "@/utils/sound";
+import { queryClient } from "@/queryClient";
 
 export interface Notification {
   id: string;
@@ -78,6 +79,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       event.type === "MICROSCOPE_INGEST_REQUEST_FAILED"
     ) {
       useMicroscopeGenerationStore.getState().setGenerating(false);
+    }
+
+    if (event.type === "MICROSCOPE_WORKSPACE_COMPLETED") {
+      queryClient.invalidateQueries({ queryKey: ["microscope-workspaces"] });
     }
 
     const notification: Notification = {
