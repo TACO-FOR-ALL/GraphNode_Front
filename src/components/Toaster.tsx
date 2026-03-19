@@ -11,7 +11,7 @@ export default function Toaster() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg backdrop-blur-md animate-slide-in ${
+          className={`flex items-center gap-3 px-3 py-1.5 rounded-lg shadow-lg backdrop-blur-md animate-slide-in ${
             toast.type === "error"
               ? "bg-red-500/90 text-white"
               : toast.type === "success"

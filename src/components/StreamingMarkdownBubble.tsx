@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import "highlight.js/styles/github.css";
 import hljs from "highlight.js";
+import { FiCopy, FiCheck } from "react-icons/fi";
+import normalizeMathMarkdown from "@/utils/normalizeMathMarkdown";
 
 interface StreamingMarkdownBubbleProps {
   text: string;
@@ -32,6 +37,52 @@ function safeStringify(children: React.ReactNode): string {
     }
   }
   return "";
+}
+
+function CodeBlock({
+  children,
+  ...rest
+}: React.HTMLAttributes<HTMLPreElement>) {
+  const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+
+  const codeChild = React.Children.toArray(children).find((child) =>
+    React.isValidElement(child)
+  ) as React.ReactElement | undefined;
+  const className = (codeChild?.props as any)?.className || "";
+  const match = /language-(\w+)/.exec(className);
+  const language = match ? match[1] : "";
+
+  const handleCopy = async () => {
+    const text = preRef.current?.textContent || "";
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-4 rounded-lg overflow-hidden border border-base-border">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-tertiary border-b border-base-border">
+        <span className="text-xs text-text-secondary font-mono">
+          {language || "code"}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+        >
+          {copied ? <FiCheck size={13} /> : <FiCopy size={13} />}
+          <span>COPY</span>
+        </button>
+      </div>
+      <pre
+        ref={preRef}
+        className="overflow-auto p-4 bg-bg-tertiary font-mono text-sm leading-relaxed"
+        {...rest}
+      >
+        {children}
+      </pre>
+    </div>
+  );
 }
 
 const components: Components = {
@@ -144,16 +195,7 @@ const components: Components = {
     );
   },
 
-  pre: ({ children, ...rest }) => {
-    return (
-      <pre
-        className="rounded-lg overflow-auto my-4 p-4 bg-bg-tertiary text-text-primary border border-base-border font-mono text-sm leading-relaxed"
-        {...rest}
-      >
-        {children}
-      </pre>
-    );
-  },
+  pre: (props) => <CodeBlock {...(props as React.HTMLAttributes<HTMLPreElement>)} />,
 
   a: (props) => {
     const { href, children, ...rest } =
@@ -227,8 +269,12 @@ export default function StreamingMarkdownBubble({
         </div>
       ) : (
         <div className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-            {text}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+            components={components}
+          >
+            {normalizeMathMarkdown(text)}
           </ReactMarkdown>
         </div>
       )}
