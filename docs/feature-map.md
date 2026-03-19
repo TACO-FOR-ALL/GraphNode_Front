@@ -9,7 +9,9 @@
 - `/chat/:threadId?`: 채팅 스레드 조회 및 새 대화 시작
 - `/note/:noteId?`: 마크다운 노트 편집
 - `/visualize`: 그래프 생성 및 시각화
-- `/visualize/:nodeId`: 특정 노드 상세 그래프 조회
+- `/microscope`: 생성된 microscope 워크스페이스 조회
+- `/microscope/:nodeId`: 대화 노드 기준 microscope 분석 요청 또는 결과 조회
+- `/graph-lab`: 실험용 그래프 렌더링 페이지
 - `/settings`: 계정, 알림, 언어, MCP, Data Privacy 등 설정 패널
 
 ## 앱 부팅 시 수행되는 핵심 작업
@@ -18,7 +20,7 @@
 
 - `startSyncLoop()`로 outbox 동기화 루프 시작
 - `initI18n()` 완료 후 React 앱 렌더링
-- React Query 전역 `QueryClient` 주입
+- `src/queryClient.ts`의 공용 React Query `QueryClient` 주입
 
 `src/App.tsx`
 
@@ -46,9 +48,12 @@
 ### 그래프 시각화
 
 - `src/routes/Visualize.tsx`: 시각화 메인 화면
-- `src/routes/VisualizeDetail.tsx`: 노드 상세 화면
+- `src/routes/MicroscopePage.tsx`: microscope 워크스페이스 브라우징 및 분석 요청 화면
+- `src/routes/GraphTestPage.tsx`: 실험용 그래프 렌더링 테스트 페이지
 - `src/components/visualize/Graph2D.tsx`, `src/components/visualize/Graph3D.tsx`: 그래프 렌더링
+- `src/components/microscope/MicroScopeVisualization.tsx`: microscope 그래프 렌더링 및 컨텍스트 노드 선택
 - `src/store/useGraphGenerationStore.ts`: 그래프 생성 진행 상태
+- `src/store/useMicroscopeGenerationStore.ts`: microscope 분석 진행 상태
 
 ### 설정 및 외부 연동
 
@@ -62,10 +67,12 @@
 
 - UI/환경설정 상태: `src/store/*`의 Zustand 스토어
 - 서버 캐시: React Query
+- 공용 React Query 인스턴스: `src/queryClient.ts`
 - 로컬 영속성(활성): SQLite
 - 로컬 영속성(레거시): `src/legacy/indexeddb/graphnode.db.ts`
 - 동기화: `src/managers/outboxRepo.ts`, `src/managers/syncWorker.ts`, `src/managers/pullWorker.ts`
 - 실시간 알림: `src/managers/notificationClient.ts`, `src/store/useNotificationStore.ts`
+- 시각화-에이전트 연계: `src/store/useAgentToolBoxStore.ts`, `src/components/layout/AiAgentChatBox.tsx`
 
 ## 처음 읽어볼 파일 추천
 
@@ -75,3 +82,4 @@
 4. `src/managers/outboxRepo.ts`
 5. `docs/architecture.md`
 6. `docs/data-sync-ipc.md`
+7. `docs/microscope-agent-flow.md`

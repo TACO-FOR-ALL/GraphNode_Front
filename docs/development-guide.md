@@ -64,6 +64,8 @@ CLI 관련:
 - 민감 정보(API 키, 사용자 정보)는 `keytar`에 저장됩니다.
 - 노트/폴더/스레드 변경은 repository를 통해 처리해 SQLite + Outbox 동기화 일관성을 유지하세요.
 - 실시간 기능(알림/SSE, 그래프 생성)은 `VITE_API_BASE` 주입이 필요하므로 개발 실행은 Infisical 명령 기준으로 맞추세요.
+- React Query 캐시 무효화가 컴포넌트 밖에서도 필요하면 `src/queryClient.ts`의 공용 인스턴스를 사용하세요.
+- microscope 관련 상태는 `useMicroscopeGenerationStore`, agent 연계 상태는 `useAgentToolBoxStore`에 모여 있습니다.
 
 ## SQLite 전환 상태
 
