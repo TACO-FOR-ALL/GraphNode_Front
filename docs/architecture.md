@@ -34,7 +34,9 @@ Router는 `HashRouter` 기반입니다.
 - `/chat/:threadId?`
 - `/note/:noteId?`
 - `/visualize`
-- `/visualize/:nodeId`
+- `/microscope`
+- `/microscope/:nodeId`
+- `/graph-lab`
 - `/settings`
 
 ## 상태 관리
@@ -48,6 +50,11 @@ Router는 `HashRouter` 기반입니다.
 
 - `useGraphGenerationStore`: 그래프 생성 진행 상태 관리
 - `useNotificationStore`: 알림 목록/읽음 상태/연결 상태 관리
+- `useMicroscopeGenerationStore`: microscope 분석 요청/완료 상태 관리
+- `useAgentToolBoxStore`: 플로팅 agent toolbox 열림 상태, microscope 선택 노드, 외부 응답 상태 관리
+
+React Query는 앱 루트에서 `QueryClientProvider`로 주입되며, 공용 인스턴스는 `src/queryClient.ts`에서 관리합니다.
+이 인스턴스는 React 컴포넌트 밖의 스토어나 알림 처리 코드에서도 query invalidation을 수행할 때 사용합니다.
 
 ## 보안 경계
 
@@ -66,3 +73,4 @@ Router는 `HashRouter` 기반입니다.
 - CLI와 데스크탑이 같은 저장소를 공유
 - 동기화 재시도(backoff) + coalescing으로 서버 호출 수 절감
 - SSE 알림 이벤트를 UI 상태와 연결해 장시간 작업 상태를 반영
+- 시각화 화면과 agent toolbox를 느슨하게 연결해, 선택된 그래프 노드를 바로 후속 질의 컨텍스트로 재사용

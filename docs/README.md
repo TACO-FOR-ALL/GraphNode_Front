@@ -16,6 +16,7 @@
 - `docs/architecture.md`: 앱 구조, 라우팅, 상태관리, 보안 경계
 - `docs/data-sync-ipc.md`: SQLite 기준 동기화, outbox, IPC 표면
 - `docs/feature-map.md`: 주요 화면 진입점과 핵심 모듈 책임 요약
+- `docs/microscope-agent-flow.md`: microscope 분석, SSE 알림, agent toolbox 연계 흐름
 - `docs/MCP_ARCHITECTURE.md`: MCP 서버 구조, IPC 채널, 호출 흐름
 - `docs/CHANGELOG_DEV.md`: 최근 개발 변경 로그
 - `docs/testing-strategy.md`: 테스트 범위, 실행 방법, 우선순위
