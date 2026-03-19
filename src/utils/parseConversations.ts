@@ -27,6 +27,39 @@ const toMsg = (m: any): ChatMessage | null => {
   return { id: uuid(), role, content, ts: isFinite(ts) ? ts : Date.now() };
 };
 
+// OpenAI conversations.json의 `mapping`은 메시지들을 배열이 아니라
+// messages[]는 화면에 보여주기 좋은 “일렬 순서의 메시지 목록”이고
+// mapping은 원본 대화가 어떻게 연결되어 있는지 담는 “구조 정보(트리)”예요
+// 대화 중 응답 재생성 등이 발생하면 브랜치가 생길 수 있으므로, 전체 mapping을 그대로 펼치면 실제로 선택되지 않은 메시지까지 섞일 수 있습니다.
+//
+// 이 함수는 `current_node`(현재 선택된 마지막 메시지)에서 시작해
+// parent를 따라 루트까지 거슬러 올라간 뒤, 순서를 뒤집어
+// 실제 대화 흐름대로 처음 메시지부터 마지막 메시지까지 반환합니다.
+//
+// `current_node`가 없거나 유효하지 않은 경우에는 fallback으로
+// message가 있는 모든 노드를 반환합니다.
+function getOpenAIConversationPath(conv: any): any[] {
+  const mapping = conv?.mapping;
+  if (!mapping || typeof mapping !== "object") return [];
+
+  const currentNodeId = conv?.current_node;
+  if (!currentNodeId || !mapping[currentNodeId]) {
+    return Object.values(mapping).filter((node: any) => node && node.message);
+  }
+
+  const path: any[] = [];
+  const seen = new Set<string>();
+  let nodeId: string | null = currentNodeId;
+
+  while (nodeId && mapping[nodeId] && !seen.has(nodeId)) {
+    seen.add(nodeId);
+    path.push(mapping[nodeId]);
+    nodeId = mapping[nodeId]?.parent ?? null;
+  }
+
+  return path.reverse().filter((node: any) => node && node.message);
+}
+
 export async function parseConversations(json: any): Promise<ChatThread[]> {
   const threads: ChatThread[] = [];
   const isMsg = (x: ChatMessage | null): x is ChatMessage => x != null;
@@ -55,15 +88,12 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
         it &&
         typeof it === "object" &&
         it.mapping &&
-        typeof it.mapping === "object"
+        typeof it.mapping === "object",
     );
 
     if (looksLikeOpenAI) {
       for (const conv of json) {
-        const mapping = conv?.mapping || {};
-        const nodes: any[] = Object.values(mapping).filter(
-          (n: any) => n && n.message
-        );
+        const nodes = getOpenAIConversationPath(conv);
 
         const msgs = nodes
           .map((n: any) => {
@@ -72,7 +102,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
             const role = mapRole(msg?.author?.role);
 
             const content = toMarkdownFromUnknown(
-              msg?.content ?? msg?.text ?? ""
+              msg?.content ?? msg?.text ?? "",
             );
 
             const hidden = msg?.metadata?.is_visually_hidden_from_conversation;
@@ -86,8 +116,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
 
             return { id: uuid(), role, content, ts } as ChatMessage;
           })
-          .filter((m): m is ChatMessage => !!m)
-          .sort((a, b) => a.ts - b.ts);
+          .filter((m): m is ChatMessage => !!m);
 
         if (msgs.length) {
           const title = String(conv?.title);

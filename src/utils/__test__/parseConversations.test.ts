@@ -188,6 +188,92 @@ describe("parseConversations", () => {
       const result = await parseConversations(json);
       expect(result[0].messages).toHaveLength(1);
     });
+
+    test("current_node 경로만 따라가고 다른 브랜치는 제외", async () => {
+      const json = [
+        {
+          title: "Branched Chat",
+          current_node: "node-final",
+          mapping: {
+            root: {},
+            "node-user-1": {
+              parent: "root",
+              children: ["node-assistant-1"],
+              message: {
+                author: { role: "user" },
+                content: { parts: ["first question"] },
+                create_time: 1700000001,
+              },
+            },
+            "node-assistant-1": {
+              parent: "node-user-1",
+              children: ["node-user-2"],
+              message: {
+                author: { role: "assistant" },
+                content: { parts: ["first answer"] },
+                create_time: 1700000002,
+              },
+            },
+            "node-user-2": {
+              parent: "node-assistant-1",
+              children: ["node-hidden", "node-visible-system"],
+              message: {
+                author: { role: "user" },
+                content: { parts: ["second question"] },
+                create_time: 1700000003,
+              },
+            },
+            "node-hidden": {
+              parent: "node-user-2",
+              children: [],
+              message: {
+                author: { role: "system" },
+                content: { parts: [""] },
+                metadata: { is_visually_hidden_from_conversation: true },
+                create_time: 1700000004,
+              },
+            },
+            "node-visible-system": {
+              parent: "node-user-2",
+              children: ["node-final"],
+              message: {
+                author: { role: "system" },
+                content: { parts: [""] },
+                metadata: { is_visually_hidden_from_conversation: true },
+                create_time: 1700000010,
+              },
+            },
+            "node-final": {
+              parent: "node-visible-system",
+              children: [],
+              message: {
+                author: { role: "assistant" },
+                content: { parts: ["final answer"] },
+                create_time: 1700000011,
+              },
+            },
+            "node-alt-answer": {
+              parent: "node-user-2",
+              children: [],
+              message: {
+                author: { role: "assistant" },
+                content: { parts: ["wrong branch answer"] },
+                create_time: 1700000005,
+              },
+            },
+          },
+        },
+      ];
+
+      const result = await parseConversations(json);
+      expect(result).toHaveLength(1);
+      expect(result[0].messages.map((msg: any) => msg.content)).toEqual([
+        "first question",
+        "first answer",
+        "second question",
+        "final answer",
+      ]);
+    });
   });
 
   describe("일반 배열 형식", () => {
