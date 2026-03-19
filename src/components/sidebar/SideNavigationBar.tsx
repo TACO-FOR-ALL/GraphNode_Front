@@ -13,24 +13,20 @@ import SearchIconActive from "@/assets/icons/search_active.svg";
 import SettingsIcon from "@/assets/icons/settings.svg";
 import SettingsIconActive from "@/assets/icons/settings_active.svg";
 import { IoNotificationsOutline, IoNotificationsOffOutline, IoFlaskOutline } from "react-icons/io5";
+import { TbMicroscope } from "react-icons/tb";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
-const NAVIGATION_ITEMS = [
+type NavItem =
+  | { id: string; icon: string; iconAcitve: string; label: string; isReactIcon?: false }
+  | { id: string; ReactIcon: React.ComponentType<{ className?: string }>; label: string; isReactIcon: true };
+
+const NAVIGATION_ITEMS: NavItem[] = [
   { id: "chat", icon: ChatIcon, iconAcitve: ChatIconActive, label: "chat" },
   { id: "notes", icon: NoteIcon, iconAcitve: NoteIconActive, label: "notes" },
-  {
-    id: "visualize",
-    icon: VisualizeIcon,
-    iconAcitve: VisualizeIconActive,
-    label: "visualize",
-  },
-  {
-    id: "search",
-    icon: SearchIcon,
-    iconAcitve: SearchIconActive,
-    label: "search",
-  },
+  { id: "visualize", icon: VisualizeIcon, iconAcitve: VisualizeIconActive, label: "visualize" },
+  { id: "microscope", ReactIcon: TbMicroscope, label: "microscope", isReactIcon: true },
+  { id: "search", icon: SearchIcon, iconAcitve: SearchIconActive, label: "search" },
 ];
 
 export default function SideNavigationBar({
@@ -65,7 +61,7 @@ export default function SideNavigationBar({
         {NAVIGATION_ITEMS.map((item) => (
           <div
             key={item.id}
-            className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} ${item.id === "home" ? "bg-transparent" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
+            className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
             onClick={
               item.id === "search"
                 ? () => setOpenSearch(true)
@@ -74,15 +70,21 @@ export default function SideNavigationBar({
             onMouseEnter={() => setHoveredItem(item.id)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <img
-              src={
-                item.id === path || hoveredItem === item.id
-                  ? item.iconAcitve
-                  : item.icon
-              }
-              alt={item.label}
-              className="w-[16px] h-[16px]"
-            />
+            {item.isReactIcon ? (
+              <item.ReactIcon
+                className={`w-[16px] h-[16px] ${item.id === path || hoveredItem === item.id ? "text-white" : "text-text-secondary"}`}
+              />
+            ) : (
+              <img
+                src={
+                  item.id === path || hoveredItem === item.id
+                    ? item.iconAcitve
+                    : item.icon
+                }
+                alt={item.label}
+                className="w-[16px] h-[16px]"
+              />
+            )}
           </div>
         ))}
       </div>

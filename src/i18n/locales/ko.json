@@ -92,7 +92,8 @@
     "newChat": "새 대화",
     "noChat": "아직 저장된 대화가 없어요",
     "selectChat": "왼쪽에서 대화를 선택하거나 새 대화를 시작하세요.",
-    "helpMessage": "어떻게 도와드릴까요?"
+    "helpMessage": "어떻게 도와드릴까요?",
+    "copied": "복사되었습니다"
   },
   "notes": {
     "workspace": "워크스페이스",
@@ -126,6 +127,7 @@
       "viewDetail": "상세 보기",
       "deletedConversation": "삭제된 대화입니다.",
       "analyzeWithMicroscope": "Microscope로 분석하기",
+      "analyzing": "분석 중...",
       "viewAnalysis": "분석결과 보기"
     },
     "error": {
@@ -199,12 +201,44 @@
       "body": "그래프 생성에 실패했습니다: {{error}}"
     },
     "graphSummary": {
+      "requestedTitle": "그래프 요약 시작",
+      "requestedBody": "그래프 요약 생성이 시작되었습니다.",
       "completedTitle": "그래프 요약 완료",
       "completedBody": "그래프 요약이 완료되었습니다."
     },
     "graphSummaryFailed": {
       "title": "그래프 요약 실패",
       "body": "그래프 요약 생성에 실패했습니다: {{error}}"
+    },
+    "graphSummaryRequestFailed": {
+      "title": "그래프 요약 요청 실패",
+      "body": "그래프 요약 요청에 실패했습니다."
+    },
+    "graphGenerationRequestFailed": {
+      "title": "그래프 생성 요청 실패",
+      "body": "그래프 생성 요청에 실패했습니다."
+    },
+    "addConversation": {
+      "requestedTitle": "업데이트 시작",
+      "requestedBody": "새로운 대화로 그래프 업데이트가 시작되었습니다.",
+      "requestFailedTitle": "업데이트 요청 실패",
+      "requestFailedBody": "대화 업데이트 요청에 실패했습니다.",
+      "completedTitle": "업데이트 완료",
+      "completedBody": "새로운 대화가 그래프에 반영되었습니다.",
+      "failedTitle": "업데이트 실패",
+      "failedBody": "대화를 그래프에 반영하는 데 실패했습니다."
+    },
+    "microscope": {
+      "ingestRequestedTitle": "분석 시작",
+      "ingestRequestedBody": "마이크로스코프 분석이 시작되었습니다.",
+      "ingestRequestFailedTitle": "분석 요청 실패",
+      "ingestRequestFailedBody": "마이크로스코프 분석 요청에 실패했습니다.",
+      "documentCompletedTitle": "분석 완료",
+      "documentCompletedBody": "마이크로스코프 문서 분석이 완료되었습니다.",
+      "documentFailedTitle": "분석 실패",
+      "documentFailedBody": "마이크로스코프 문서 분석에 실패했습니다.",
+      "workspaceCompletedTitle": "워크스페이스 분석 완료",
+      "workspaceCompletedBody": "마이크로스코프 워크스페이스 분석이 완료되었습니다."
     },
     "test": {
       "title": "테스트 알림",
@@ -530,27 +564,32 @@
         "description": "Model Context Protocol(MCP)은 AI 어시스턴트가 외부 도구 및 데이터 소스에 연결하여 내장 기능을 넘어 능력을 확장할 수 있게 합니다.",
         "docsLink": "MCP 문서 보기 (GraphNode)",
         "learnMore": "MCP에 대해 더 알아보기 (공식)"
-        }
-      },
-      "cli": {
-        "title": "터미널 CLI",
-        "subtitle": "현재 macOS 또는 Windows 사용자용 graphnode 명령을 설치합니다",
-        "unsupported": "자동 CLI 설치는 현재 macOS와 Windows에서만 지원됩니다.",
-        "installed": "이 사용자에 대해 CLI가 설치되어 있습니다.",
-        "notInstalled": "이 사용자에 대해 CLI가 아직 설치되지 않았습니다.",
-        "commandPath": "명령 경로",
-        "shellConfigPath": "셸 설정 파일",
-        "install": "CLI 설치",
-        "installing": "설치 중...",
-        "installedBadge": "설치됨",
-        "toast": {
-          "success": "CLI가 설치되었습니다. 새 터미널 창에서 graphnode를 사용하세요.",
-          "error": "CLI 설치에 실패했습니다."
-        }
       }
+    },
+    "cli": {
+      "title": "터미널 CLI",
+      "subtitle": "현재 macOS 또는 Windows 사용자용 graphnode 명령을 설치합니다",
+      "unsupported": "자동 CLI 설치는 현재 macOS와 Windows에서만 지원됩니다.",
+      "installed": "이 사용자에 대해 CLI가 설치되어 있습니다.",
+      "notInstalled": "이 사용자에 대해 CLI가 아직 설치되지 않았습니다.",
+      "commandPath": "명령 경로",
+      "shellConfigPath": "셸 설정 파일",
+      "install": "CLI 설치",
+      "installing": "설치 중...",
+      "installedBadge": "설치됨",
+      "toast": {
+        "success": "CLI가 설치되었습니다. 새 터미널 창에서 graphnode를 사용하세요.",
+        "error": "CLI 설치에 실패했습니다."
+      }
+    }
   },
   "sync": {
     "pullFailed": "서버에서 데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요."
+  },
+  "microscope": {
+    "sidebarEmpty": "노드를 선택하면\n분석 정보가 표시됩니다",
+    "noWorkspaces": "아직 분석한 항목이 없습니다",
+    "selectToView": "왼쪽에서 항목을 선택하세요"
   },
   "visualizeDetail": {
     "subtitle": "Microscope를 통한 지식 시각화",
@@ -597,8 +636,8 @@
       "selectedContext": "선택된 컨텍스트 ({{count}}개)",
       "addNodeHint": "Ctrl+클릭으로 노드를 추가하세요",
       "askAboutNodes": "선택한 노드에 대해 질문해보세요",
-      "suggestRelation": "💡 이 노드들의 관계가 뭐야?",
-      "suggestImportance": "💡 이것들이 왜 중요해?",
+      "suggestRelation": "이 노드들의 관계가 뭐야?",
+      "suggestImportance": "이것들이 왜 중요해?",
       "suggestRelationInput": "이 노드들의 관계가 뭐야?",
       "suggestImportanceInput": "이것들이 왜 중요해?",
       "inputPlaceholder": "질문을 입력하세요...",

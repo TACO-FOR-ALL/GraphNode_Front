@@ -92,7 +92,8 @@
     "newChat": "新しいチャット",
     "noChat": "保存された会話はまだありません",
     "selectChat": "左側からチャットを選択するか、新しいチャットを開始してください。",
-    "helpMessage": "何かお手伝いできますか？"
+    "helpMessage": "何かお手伝いできますか？",
+    "copied": "コピーしました"
   },
   "notes": {
     "workspace": "ワークスペース",
@@ -126,6 +127,7 @@
       "viewDetail": "詳細を見る",
       "deletedConversation": "この会話は削除されています。",
       "analyzeWithMicroscope": "Microscopeで分析する",
+      "analyzing": "分析中...",
       "viewAnalysis": "分析結果を見る"
     },
     "error": {
@@ -199,12 +201,44 @@
       "body": "グラフの生成に失敗しました: {{error}}"
     },
     "graphSummary": {
+      "requestedTitle": "グラフ要約開始",
+      "requestedBody": "グラフの要約生成が開始されました。",
       "completedTitle": "グラフ要約完了",
       "completedBody": "グラフの要約が完了しました。"
     },
     "graphSummaryFailed": {
       "title": "グラフ要約失敗",
       "body": "グラフの要約に失敗しました: {{error}}"
+    },
+    "graphSummaryRequestFailed": {
+      "title": "グラフ要約リクエスト失敗",
+      "body": "グラフ要約のリクエストに失敗しました。"
+    },
+    "graphGenerationRequestFailed": {
+      "title": "グラフ生成リクエスト失敗",
+      "body": "グラフ生成のリクエストに失敗しました。"
+    },
+    "addConversation": {
+      "requestedTitle": "更新開始",
+      "requestedBody": "新しい会話によるグラフの更新が開始されました。",
+      "requestFailedTitle": "更新リクエスト失敗",
+      "requestFailedBody": "グラフ更新のリクエストに失敗しました。",
+      "completedTitle": "更新完了",
+      "completedBody": "新しい会話がグラフに反映されました。",
+      "failedTitle": "更新失敗",
+      "failedBody": "新しい会話のグラフへの反映に失敗しました。"
+    },
+    "microscope": {
+      "ingestRequestedTitle": "分析開始",
+      "ingestRequestedBody": "Microscopeの分析が開始されました。",
+      "ingestRequestFailedTitle": "分析リクエスト失敗",
+      "ingestRequestFailedBody": "Microscopeの分析リクエストに失敗しました。",
+      "documentCompletedTitle": "分析完了",
+      "documentCompletedBody": "Microscopeのドキュメント分析が完了しました。",
+      "documentFailedTitle": "分析失敗",
+      "documentFailedBody": "Microscopeのドキュメント分析に失敗しました。",
+      "workspaceCompletedTitle": "ワークスペース分析完了",
+      "workspaceCompletedBody": "Microscopeのワークスペース分析が完了しました。"
     },
     "test": {
       "title": "テスト通知",
@@ -214,6 +248,11 @@
       "title": "通知",
       "body": "新しい通知があります。"
     }
+  },
+  "microscope": {
+    "sidebarEmpty": "ノードを選択すると\n分析情報が表示されます",
+    "noWorkspaces": "まだ分析した項目はありません",
+    "selectToView": "左側からアイテムを選択してください"
   },
   "settings": {
     "title": "設定",
@@ -597,8 +636,8 @@
       "selectedContext": "選択されたコンテキスト ({{count}}個)",
       "addNodeHint": "Ctrl+クリックでノードを追加",
       "askAboutNodes": "選択したノードについて質問してください",
-      "suggestRelation": "💡 これらのノードの関係は？",
-      "suggestImportance": "💡 なぜこれらは重要？",
+      "suggestRelation": "これらのノードの関係は？",
+      "suggestImportance": "なぜこれらは重要？",
       "suggestRelationInput": "これらのノードの関係は？",
       "suggestImportanceInput": "なぜこれらは重要？",
       "inputPlaceholder": "質問を入力してください...",

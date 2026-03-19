@@ -92,6 +92,8 @@ interface Props {
   title?: string;
   subtitle?: string;
   onBack?: () => void;
+  onCtrlClickNodes?: (nodes: { id: string; name: string; type: string }[]) => void;
+  externalContextNodeIds?: string[];
 }
 
 const NODE_RADIUS = 18;
@@ -103,6 +105,8 @@ export default function MicroScopeVisualization({
   title,
   subtitle,
   onBack,
+  onCtrlClickNodes,
+  externalContextNodeIds,
 }: Props) {
   const { t } = useTranslation();
 
@@ -157,6 +161,14 @@ export default function MicroScopeVisualization({
   // 에이전트 관련 상태
   const [contextNodes, setContextNodes] = useState<GraphNode[]>([]);
   const [isAgentOpen, setIsAgentOpen] = useState(false);
+
+  // 외부(에이전트 칩)에서 노드 제거 시 contextNodes 동기화
+  useEffect(() => {
+    if (externalContextNodeIds === undefined) return;
+    setContextNodes((prev) =>
+      prev.filter((n) => externalContextNodeIds.includes(n.id)),
+    );
+  }, [externalContextNodeIds]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -439,16 +451,20 @@ export default function MicroScopeVisualization({
 
     if (e.ctrlKey || e.metaKey) {
       // Ctrl+클릭: 컨텍스트에 추가/제거
-      setContextNodes((prev) => {
-        const exists = prev.find((n) => n.id === node.id);
-        if (exists) {
-          return prev.filter((n) => n.id !== node.id);
-        } else {
-          return [...prev, node];
-        }
-      });
-      // 에이전트 창 열기
-      setIsAgentOpen(true);
+      const exists = contextNodes.find((n) => n.id === node.id);
+      const newContextNodes = exists
+        ? contextNodes.filter((n) => n.id !== node.id)
+        : [...contextNodes, node];
+      setContextNodes(newContextNodes);
+
+      if (onCtrlClickNodes) {
+        onCtrlClickNodes(
+          newContextNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+        );
+      } else {
+        // 에이전트 창 열기
+        setIsAgentOpen(true);
+      }
     } else {
       // 일반 클릭: 노드 선택
       setSelectedNode(selectedNode?.id === node.id ? null : node);

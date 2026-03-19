@@ -7,6 +7,7 @@ import { FiExternalLink, FiMessageCircle } from "react-icons/fi";
 import MarkdownBubble from "../MarkdownBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import { useMicroscopeGenerationStore } from "@/store/useMicroscopeGenerationStore";
 import logo from "@/assets/icons/logo.svg";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
@@ -34,7 +35,10 @@ export default function NodeChatPreview({
   const [isExpanding, setIsExpanding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGraphData, setHasGraphData] = useState<boolean | null>(null);
-  const [graphData, setGraphData] = useState<{ nodes: object[]; edges: object[] } | null>(null);
+  const [graphData, setGraphData] = useState<{
+    nodes: object[];
+    edges: object[];
+  } | null>(null);
 
   // 드래그 관련 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -88,6 +92,10 @@ export default function NodeChatPreview({
 
   const { threads, refreshThread } = useThreadsStore();
   const { isExpanded } = useSidebarExpandStore();
+  const {
+    isGenerating: isMicroscopeGenerating,
+    setGenerating: setMicroscopeGenerating,
+  } = useMicroscopeGenerationStore();
   const thread = threads[threadId];
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
@@ -219,20 +227,20 @@ export default function NodeChatPreview({
   };
 
   const handleViewDetail = () => {
-    navigate(`/visualize/detail/${threadId}`, {
+    navigate(`/microscope/${threadId}`, {
       state: { graphData, nodeTitle: thread?.title ?? undefined },
     });
     onClose();
   };
 
   const handleAnalyze = async () => {
+    if (isMicroscopeGenerating) return;
+    setMicroscopeGenerating(true);
     try {
-      console.log("an");
-      const result = await api.microscope.ingestFromConversation(threadId);
-
-      console.log(result);
+      await api.microscope.ingestFromConversation(threadId);
     } catch (e) {
       console.error(e);
+      setMicroscopeGenerating(false);
     }
   };
 
@@ -399,12 +407,19 @@ export default function NodeChatPreview({
         <div className="px-4 py-3 border-t border-base-border bg-bg-secondary/30">
           <button
             onClick={hasGraphData ? handleViewDetail : handleAnalyze}
-            className="w-full py-2.5 px-4 bg-primary text-white rounded-lg font-medium text-[13px] hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            disabled={isMicroscopeGenerating}
+            className="w-full py-2.5 px-4 bg-primary text-white rounded-lg font-medium text-[13px] hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FiExternalLink size={14} />
-            {hasGraphData
-              ? t("visualize.chatPreview.viewAnalysis")
-              : t("visualize.chatPreview.analyzeWithMicroscope")}
+            {isMicroscopeGenerating && !hasGraphData ? (
+              <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FiExternalLink size={14} />
+            )}
+            {isMicroscopeGenerating && !hasGraphData
+              ? t("visualize.chatPreview.analyzing")
+              : hasGraphData
+                ? t("visualize.chatPreview.viewAnalysis")
+                : t("visualize.chatPreview.analyzeWithMicroscope")}
           </button>
         </div>
       )}

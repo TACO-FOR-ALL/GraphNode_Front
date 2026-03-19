@@ -87,6 +87,8 @@ export function useSourceSelection() {
         if (note) {
           allContent.push(`[${source.title}]\n${note.content}`);
         }
+      } else if (source.type === "node") {
+        allContent.push(`[node: ${source.title}]`);
       }
     }
 
