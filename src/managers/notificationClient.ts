@@ -19,10 +19,22 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 export type NotificationType =
   | "CONNECTED" // 연결 성공 확인용
   | "GRAPH_GENERATION_REQUESTED" // 그래프 생성 요청됨
+  | "GRAPH_GENERATION_REQUEST_FAILED" // 그래프 생성 요청 실패
   | "GRAPH_GENERATION_COMPLETED" // 그래프 생성 완료
   | "GRAPH_GENERATION_FAILED" // 그래프 생성 실패
+  | "GRAPH_SUMMARY_REQUESTED" // 그래프 요약 요청됨
+  | "GRAPH_SUMMARY_REQUEST_FAILED" // 그래프 요약 요청 실패
   | "GRAPH_SUMMARY_COMPLETED" // 그래프 요약 완료
   | "GRAPH_SUMMARY_FAILED" // 그래프 요약 실패
+  | "ADD_CONVERSATION_REQUESTED" // 대화 추가 요청됨
+  | "ADD_CONVERSATION_REQUEST_FAILED" // 대화 추가 요청 실패
+  | "ADD_CONVERSATION_COMPLETED" // 대화 추가 완료
+  | "ADD_CONVERSATION_FAILED" // 대화 추가 실패
+  | "MICROSCOPE_INGEST_REQUESTED" // 마이크로스코프 분석 요청됨
+  | "MICROSCOPE_INGEST_REQUEST_FAILED" // 마이크로스코프 분석 요청 실패
+  | "MICROSCOPE_DOCUMENT_COMPLETED" // 마이크로스코프 문서 분석 완료
+  | "MICROSCOPE_DOCUMENT_FAILED" // 마이크로스코프 문서 분석 실패
+  | "MICROSCOPE_WORKSPACE_COMPLETED" // 마이크로스코프 워크스페이스 완료
   | "TEST_NOTIFICATION"; // 테스트 알림
 
 // 서버에서 전송하는 알림 이벤트 구조

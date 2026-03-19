@@ -6,6 +6,8 @@ import type {
 } from "@/managers/notificationClient";
 import { useSettingsStore } from "./useSettingsStore";
 import { useGraphGenerationStore } from "./useGraphGenerationStore";
+import { useConversationUpdateStore } from "./useConversationUpdateStore";
+import { useMicroscopeGenerationStore } from "./useMicroscopeGenerationStore";
 import { playSound } from "@/utils/sound";
 
 export interface Notification {
@@ -47,9 +49,35 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     if (
       event.type === "GRAPH_GENERATION_COMPLETED" ||
-      event.type === "GRAPH_GENERATION_FAILED"
+      event.type === "GRAPH_GENERATION_FAILED" ||
+      event.type === "GRAPH_GENERATION_REQUEST_FAILED"
     ) {
       useGraphGenerationStore.getState().setGenerating(false);
+    }
+
+    if (event.type === "ADD_CONVERSATION_REQUESTED") {
+      useConversationUpdateStore.getState().setUpdating(true);
+    }
+
+    if (
+      event.type === "ADD_CONVERSATION_COMPLETED" ||
+      event.type === "ADD_CONVERSATION_FAILED" ||
+      event.type === "ADD_CONVERSATION_REQUEST_FAILED"
+    ) {
+      useConversationUpdateStore.getState().setUpdating(false);
+    }
+
+    if (event.type === "MICROSCOPE_INGEST_REQUESTED") {
+      useMicroscopeGenerationStore.getState().setGenerating(true);
+    }
+
+    if (
+      event.type === "MICROSCOPE_DOCUMENT_COMPLETED" ||
+      event.type === "MICROSCOPE_DOCUMENT_FAILED" ||
+      event.type === "MICROSCOPE_WORKSPACE_COMPLETED" ||
+      event.type === "MICROSCOPE_INGEST_REQUEST_FAILED"
+    ) {
+      useMicroscopeGenerationStore.getState().setGenerating(false);
     }
 
     const notification: Notification = {
@@ -129,6 +157,11 @@ function getNotificationContent(notification: Notification): {
         title: t("notification.graphGeneration.requestedTitle", "Graph Generation Started"),
         body: t("notification.graphGeneration.requestedBody", "Graph generation has started. Please wait."),
       };
+    case "GRAPH_GENERATION_REQUEST_FAILED":
+      return {
+        title: t("notification.graphGenerationRequestFailed.title", "Graph Generation Request Failed"),
+        body: t("notification.graphGenerationRequestFailed.body", "Failed to request graph generation."),
+      };
     case "GRAPH_GENERATION_COMPLETED":
       return {
         title: t("notification.graphGeneration.completedTitle", "Graph Generation Complete"),
@@ -146,6 +179,16 @@ function getNotificationContent(notification: Notification): {
           error: notification.payload.error,
         }),
       };
+    case "GRAPH_SUMMARY_REQUESTED":
+      return {
+        title: t("notification.graphSummary.requestedTitle", "Graph Summary Started"),
+        body: t("notification.graphSummary.requestedBody", "Graph summary generation has started."),
+      };
+    case "GRAPH_SUMMARY_REQUEST_FAILED":
+      return {
+        title: t("notification.graphSummaryRequestFailed.title", "Graph Summary Request Failed"),
+        body: t("notification.graphSummaryRequestFailed.body", "Failed to request graph summary generation."),
+      };
     case "GRAPH_SUMMARY_COMPLETED":
       return {
         title: t("notification.graphSummary.completedTitle", "Graph Summary Complete"),
@@ -158,6 +201,51 @@ function getNotificationContent(notification: Notification): {
           defaultValue: "Failed to generate graph summary: {{error}}",
           error: notification.payload.error,
         }),
+      };
+    case "ADD_CONVERSATION_REQUESTED":
+      return {
+        title: t("notification.addConversation.requestedTitle", "Update Started"),
+        body: t("notification.addConversation.requestedBody", "Graph update with new conversations has started."),
+      };
+    case "ADD_CONVERSATION_REQUEST_FAILED":
+      return {
+        title: t("notification.addConversation.requestFailedTitle", "Update Request Failed"),
+        body: t("notification.addConversation.requestFailedBody", "Failed to request graph update with new conversations."),
+      };
+    case "ADD_CONVERSATION_COMPLETED":
+      return {
+        title: t("notification.addConversation.completedTitle", "Update Complete"),
+        body: t("notification.addConversation.completedBody", "Graph has been updated with new conversations."),
+      };
+    case "ADD_CONVERSATION_FAILED":
+      return {
+        title: t("notification.addConversation.failedTitle", "Update Failed"),
+        body: t("notification.addConversation.failedBody", "Failed to update graph with new conversations."),
+      };
+    case "MICROSCOPE_INGEST_REQUESTED":
+      return {
+        title: t("notification.microscope.ingestRequestedTitle", "Analysis Started"),
+        body: t("notification.microscope.ingestRequestedBody", "Microscope analysis has started."),
+      };
+    case "MICROSCOPE_INGEST_REQUEST_FAILED":
+      return {
+        title: t("notification.microscope.ingestRequestFailedTitle", "Analysis Request Failed"),
+        body: t("notification.microscope.ingestRequestFailedBody", "Failed to request microscope analysis."),
+      };
+    case "MICROSCOPE_DOCUMENT_COMPLETED":
+      return {
+        title: t("notification.microscope.documentCompletedTitle", "Analysis Complete"),
+        body: t("notification.microscope.documentCompletedBody", "Microscope document analysis has been completed."),
+      };
+    case "MICROSCOPE_DOCUMENT_FAILED":
+      return {
+        title: t("notification.microscope.documentFailedTitle", "Analysis Failed"),
+        body: t("notification.microscope.documentFailedBody", "Microscope document analysis has failed."),
+      };
+    case "MICROSCOPE_WORKSPACE_COMPLETED":
+      return {
+        title: t("notification.microscope.workspaceCompletedTitle", "Workspace Analysis Complete"),
+        body: t("notification.microscope.workspaceCompletedBody", "Microscope workspace analysis has been completed."),
       };
     case "TEST_NOTIFICATION":
       return {
