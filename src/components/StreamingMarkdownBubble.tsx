@@ -245,6 +245,11 @@ export default function StreamingMarkdownBubble({
     previousTextRef.current = text;
   }, [text, isStreaming]);
 
+  const renderedText =
+    isStreaming && chunks.length > 0
+      ? chunks.map((chunk) => chunk.text).join("")
+      : text;
+
   return (
     <>
       <style>{`
@@ -253,31 +258,24 @@ export default function StreamingMarkdownBubble({
           to { opacity: 1; }
         }
       `}</style>
-      {isStreaming ? (
-        <div className="whitespace-pre-wrap break-words">
-          {chunks.map((chunk) => (
-            <span
-              key={chunk.id}
-              style={{
-                opacity: 0,
-                animation: "streamChunkFadeIn 260ms ease forwards",
-              }}
-            >
-              {chunk.text}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
-            components={components}
-          >
-            {normalizeMathMarkdown(text)}
-          </ReactMarkdown>
-        </div>
-      )}
+      <div
+        className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+        style={
+          isStreaming
+            ? {
+                animation: "streamChunkFadeIn 180ms ease forwards",
+              }
+            : undefined
+        }
+      >
+        <ReactMarkdown
+          remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+          rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+          components={components}
+        >
+          {normalizeMathMarkdown(renderedText)}
+        </ReactMarkdown>
+      </div>
     </>
   );
 }

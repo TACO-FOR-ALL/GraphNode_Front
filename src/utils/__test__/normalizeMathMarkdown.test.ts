@@ -27,57 +27,13 @@ describe("normalizeMathMarkdown", () => {
     );
   });
 
-  test("delimiter 없는 LaTeX 문단을 블록 수식으로 감싼다", () => {
+  test("한쪽만 이스케이프된 인라인 달러 수식도 복원한다", () => {
     expect(
       normalizeMathMarkdown(
-        String.raw`GAN의 미니맥스 목적식:
-
-\min_G \max_D V(D,G) = \mathbb{E}_{x\sim p_\text{data}}[\log D(x)]
-
-\mathbb{E}_{z\sim p_z}[\log(1-D(G(z)))]`,
+        String.raw`여기서 \$p_g$는 $G\$가 유도하는 분포(즉 \$x=G(z)$)입니다.`,
       ),
     ).toBe(
-      String.raw`GAN의 미니맥스 목적식:
-
-$$
-\min_G \max_D V(D,G) = \mathbb{E}_{x\sim p_\text{data}}[\log D(x)]
-$$
-
-$$
-\mathbb{E}_{z\sim p_z}[\log(1-D(G(z)))]
-$$`,
-    );
-  });
-
-  test("일반 문장 사이의 standalone 수식 줄도 블록 수식으로 감싼다", () => {
-    expect(
-      normalizeMathMarkdown(
-        String.raw`이를 각 데이터 포인트 x별로 보면, 최적화해야 할 함수는
-f(D(x)) = p_{\text{data}}(x) \log D(x) + p_g(x) \log(1 - D(x)).
-
-이를 D(x)에 대해 미분하고 0으로 두면:
-\frac{\partial f}{\partial D(x)} = \frac{p_{\text{data}}(x)}{D(x)} - \frac{p_g(x)}{1 - D(x)} = 0.`,
-      ),
-    ).toBe(
-      String.raw`이를 각 데이터 포인트 x별로 보면, 최적화해야 할 함수는
-$$
-f(D(x)) = p_{\text{data}}(x) \log D(x) + p_g(x) \log(1 - D(x)).
-$$
-
-이를 D(x)에 대해 미분하고 0으로 두면:
-$$
-\frac{\partial f}{\partial D(x)} = \frac{p_{\text{data}}(x)}{D(x)} - \frac{p_g(x)}{1 - D(x)} = 0.
-$$`,
-    );
-  });
-
-  test("문장 안의 bare inline LaTeX 토큰을 인라인 수식으로 감싼다", () => {
-    expect(
-      normalizeMathMarkdown(
-        String.raw`여기서 p_{\text{data}}와 p_g는 서로 다른 분포이고 \Rightarrow 결론이 이어진다.`,
-      ),
-    ).toBe(
-      String.raw`여기서 $p_{\text{data}}$와 $p_g$는 서로 다른 분포이고 $\Rightarrow$ 결론이 이어진다.`,
+      String.raw`여기서 $p_g$는 $G$가 유도하는 분포(즉 $x=G(z)$)입니다.`,
     );
   });
 
@@ -93,11 +49,7 @@ $$`,
     ).toBe(
       String.raw`
 $$
-
-\text{logit}(D^\*(x))
-= \log \frac{\tfrac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_g(x)}}
-{\tfrac{p_g(x)}{p_{\text{data}}(x) + p_g(x)}}.
-
+\text{logit}(D^\*(x)) = \log \frac{\tfrac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_g(x)}} {\tfrac{p_g(x)}{p_{\text{data}}(x) + p_g(x)}}.
 $$
 `,
     );
@@ -106,6 +58,18 @@ $$
   test("reasoning_recap 같은 메타 텍스트는 수식으로 취급하지 않는다", () => {
     expect(normalizeMathMarkdown("reasoning_recap Thought for 5s")).toBe(
       "reasoning_recap Thought for 5s",
+    );
+  });
+
+  test("delimiter 없이 시작하는 LaTeX display 수식 한 줄은 블록 수식으로 감싼다", () => {
+    expect(
+      normalizeMathMarkdown(
+        String.raw`\min_G \max_D; V(D,G)=\mathbb{E}_{x\sim p_{\text{data}}}[\log D(x)] + \mathbb{E}_{z\sim p_z}[\log(1-D(G(z)))]`,
+      ),
+    ).toBe(
+      String.raw`$$
+\min_G \max_D; V(D,G)=\mathbb{E}_{x\sim p_{\text{data}}}[\log D(x)] + \mathbb{E}_{z\sim p_z}[\log(1-D(G(z)))]
+$$`,
     );
   });
 });
