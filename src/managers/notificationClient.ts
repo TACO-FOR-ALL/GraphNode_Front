@@ -11,9 +11,16 @@
  * 2. 서버는 연결을 유지하며 이벤트 발생 시 데이터 전송
  * 3. 클라이언트는 onmessage로 이벤트 수신
  * 4. 연결이 끊기면 자동 재연결 시도
+ *
+ * 재연결 정책 (SSE Replay):
+ * - 서버는 알림마다 ULID 기반 `id` 필드를 SSE 표준 `id:` 헤더로 전송합니다.
+ * - 클라이언트는 마지막 수신 ID를 메모리에 저장합니다.
+ * - 재연결 시 `?since=<lastId>`를 URL에 붙여 서버에 전달합니다.
+ * - 서버는 해당 커서 이후 미수신 알림을 MongoDB에서 조회해 먼저 replay합니다.
  */
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+const LAST_EVENT_ID_KEY = "notification_last_event_id";
 
 // 서버에서 전송하는 알림 타입 정의
 export type NotificationType =
@@ -39,6 +46,7 @@ export type NotificationType =
 
 // 서버에서 전송하는 알림 이벤트 구조
 export interface NotificationEvent {
+  id?: string; // ULID 기반 커서 (replay용)
   type: NotificationType;
   payload: Record<string, unknown>; // 알림별 추가 데이터 (nodeCount, error 등)
   timestamp: string;
@@ -61,6 +69,24 @@ class NotificationClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isConnecting = false;
 
+  // SSE Replay 커서
+  // - 서버가 알림마다 SSE 표준 `id:` 필드로 ULID를 전송합니다.
+  // - 이 값을 재연결 시 `?since=` 파라미터로 넘겨 미수신 알림을 replay 받습니다.
+  // - localStorage에 저장해 페이지 새로고침 후에도 유지됩니다.
+  private lastEventId: string | null = localStorage.getItem(LAST_EVENT_ID_KEY);
+
+  /**
+   * SSE 서버 연결 URL 생성
+   * - lastEventId가 있으면 ?since= 파라미터를 붙입니다.
+   */
+  private buildStreamUrl(): string {
+    const base = `${API_BASE}/v1/notifications/stream`;
+    if (this.lastEventId) {
+      return `${base}?since=${encodeURIComponent(this.lastEventId)}`;
+    }
+    return base;
+  }
+
   /**
    * SSE 서버에 연결
    * - 이미 연결 중이면 무시
@@ -75,7 +101,7 @@ class NotificationClient {
     this.isConnecting = true;
 
     try {
-      const url = `${API_BASE}/v1/notifications/stream`;
+      const url = this.buildStreamUrl();
 
       // EventSource: 브라우저 내장 SSE 클라이언트
       // withCredentials: true → 쿠키(세션) 포함하여 인증된 요청
@@ -91,10 +117,19 @@ class NotificationClient {
       };
 
       // 서버에서 메시지 수신 시
-      // 서버는 `data: {JSON}\n\n` 형식으로 전송
+      // 서버는 `id: <ulid>\ndata: {JSON}\n\n` 형식으로 전송
       this.eventSource.onmessage = (event) => {
         try {
           const data: NotificationEvent = JSON.parse(event.data);
+
+          // SSE 표준 id: 필드로부터 커서 갱신 후 localStorage에 저장
+          // event.lastEventId는 브라우저가 가장 최근 `id:` 값을 자동으로 추적합니다.
+          const newId = event.lastEventId || data.id;
+          if (newId) {
+            this.lastEventId = newId;
+            localStorage.setItem(LAST_EVENT_ID_KEY, newId);
+          }
+
           // console.log("[NotificationClient] Received:", data.type);
           this.notifyListeners(data); // 등록된 모든 리스너에게 알림
         } catch (e) {
@@ -140,11 +175,11 @@ class NotificationClient {
 
     // 지수 백오프: 재시도마다 대기 시간 2배 증가
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    // console.log(`[NotificationClient] Reconnecting in ${delay}ms...`);
+    // console.log(`[NotificationClient] Reconnecting in ${delay}ms (since=${this.lastEventId})...`);
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
-      this.connect();
+      this.connect(); // buildStreamUrl()에서 ?since= 자동 포함
     }, delay);
   }
 
