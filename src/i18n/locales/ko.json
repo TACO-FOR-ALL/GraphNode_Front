@@ -586,6 +586,10 @@
   "sync": {
     "pullFailed": "서버에서 데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요."
   },
+  "modelUpdate": {
+    "title": "AI 모델 업데이트 중...",
+    "downloading": "다운로드 중"
+  },
   "microscope": {
     "sidebarEmpty": "노드를 선택하면\n분석 정보가 표시됩니다",
     "noWorkspaces": "아직 분석한 항목이 없습니다",
@@ -608,8 +612,8 @@
       "cosmosDesc": "우주 성운 · 중력 궤도",
       "plasma": "PLASMA",
       "plasmaDesc": "뉴런 네트워크 · 전기 펄스",
-      "crystal": "CRYSTAL",
-      "crystalDesc": "결정체 기하학 · 오로라"
+      "atomic": "ATOMIC",
+      "atomicDesc": "원자 네트워크 · 과학 시각화"
     }
   },
   "graphVisualization": {

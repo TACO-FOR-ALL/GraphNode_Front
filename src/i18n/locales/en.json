@@ -591,6 +591,10 @@
   "sync": {
     "pullFailed": "Failed to sync data from server. Please check your connection."
   },
+  "modelUpdate": {
+    "title": "Updating AI model...",
+    "downloading": "Downloading"
+  },
   "visualizeDetail": {
     "subtitle": "Knowledge Visualization via Microscope",
     "noData": {
@@ -608,8 +612,8 @@
       "cosmosDesc": "Space Nebula · Gravity Orbit",
       "plasma": "PLASMA",
       "plasmaDesc": "Neural Network · Electric Pulse",
-      "crystal": "CRYSTAL",
-      "crystalDesc": "Crystal Geometry · Aurora"
+      "atomic": "ATOMIC",
+      "atomicDesc": "Atomic Network · Scientific Graph"
     }
   },
   "graphVisualization": {

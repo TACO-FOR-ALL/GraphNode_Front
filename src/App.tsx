@@ -41,6 +41,13 @@ import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
 import { useOnboardingStore } from "./store/useOnboardingStore";
 import Onboarding from "./components/onboarding/Onboarding";
+import { useEmbeddingModelStore } from "./store/useEmbeddingModelStore";
+import ModelUpdateBanner from "./components/ModelUpdateBanner";
+import {
+  getChangelogModelName,
+  downloadModel,
+  removeModel,
+} from "./managers/embeddingModelManager";
 
 export default function App() {
   return (
@@ -108,6 +115,36 @@ function MainLayout() {
       setModalOpen(true);
     }
   }, [lastSeenVersion, setModalOpen, hasCompletedOnboarding]);
+
+  // 임베딩 모델 버전 체크 및 업데이트
+  const {
+    installedModelName,
+    setInstalledModelName,
+    setIsDownloading,
+    setDownloadProgress,
+    setDownloadFile,
+  } = useEmbeddingModelStore();
+
+  useEffect(() => {
+    const changelogModel = getChangelogModelName();
+    if (!changelogModel || installedModelName === changelogModel) return;
+
+    const oldModel = installedModelName;
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadFile("");
+
+    downloadModel(changelogModel, (file, progress) => {
+      setDownloadFile(file);
+      setDownloadProgress(Math.round(progress));
+    })
+      .then(async () => {
+        if (oldModel) await removeModel(oldModel);
+        setInstalledModelName(changelogModel);
+      })
+      .catch((e) => console.error("Model update failed:", e))
+      .finally(() => setIsDownloading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 휴지통 만료 항목 정리
   useEffect(() => {
@@ -272,6 +309,7 @@ function MainLayout() {
         <Toaster />
         <ChangelogModal />
         <Onboarding />
+        <ModelUpdateBanner />
       </div>
     </div>
   );

@@ -591,6 +591,10 @@
   "sync": {
     "pullFailed": "无法从服务器同步数据，请检查您的网络连接。"
   },
+  "modelUpdate": {
+    "title": "正在更新 AI 模型...",
+    "downloading": "下载中"
+  },
   "visualizeDetail": {
     "subtitle": "通过 Microscope 进行知识可视化",
     "noData": {
@@ -608,8 +612,8 @@
       "cosmosDesc": "宇宙星云 · 引力轨道",
       "plasma": "PLASMA",
       "plasmaDesc": "神经网络 · 电脉冲",
-      "crystal": "CRYSTAL",
-      "crystalDesc": "晶体几何 · 极光"
+      "atomic": "ATOMIC",
+      "atomicDesc": "原子网络 · 科学可视化"
     }
   },
   "graphVisualization": {

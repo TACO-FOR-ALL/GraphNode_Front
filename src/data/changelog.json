@@ -1,6 +1,7 @@
 {
   "1.0.0": {
     "date": "2025-03-04",
+    "model": "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
     "title": {
       "ko": "GraphNode 1.0.0 정식 출시",
       "en": "GraphNode 1.0.0 Official Release",
@@ -30,18 +31,10 @@
       ]
     },
     "improvements": {
-      "ko": [
-        "전체적인 안정성 개선"
-      ],
-      "en": [
-        "Overall stability improvements"
-      ],
-      "ja": [
-        "全体的な安定性の向上"
-      ],
-      "zh": [
-        "整体稳定性改进"
-      ]
+      "ko": ["전체적인 안정성 개선"],
+      "en": ["Overall stability improvements"],
+      "ja": ["全体的な安定性の向上"],
+      "zh": ["整体稳定性改进"]
     }
   },
   "0.1.0": {

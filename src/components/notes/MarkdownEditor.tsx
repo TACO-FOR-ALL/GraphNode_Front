@@ -404,9 +404,8 @@ export default ({ noteId }: { noteId: string | null }) => {
     try {
       editorElement = editor.view.dom;
       if (!editorElement) return;
-    } catch (error) {
-      // view가 아직 마운트되지 않은 경우
-      console.warn("Editor view not yet mounted:", error);
+    } catch {
+      // view가 아직 마운트되지 않은 경우 - 무시
       return;
     }
 

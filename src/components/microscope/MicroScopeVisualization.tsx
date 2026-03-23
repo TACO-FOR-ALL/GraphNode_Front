@@ -347,17 +347,23 @@ export default function MicroScopeVisualization({
     setEdges(processedData.edges);
   }, [processedData, dimensions.width, dimensions.height, viewMode]);
 
-  // Force 시뮬레이션 (Cluster 모드) - 타입 그루핑 없이 자유 배치
+  // Force 시뮬레이션 (Cluster 모드) - 타입별 클러스터 위치로 그루핑
   useEffect(() => {
     if (processedData.nodes.length === 0 || viewMode !== "cluster" || dimensions.width === 0) return;
     if (layoutCalculatedRef.current.cluster) return;
     layoutCalculatedRef.current.cluster = true;
 
-    const simNodes = processedData.nodes.map((n) => ({
-      ...n,
-      x: dimensions.width / 2 + (Math.random() - 0.5) * 300,
-      y: dimensions.height / 2 + (Math.random() - 0.5) * 300,
-    }));
+    const simNodes = processedData.nodes.map((n) => {
+      const clusterPos = clusterPositions[n.type] ?? {
+        x: dimensions.width / 2,
+        y: dimensions.height / 2,
+      };
+      return {
+        ...n,
+        x: clusterPos.x + (Math.random() - 0.5) * 80,
+        y: clusterPos.y + (Math.random() - 0.5) * 80,
+      };
+    });
     const simEdges = processedData.edges
       .map((e) => ({
         source: simNodes.find((n) => n.id === e.source),
@@ -367,17 +373,25 @@ export default function MicroScopeVisualization({
 
     const simulation = d3Force
       .forceSimulation(simNodes as any)
-      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.05))
-      .force("charge", d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -250 : -120)))
+      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.01))
+      .force("charge", d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -180 : -80)))
       .force(
         "link",
         d3Force
           .forceLink(simEdges as any)
           .id((d: any) => d.id)
-          .distance(120)
-          .strength(0.6)
+          .distance(80)
+          .strength(0.3)
       )
-      .force("collision", d3Force.forceCollide(NODE_RADIUS + 30))
+      .force("collision", d3Force.forceCollide(NODE_RADIUS + 20))
+      .force(
+        "x",
+        d3Force.forceX((d: any) => clusterPositions[d.type]?.x ?? dimensions.width / 2).strength(0.5)
+      )
+      .force(
+        "y",
+        d3Force.forceY((d: any) => clusterPositions[d.type]?.y ?? dimensions.height / 2).strength(0.5)
+      )
       .stop();
 
     for (let i = 0; i < 300; i++) {
@@ -386,7 +400,7 @@ export default function MicroScopeVisualization({
 
     setNodes(simNodes);
     setEdges(processedData.edges);
-  }, [processedData, dimensions.width, dimensions.height, viewMode]);
+  }, [processedData, dimensions.width, dimensions.height, viewMode, clusterPositions]);
 
   // 모드 변경 시 선택 초기화 및 레이아웃 플래그 리셋
   useEffect(() => {
@@ -402,12 +416,17 @@ export default function MicroScopeVisualization({
   }, [viewMode]);
 
   // 마우스 이벤트
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomIntensity = 0.002;
-    const newScale = scale * (1 - e.deltaY * zoomIntensity);
-    setScale(Math.min(Math.max(newScale, 0.3), 3));
-  };
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomIntensity = 0.002;
+      setScale((prev) => Math.min(Math.max(prev * (1 - e.deltaY * zoomIntensity), 0.3), 3));
+    };
+    svgEl.addEventListener("wheel", handleWheel, { passive: false });
+    return () => svgEl.removeEventListener("wheel", handleWheel);
+  }, []);
 
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 
@@ -557,14 +576,7 @@ export default function MicroScopeVisualization({
     const targetNode = nodeById(edge.target);
     if (!sourceNode || !targetNode) return false;
 
-    if (sourceNode.type === targetNode.type) return true;
-    if (sourceNode.type === "Paper" || targetNode.type === "Paper") return true;
-
-    if (selectedNode) {
-      return edge.source === selectedNode.id || edge.target === selectedNode.id;
-    }
-
-    return false;
+    return true;
   };
 
   // 컨텍스트에 있는 노드인지 확인
@@ -750,7 +762,6 @@ export default function MicroScopeVisualization({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onWheel={handleWheel}
           >
             {/* 그라디언트 정의 */}
             <defs>
