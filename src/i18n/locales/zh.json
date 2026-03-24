@@ -44,7 +44,92 @@
     },
     "visualize": {
       "title": "生成图谱",
-      "description": "现在点击「生成图谱」按钮，创建你的知识地图吧！"
+      "description": "基于你的对话记录和笔记，构建专属知识图谱。点击「生成图谱」按钮开始吧！"
+    },
+    "permissions": {
+      "title": "应用权限设置",
+      "subtitle": "GraphNode 需要以下权限才能正常运行。您可以稍后在设置中更改。",
+      "skipHint": "即使不授予权限也可以继续。",
+      "notifications": {
+        "title": "通知权限",
+        "description": "接收新消息、AI 回复和更新的通知。"
+      },
+      "fullDiskAccess": {
+        "title": "完整磁盘访问",
+        "description": "允许 MCP 文件系统服务器访问所有文件夹。请在系统设置中授权。",
+        "hint": "如果列表中没有 GraphNode，请点击 + 按钮手动添加应用。"
+      },
+      "status": {
+        "granted": "已允许",
+        "denied": "已拒绝",
+        "checking": "检查中...",
+        "waiting": "等待授权..."
+      },
+      "action": {
+        "request": "允许",
+        "openSettings": "在设置中允许"
+      }
+    },
+    "userType": {
+      "title": "你是什么样的人？",
+      "subtitle": "告诉我们以便个性化体验。随时可以更改。",
+      "types": {
+        "developer": "开发者",
+        "student": "学生",
+        "entrepreneur": "创业者",
+        "researcher": "研究员",
+        "creator": "创作者",
+        "other": "其他"
+      },
+      "desc": {
+        "developer": "代码、技术文档、架构",
+        "student": "课堂笔记、论文、学习资料",
+        "entrepreneur": "商业想法、战略、市场分析",
+        "researcher": "论文、研究资料、参考文献",
+        "creator": "内容、想法、灵感",
+        "other": "其他所有"
+      }
+    },
+    "interests": {
+      "title": "选择你的兴趣领域",
+      "subtitle": "选择你感兴趣的主题或自行输入。跳过也没关系。",
+      "placeholder": "自定义输入...",
+      "skipText": "跳过",
+      "presets": ["AI / 机器学习", "Web开发", "数据分析", "创业 / 初创企业", "设计 / UX", "营销", "写作 / 内容", "研究 / 学术", "自我提升", "财务 / 投资", "语言学习", "科学 / 工程"]
+    },
+    "tone": {
+      "title": "选择助手的说话方式",
+      "subtitle": "这是 AI 助手使用的说话风格。之后可以在设置中更改。",
+      "types": {
+        "formal": "正式风格",
+        "friendly": "友好风格",
+        "casual": "简洁风格"
+      },
+      "desc": {
+        "formal": "礼貌且正式",
+        "friendly": "亲切且温暖",
+        "casual": "简短直达重点"
+      },
+      "conversations": {
+        "formal": {
+          "user1": "请帮我整理一下今天的日程。",
+          "agent1": "好的，我将根据您提供的内容为您整理。",
+          "user2": "能帮我总结一下吗？",
+          "agent2": "当然！我会简洁地整理要点。"
+        },
+        "friendly": {
+          "user1": "帮我整理一下今天的日程！",
+          "agent1": "好啊！根据你说的内容帮你整理哦~",
+          "user2": "也帮我总结一下？",
+          "agent2": "没问题！把重点给你抓出来！"
+        },
+        "casual": {
+          "user1": "整理日程",
+          "agent1": "好，整理了",
+          "user2": "总结呢？",
+          "agent2": "来了"
+        }
+      }
     }
   },
   "toast": {

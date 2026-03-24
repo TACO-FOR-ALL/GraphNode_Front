@@ -13,5 +13,9 @@ export default function exposeSystemBridge() {
     saveSettings: (settings: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke("system:saveSettings", settings),
     restartApp: () => ipcRenderer.invoke("system:restartApp"),
+    checkFullDiskAccess: (): Promise<"granted" | "denied"> =>
+      ipcRenderer.invoke("permission:checkFullDiskAccess"),
+    openSystemSettings: (type: "notifications" | "fullDiskAccess"): Promise<void> =>
+      ipcRenderer.invoke("permission:openSystemSettings", type),
   });
 }

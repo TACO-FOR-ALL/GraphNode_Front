@@ -5,28 +5,30 @@ function isElectron(): boolean {
   );
 }
 
-export function WebAppFrameBar() {
+export function WebAppFrameBar({ onClose }: { onClose?: () => void } = {}) {
   if (!isElectron()) return null;
+
+  const handleClose = onClose ?? (() => window.windowAPI.close());
 
   switch (window.windowAPI.platform) {
     case "win32":
-      return <WindowsFrameBar />;
+      return <WindowsFrameBar onClose={handleClose} />;
     case "linux":
-      return <LinuxFrameBar />;
+      return <LinuxFrameBar onClose={handleClose} />;
     case "darwin":
     default:
-      return <MacFrameBar />;
+      return <MacFrameBar onClose={handleClose} />;
   }
 }
 
 // ── macOS ─────────────────────────────────────────────────────────────────────
 
-function MacFrameBar() {
+function MacFrameBar({ onClose }: { onClose: () => void }) {
   return (
     <div className="drag-region flex h-7 px-4 items-center bg-frame-bar-background gap-2">
       <div
         className="no-drag w-3 h-3 rounded-full bg-frame-bar-red cursor-pointer"
-        onClick={() => window.windowAPI.close()}
+        onClick={onClose}
       />
       <div
         className="no-drag w-3 h-3 rounded-full bg-frame-bar-yellow cursor-pointer"
@@ -42,7 +44,7 @@ function MacFrameBar() {
 
 // ── Linux (GNOME style) ───────────────────────────────────────────────────────
 
-function LinuxFrameBar() {
+function LinuxFrameBar({ onClose }: { onClose: () => void }) {
   return (
     <div className="drag-region flex h-8 items-center bg-frame-bar-background">
       <div className="flex-1" />
@@ -62,7 +64,7 @@ function LinuxFrameBar() {
           <MaximizeIcon />
         </LinuxButton>
         <LinuxButton
-          onClick={() => window.windowAPI.close()}
+          onClick={onClose}
           hoverClass="hover:bg-orange-500 hover:text-white"
           title="닫기"
         >
@@ -97,7 +99,7 @@ function LinuxButton({
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
-function WindowsFrameBar() {
+function WindowsFrameBar({ onClose }: { onClose: () => void }) {
   return (
     <div className="drag-region flex h-8 items-center bg-frame-bar-background">
       {/* 드래그 영역 (왼쪽) */}
@@ -122,7 +124,7 @@ function WindowsFrameBar() {
         </WinButton>
 
         <WinButton
-          onClick={() => window.windowAPI.close()}
+          onClick={onClose}
           hoverClass="hover:bg-red-600 hover:text-white"
           title="닫기"
         >

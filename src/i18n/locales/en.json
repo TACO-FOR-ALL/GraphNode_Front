@@ -44,7 +44,92 @@
     },
     "visualize": {
       "title": "Generate your graph",
-      "description": "Now press 'Generate Graph' to create your knowledge map!"
+      "description": "Build your personal knowledge graph from your conversations and notes. Press 'Generate Graph' to get started!"
+    },
+    "permissions": {
+      "title": "App Permissions",
+      "subtitle": "GraphNode needs the following permissions to work properly. You can change these in settings later.",
+      "skipHint": "You can continue without granting permissions.",
+      "notifications": {
+        "title": "Notifications",
+        "description": "Receive alerts for new messages, AI responses, and updates."
+      },
+      "fullDiskAccess": {
+        "title": "Full Disk Access",
+        "description": "Allows the MCP filesystem server to access all folders. Please grant this in System Settings.",
+        "hint": "If GraphNode doesn't appear in the list, click the + button to add the app manually."
+      },
+      "status": {
+        "granted": "Allowed",
+        "denied": "Denied",
+        "checking": "Checking...",
+        "waiting": "Waiting for permission..."
+      },
+      "action": {
+        "request": "Allow",
+        "openSettings": "Open Settings"
+      }
+    },
+    "userType": {
+      "title": "Who are you?",
+      "subtitle": "Help us personalize your experience. You can change this anytime.",
+      "types": {
+        "developer": "Developer",
+        "student": "Student",
+        "entrepreneur": "Entrepreneur",
+        "researcher": "Researcher",
+        "creator": "Creator",
+        "other": "Other"
+      },
+      "desc": {
+        "developer": "Code, technical docs, architecture",
+        "student": "Lecture notes, papers, study materials",
+        "entrepreneur": "Business ideas, strategy, market analysis",
+        "researcher": "Papers, research materials, references",
+        "creator": "Content, ideas, inspiration",
+        "other": "Everything else"
+      }
+    },
+    "interests": {
+      "title": "Select your interests",
+      "subtitle": "Choose topics you care about or add your own. Feel free to skip.",
+      "placeholder": "Type your own...",
+      "skipText": "Skip for now",
+      "presets": ["AI / Machine Learning", "Web Development", "Data Analysis", "Startup / Entrepreneurship", "Design / UX", "Marketing", "Writing / Content", "Research / Academia", "Self-Improvement", "Finance / Investing", "Language Learning", "Science / Engineering"]
+    },
+    "tone": {
+      "title": "Choose the agent's tone",
+      "subtitle": "Pick how your AI agent communicates. You can change this in settings later.",
+      "types": {
+        "formal": "Formal",
+        "friendly": "Friendly",
+        "casual": "Casual"
+      },
+      "desc": {
+        "formal": "Polite and respectful",
+        "friendly": "Warm and approachable",
+        "casual": "Short and to the point"
+      },
+      "conversations": {
+        "formal": {
+          "user1": "Could you organize my schedule?",
+          "agent1": "Of course. I'll arrange it based on what you've shared.",
+          "user2": "Could you summarize it as well?",
+          "agent2": "Certainly! I'll keep it brief and to the point."
+        },
+        "friendly": {
+          "user1": "Can you sort out my schedule?",
+          "agent1": "Sure! I'll put it together based on what you told me~",
+          "user2": "Summarize it too?",
+          "agent2": "Absolutely! I'll pull out the key stuff for you!"
+        },
+        "casual": {
+          "user1": "sort my schedule",
+          "agent1": "on it",
+          "user2": "summary too?",
+          "agent2": "yep"
+        }
+      }
     }
   },
   "toast": {

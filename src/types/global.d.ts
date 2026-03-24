@@ -55,6 +55,8 @@ declare global {
         desktopNotification: boolean;
       }>;
       restartApp: () => Promise<void>;
+      checkFullDiskAccess: () => Promise<"granted" | "denied">;
+      openSystemSettings: (type: "notifications" | "fullDiskAccess") => Promise<void>;
     };
     graphnodeAPI: {
       getPaths: () => Promise<{
