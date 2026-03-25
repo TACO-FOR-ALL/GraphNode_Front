@@ -95,10 +95,36 @@ export async function pullOnce() {
         .map((op) => op.entityId),
     );
 
-    const toUpsert = active
+    const rawUpserts = active
       .filter((c) => !locked.has(c.id))
       .map(mapConversation);
-    if (toUpsert.length > 0) await threadRepo.upsertMany(toUpsert);
+
+    if (rawUpserts.length > 0) {
+      // 서버는 델타 동기화(since 커서 이후 변경분만 반환)하므로
+      // 기존 로컬 메시지를 보존하고 서버에서 받은 메시지와 병합해야 함.
+      // 같은 ID면 서버 버전 우선, 로컬에만 있는 메시지는 그대로 유지.
+      const mergedUpserts = await Promise.all(
+        rawUpserts.map(async (serverThread) => {
+          const local = await threadRepo.getThreadById(serverThread.id);
+          if (!local || local.messages.length === 0) return serverThread;
+
+          const serverMsgIds = new Set(serverThread.messages.map((m) => m.id));
+          const localOnlyMsgs = local.messages.filter(
+            (m) => !serverMsgIds.has(m.id),
+          );
+
+          return {
+            ...serverThread,
+            messages: [...localOnlyMsgs, ...serverThread.messages].sort(
+              (a, b) => a.ts - b.ts,
+            ),
+          };
+        }),
+      );
+      await threadRepo.upsertMany(mergedUpserts);
+      // applyStartupSync도 병합본으로 덮어쓰지 않도록 동기화
+      sqliteSyncPayload.threads.upserts = mergedUpserts;
+    }
 
     const toDelete = deletedIds.filter((id) => !locked.has(id));
     if (toDelete.length > 0) await threadRepo.deleteMany(toDelete);
