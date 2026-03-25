@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import StreamingMarkdownBubble from "./StreamingMarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
@@ -122,7 +128,7 @@ export default function ChatWindow({
   }, [threadId, refreshThread]);
 
   useEffect(() => {
-    if (thread !== null) {
+    if (thread != null) {
       setIsLoading(false);
     }
   }, [thread]);
@@ -381,7 +387,9 @@ export default function ChatWindow({
   // scrollToBottomRef에 함수 등록 (early return 전에 위치해야 Rules of Hooks 준수)
   useEffect(() => {
     if (scrollToBottomRef) scrollToBottomRef.current = scrollToBottom;
-    return () => { if (scrollToBottomRef) scrollToBottomRef.current = null; };
+    return () => {
+      if (scrollToBottomRef) scrollToBottomRef.current = null;
+    };
   });
 
   if (!threadId) {
