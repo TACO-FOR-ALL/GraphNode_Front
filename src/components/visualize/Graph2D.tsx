@@ -1431,7 +1431,11 @@ export default function Graph2D({
       }
     };
 
+    let cancelled = false;
+    let rafId: number;
+
     const animate = (currentTime: number) => {
+      if (cancelled) return;
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
@@ -1448,7 +1452,7 @@ export default function Graph2D({
       setAnimatedPositions(newPositions);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafId = requestAnimationFrame(animate);
       } else {
         // 애니메이션 완료
         setExpandingSubcluster(null);
@@ -1457,10 +1461,11 @@ export default function Graph2D({
       }
     };
 
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
 
     return () => {
-      // cleanup not needed for requestAnimationFrame based animation
+      cancelled = true;
+      cancelAnimationFrame(rafId);
     };
   }, [expandingSubcluster, subclusters, positionedNodeMap]);
 

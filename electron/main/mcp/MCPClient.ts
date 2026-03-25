@@ -21,6 +21,7 @@ export class MCPClient extends EventEmitter {
     {
       resolve: (value: unknown) => void;
       reject: (error: Error) => void;
+      timeoutId: ReturnType<typeof setTimeout>;
     }
   > = new Map();
   private buffer = "";
@@ -134,6 +135,7 @@ export class MCPClient extends EventEmitter {
     if ("id" in message && message.id !== undefined) {
       const pending = this.pendingRequests.get(message.id);
       if (pending) {
+        clearTimeout(pending.timeoutId);
         this.pendingRequests.delete(message.id);
         if (message.error) {
           pending.reject(new Error(message.error.message));
@@ -166,23 +168,26 @@ export class MCPClient extends EventEmitter {
     };
 
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject });
-
-      const message = JSON.stringify(request) + "\n";
-      this.process!.stdin!.write(message, (error) => {
-        if (error) {
-          this.pendingRequests.delete(id);
-          reject(error);
-        }
-      });
-
-      // 타임아웃 30초
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
           reject(new Error("Request timeout"));
         }
       }, 30000);
+
+      this.pendingRequests.set(id, { resolve, reject, timeoutId });
+
+      const message = JSON.stringify(request) + "\n";
+      this.process!.stdin!.write(message, (error) => {
+        if (error) {
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            clearTimeout(pending.timeoutId);
+            this.pendingRequests.delete(id);
+          }
+          reject(error);
+        }
+      });
     });
   }
 
@@ -270,8 +275,9 @@ export class MCPClient extends EventEmitter {
     this.process = null;
     this.initialized = false;
     this.buffer = "";
-    // Reject all pending requests
-    for (const [id, pending] of this.pendingRequests) {
+    // Reject all pending requests and clear their timers
+    for (const [, pending] of this.pendingRequests) {
+      clearTimeout(pending.timeoutId);
       pending.reject(new Error("Connection closed"));
     }
     this.pendingRequests.clear();

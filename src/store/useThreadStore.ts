@@ -6,6 +6,7 @@ interface ThreadState {
   threads: Record<string, ChatThread>;
   refreshThread: (id: string) => Promise<void>;
   updateThreadInStore: (thread: ChatThread) => void;
+  evictThread: (id: string) => void;
 }
 
 export const useThreadsStore = create<ThreadState>((set) => ({
@@ -18,5 +19,13 @@ export const useThreadsStore = create<ThreadState>((set) => ({
 
   updateThreadInStore: (thread) => {
     set((s) => ({ threads: { ...s.threads, [thread.id]: thread } }));
+  },
+
+  evictThread: (id) => {
+    set((s) => {
+      const next = { ...s.threads };
+      delete next[id];
+      return { threads: next };
+    });
   },
 }));
