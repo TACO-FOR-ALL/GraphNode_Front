@@ -115,7 +115,10 @@ export default function ChatWindow({
     if (!threadId) return;
 
     await threadRepo.deleteMessageFromThreadById(threadId, messageId);
-    addToast({ type: "success", message: t("chat.deleted", "Message deleted") });
+    addToast({
+      type: "success",
+      message: t("chat.deleted", "Message deleted"),
+    });
   };
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
