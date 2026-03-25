@@ -28,7 +28,8 @@ export function isDeveloperToolsEnabled() {
 export default function DeveloperToolsPanel() {
   const queryClient = useQueryClient();
   const [isReconcilingNotes, setIsReconcilingNotes] = useState(false);
-  const [isReconcilingChats, setIsReconcilingChats] = useState(false);
+  const [isSyncingChatFromServer, setIsSyncingChatFromServer] = useState(false);
+  const [isSyncingChatFromClient, setIsSyncingChatFromClient] = useState(false);
 
   const { resetOnboarding, startOnboarding } = useOnboardingStore();
   const { resetLastSeenVersion, setModalOpen } = useChangelogStore();
@@ -104,45 +105,22 @@ export default function DeveloperToolsPanel() {
     }
   };
 
-  const handleReconcileChats = async () => {
-    setIsReconcilingChats(true);
+  // 서버 기준: 서버 전체 데이터를 로컬에 덮어씀
+  const handleSyncChatFromServer = async () => {
+    setIsSyncingChatFromServer(true);
     try {
-      const [localThreads, serverThreadsDto] = await Promise.all([
-        threadRepo.getThreadList(),
-        api.conversations.list().then(unwrapResponse),
-      ]);
-
+      const serverThreadsDto = unwrapResponse(await api.conversations.list());
       const serverThreads = serverThreadsDto.map(mapConversation);
-      const localThreadIds = new Set(localThreads.map((thread) => thread.id));
-      const serverThreadIds = new Set(serverThreads.map((thread) => thread.id));
 
-      const localOnlyThreads = localThreads.filter(
-        (thread) => !serverThreadIds.has(thread.id),
-      );
-      const serverOnlyThreads = serverThreads.filter(
-        (thread) => !localThreadIds.has(thread.id),
-      );
-
-      if (localOnlyThreads.length > 0) {
-        unwrapResponse(
-          await api.conversations.bulkCreate({
-            conversations: localOnlyThreads.map((thread) => ({
-              id: thread.id,
-              title: thread.title,
-              messages: thread.messages,
-            })),
-          }),
-        );
-      }
-
-      if (serverOnlyThreads.length > 0) {
-        await threadRepo.upsertMany(serverOnlyThreads);
+      await threadRepo.clearAll();
+      if (serverThreads.length > 0) {
+        await threadRepo.upsertMany(serverThreads);
       }
 
       await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
 
       addToast({
-        message: `채팅 sync 완료: 서버 업로드 ${localOnlyThreads.length}개, 로컬 가져오기 ${serverOnlyThreads.length}개`,
+        message: `서버 기준 채팅 sync 완료: 총 ${serverThreads.length}개 로컬 반영`,
         type: "success",
       });
     } catch (err) {
@@ -152,7 +130,42 @@ export default function DeveloperToolsPanel() {
         type: "error",
       });
     } finally {
-      setIsReconcilingChats(false);
+      setIsSyncingChatFromServer(false);
+    }
+  };
+
+  // 클라이언트 기준: 로컬 전체 데이터를 서버에 덮어씀
+  const handleSyncChatFromClient = async () => {
+    setIsSyncingChatFromClient(true);
+    try {
+      const localThreads = await threadRepo.getThreadList();
+
+      unwrapResponse(await api.conversations.deleteAll());
+
+      if (localThreads.length > 0) {
+        unwrapResponse(
+          await api.conversations.bulkCreate({
+            conversations: localThreads.map((thread) => ({
+              id: thread.id,
+              title: thread.title,
+              messages: thread.messages,
+            })),
+          }),
+        );
+      }
+
+      addToast({
+        message: `클라이언트 기준 채팅 sync 완료: 총 ${localThreads.length}개 서버 반영`,
+        type: "success",
+      });
+    } catch (err) {
+      addToast({
+        message:
+          err instanceof Error ? err.message : "채팅 강제 sync 중 오류가 발생했습니다.",
+        type: "error",
+      });
+    } finally {
+      setIsSyncingChatFromClient(false);
     }
   };
 
@@ -170,15 +183,22 @@ export default function DeveloperToolsPanel() {
           </p>
           <div className="flex gap-2 flex-wrap mb-4">
             <button
-              onClick={handleReconcileChats}
-              disabled={isReconcilingChats || isReconcilingNotes}
+              onClick={handleSyncChatFromServer}
+              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isReconcilingChats ? "syncing chat..." : "force sync chat"}
+              {isSyncingChatFromServer ? "syncing..." : "force sync chat by server"}
+            </button>
+            <button
+              onClick={handleSyncChatFromClient}
+              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
+              className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSyncingChatFromClient ? "syncing..." : "force sync chat by client"}
             </button>
             <button
               onClick={handleReconcileNotes}
-              disabled={isReconcilingChats || isReconcilingNotes}
+              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isReconcilingNotes ? "syncing notes..." : "force sync notes"}
