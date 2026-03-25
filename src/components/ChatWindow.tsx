@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import StreamingMarkdownBubble from "./StreamingMarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
@@ -60,10 +60,14 @@ function ChatSkeleton({
 export default function ChatWindow({
   threadId,
   isTyping,
+  onScrollStateChange,
+  scrollToBottomRef,
 }: {
   threadId?: string;
   isTyping: boolean;
   avatarUrl?: string | null;
+  onScrollStateChange?: (showButton: boolean) => void;
+  scrollToBottomRef?: React.RefObject<(() => void) | null>;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -205,6 +209,48 @@ export default function ChatWindow({
     return () => ro.disconnect();
   }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
 
+  // active turn 중 visibleCount를 total로 유지: 전환 후 startIndex가 0으로 유지됨
+  useEffect(() => {
+    if (hasActiveTurn && total > visibleCount) {
+      setVisibleCount(total);
+    }
+  }, [hasActiveTurn, total, visibleCount]);
+
+  // active turn 중 scrollTop을 매 렌더마다 기억 (전환 직전 값 보존용)
+  const savedScrollTopRef = useRef(0);
+  useLayoutEffect(() => {
+    if (!hasActiveTurn) return;
+    const wrap = wrapRef.current;
+    if (wrap) savedScrollTopRef.current = wrap.scrollTop;
+  });
+
+  // 스크롤 위치 추적 → 최하단이 아닐 때 플로팅 버튼 표시
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const check = () => {
+      const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 80;
+      onScrollStateChange?.(!atBottom);
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [isLoading, onScrollStateChange]);
+
+  // 스트리밍 완료 시 (hasActiveTurn: true → false) spacer가 사라져 scrollHeight가 줄어도 위치 유지
+  const prevHasActiveTurnRef = useRef(hasActiveTurn);
+  useLayoutEffect(() => {
+    const wasActive = prevHasActiveTurnRef.current;
+    prevHasActiveTurnRef.current = hasActiveTurn;
+
+    if (wasActive && !hasActiveTurn) {
+      const wrap = wrapRef.current;
+      if (wrap) {
+        wrap.scrollTop = savedScrollTopRef.current;
+      }
+    }
+  }, [hasActiveTurn]);
+
   // 상단 sentinel로 이전 메시지 로드
   useEffect(() => {
     const el = wrapRef.current;
@@ -326,6 +372,17 @@ export default function ChatWindow({
       </div>
     );
   };
+
+  const scrollToBottom = () => {
+    const el = wrapRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  // scrollToBottomRef에 함수 등록 (early return 전에 위치해야 Rules of Hooks 준수)
+  useEffect(() => {
+    if (scrollToBottomRef) scrollToBottomRef.current = scrollToBottom;
+    return () => { if (scrollToBottomRef) scrollToBottomRef.current = null; };
+  });
 
   if (!threadId) {
     return (

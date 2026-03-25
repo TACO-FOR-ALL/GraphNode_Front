@@ -1,14 +1,21 @@
 import ChatWindow from "../components/ChatWindow";
 import ChatSendBox from "../components/chat/ChatSendBox";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
+import { FiArrowDown } from "react-icons/fi";
 
 export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
   const [isTyping, setIsTyping] = useState(false);
   const { threadId } = useParams<{ threadId?: string }>();
   const { isExpanded } = useSidebarExpandStore();
-  const [is2xl, setIs2xl] = useState(() => window.matchMedia("(min-width: 1536px)").matches);
+  const [is2xl, setIs2xl] = useState(
+    () => window.matchMedia("(min-width: 1536px)").matches,
+  );
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const scrollToBottomRef = useRef<(() => void) | null>(
+    null,
+  ) as React.RefObject<(() => void) | null>;
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1536px)");
@@ -18,6 +25,10 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
   }, []);
 
   const width = isExpanded && !is2xl ? "768px" : "940px";
+
+  const handleScrollStateChange = useCallback((show: boolean) => {
+    setShowScrollButton(show);
+  }, []);
 
   return (
     <div
@@ -37,8 +48,21 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
           threadId={threadId || undefined}
           isTyping={isTyping}
           avatarUrl={avatarUrl}
+          onScrollStateChange={handleScrollStateChange}
+          scrollToBottomRef={scrollToBottomRef}
         />
       </div>
+
+      {/* 플로팅 스크롤 버튼 */}
+      {showScrollButton && (
+        <div
+          onClick={() => scrollToBottomRef.current?.()}
+          className="absolute left-1/2 right-1/2 -translate-x-1/2 bottom-44 z-20 flex items-center justify-center w-8 h-8 rounded-full hover:bg-bg-secondary border border-chat-bubble-border shadow-md text-primary bg-bg-primary transition-colors cursor-pointer"
+          aria-label="최하단으로 이동"
+        >
+          <FiArrowDown size={15} />
+        </div>
+      )}
 
       {/* 하단 마진 */}
       <div className="h-4 flex-shrink-0" />
