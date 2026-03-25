@@ -250,10 +250,9 @@ function CosmosGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { wi
         glow.addColorStop(0, pal[0] + (isSel ? "88" : "55")); glow.addColorStop(1, pal[0] + "00");
         ctx.beginPath(); ctx.arc(p.sx, p.sy, rp * 1.5, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
         const core = ctx.createRadialGradient(p.sx - rp * 0.3, p.sy - rp * 0.3, 0, p.sx, p.sy, rp);
-        core.addColorStop(0, "#fff"); core.addColorStop(0.28, pal[0]); core.addColorStop(1, pal[1]);
+        core.addColorStop(0, pal[0]); core.addColorStop(0.45, pal[0] + "cc"); core.addColorStop(1, pal[1]);
         ctx.beginPath(); ctx.arc(p.sx, p.sy, rp, 0, Math.PI * 2); ctx.fillStyle = core;
         ctx.shadowColor = pal[0]; ctx.shadowBlur = rp * (isSel ? 2.0 : 1.2); ctx.fill(); ctx.shadowBlur = 0;
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, rp * 0.3, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fill();
       });
       rafRef.current = requestAnimationFrame(render);
     }
@@ -362,11 +361,16 @@ function PlasmaGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { wi
   return <canvas ref={canvasRef} width={width} height={height} style={{ display: "block", cursor: "pointer" }} />;
 }
 
-// ─── STYLE 3 · CRYSTAL ───────────────────────────────────────────────────────
-const CRYSTAL_PAL = [{ c: "#00d4ff", d: "#004466" }, { c: "#b06bff", d: "#330066" }, { c: "#00ff99", d: "#004433" }, { c: "#ffd700", d: "#554400" }, { c: "#ff69b4", d: "#550033" }];
-const CRYSTAL_SIDES = [6, 4, 6, 8, 6];
+// ─── STYLE 3 · ATOMIC ─────────────────────────────────────────────────────────
+const ATOMIC_PAL = [
+  { c: "#22d3ee", d: "#0e7490" },
+  { c: "#f59e0b", d: "#92400e" },
+  { c: "#4ade80", d: "#166534" },
+  { c: "#f87171", d: "#991b1b" },
+  { c: "#a78bfa", d: "#5b21b6" },
+];
 
-function CrystalGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { width: number; height: number; camRef: React.RefObject<Cam>; nodes: SimNode[]; links: SimLink[] }) {
+function AtomicGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { width: number; height: number; camRef: React.RefObject<Cam>; nodes: SimNode[]; links: SimLink[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const degScale = buildDegree(NODES, LINKS);
@@ -395,55 +399,102 @@ function CrystalGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { w
       t += 0.016;
       const cam = camRef.current;
       const sel = selectedIdRef.current;
-      ctx.fillStyle = "#020c18"; ctx.fillRect(0, 0, width, height);
-      ctx.strokeStyle = "#ffffff07"; ctx.lineWidth = 0.5;
-      const gs = 44;
+
+      // Background
+      ctx.fillStyle = "#010d1a"; ctx.fillRect(0, 0, width, height);
+
+      // Fine grid
+      ctx.lineWidth = 0.4;
+      const gs = 60;
+      ctx.strokeStyle = "#ffffff06";
       for (let x = cx % gs; x < width; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
       for (let y = cy % gs; y < height; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+      const gs2 = 20;
+      ctx.strokeStyle = "#ffffff03";
+      for (let x = cx % gs2; x < width; x += gs2) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+      for (let y = cy % gs2; y < height; y += gs2) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+
       const proj: ProjEntry[] = nodes.map((n) => { const p = project(n.x, -n.y, n.z, cam, cx, cy); return { n, p, r: nodeBaseR(n) * p.scale * 1.5 }; });
       proj.sort((a, b) => a.p.rawZ - b.p.rawZ);
       projCacheRef.length = 0;
       proj.forEach((e) => projCacheRef.push(e));
 
+      // Links
       links.forEach((l) => {
         const s = nodes[l.source], tgt = nodes[l.target];
         if (!s || !tgt) return;
         const ps = project(s.x, -s.y, s.z, cam, cx, cy);
         const pt = project(tgt.x, -tgt.y, tgt.z, cam, cx, cy);
         const sc = (ps.scale + pt.scale) / 2;
-        const col = CRYSTAL_PAL[s.group].c;
         const highlighted = sel !== null && (s.id === sel || tgt.id === sel);
-        const mx = (ps.sx + pt.sx) / 2, my = (ps.sy + pt.sy) / 2 - 15 * sc * 1.5;
-        ctx.beginPath(); ctx.moveTo(ps.sx, ps.sy); ctx.quadraticCurveTo(mx, my, pt.sx, pt.sy);
-        ctx.strokeStyle = highlighted
-          ? col + Math.round(l.strength * 70).toString(16).padStart(2, "0")
-          : col + "10";
-        ctx.lineWidth = highlighted ? l.strength * 1.4 * sc * 1.5 : 0.5;
-        ctx.shadowColor = highlighted ? col : "transparent"; ctx.shadowBlur = highlighted ? 3 : 0;
-        ctx.stroke(); ctx.shadowBlur = 0;
+        if (highlighted) {
+          const g = ctx.createLinearGradient(ps.sx, ps.sy, pt.sx, pt.sy);
+          g.addColorStop(0, ATOMIC_PAL[s.group].c + "77"); g.addColorStop(1, ATOMIC_PAL[tgt.group].c + "77");
+          ctx.beginPath(); ctx.strokeStyle = g;
+          ctx.lineWidth = Math.max(0.8, l.strength * 1.6 * sc * 1.5);
+          ctx.shadowColor = ATOMIC_PAL[s.group].c; ctx.shadowBlur = 5;
+          ctx.moveTo(ps.sx, ps.sy); ctx.lineTo(pt.sx, pt.sy); ctx.stroke(); ctx.shadowBlur = 0;
+          // Weight indicator tick at midpoint
+          const mx = (ps.sx + pt.sx) / 2, my = (ps.sy + pt.sy) / 2;
+          const dx = pt.sx - ps.sx, dy = pt.sy - ps.sy, len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const nx = -dy / len, ny = dx / len, tk = 3 * sc;
+          ctx.beginPath(); ctx.moveTo(mx + nx * tk, my + ny * tk); ctx.lineTo(mx - nx * tk, my - ny * tk);
+          ctx.strokeStyle = ATOMIC_PAL[s.group].c + "99"; ctx.lineWidth = 1; ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.strokeStyle = ATOMIC_PAL[s.group].c + "16";
+          ctx.lineWidth = 0.5; ctx.moveTo(ps.sx, ps.sy); ctx.lineTo(pt.sx, pt.sy); ctx.stroke();
+        }
       });
+
+      // Nodes
       proj.forEach(({ n, p, r }) => {
         if (r < 0.5) return;
-        const pal = CRYSTAL_PAL[n.group];
-        const sides = CRYSTAL_SIDES[n.group];
+        const pal = ATOMIC_PAL[n.group];
         const isSel = sel === n.id;
-        const rot = t * 0.28 + n.id * 0.38;
-        const pulse = 1 + 0.055 * Math.sin(t * 1.4 + n.id * 0.55); const rp = r * pulse;
-        const glow = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, rp * 1.5);
-        glow.addColorStop(0, pal.c + (isSel ? "70" : "45")); glow.addColorStop(1, pal.c + "00");
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, rp * 1.5, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
-        drawPoly(ctx, p.sx, p.sy, rp * 1.38, sides, rot);
-        ctx.fillStyle = pal.c + "28"; ctx.shadowColor = pal.c; ctx.shadowBlur = rp * (isSel ? 2.0 : 1.0); ctx.fill(); ctx.shadowBlur = 0;
-        drawPoly(ctx, p.sx, p.sy, rp, sides, rot);
-        const grad = ctx.createRadialGradient(p.sx - rp * 0.3, p.sy - rp * 0.3, 0, p.sx, p.sy, rp);
-        grad.addColorStop(0, "#fff"); grad.addColorStop(0.35, pal.c); grad.addColorStop(1, pal.d);
-        ctx.fillStyle = grad; ctx.strokeStyle = pal.c + "cc"; ctx.lineWidth = 1.3;
-        ctx.shadowColor = pal.c; ctx.shadowBlur = rp * 0.8; ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-        drawPoly(ctx, p.sx, p.sy, rp * 0.48, sides, rot + Math.PI / sides);
-        ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.fill();
+        const pulse = 1 + (isSel ? 0.14 : 0.04) * Math.sin(t * 2.2 + n.id * 0.7);
+        const rp = r * pulse;
+
+        // Outer glow
+        const glow = ctx.createRadialGradient(p.sx, p.sy, rp * 0.5, p.sx, p.sy, rp * 2.5);
+        glow.addColorStop(0, pal.c + (isSel ? "28" : "14")); glow.addColorStop(1, pal.c + "00");
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, rp * 2.5, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
+
+        // Orbit ring (selected)
+        if (isSel) {
+          const orbitR = rp * 2.8;
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, orbitR, 0, Math.PI * 2);
+          ctx.strokeStyle = pal.c + "28"; ctx.lineWidth = 0.7; ctx.stroke();
+          const ox = p.sx + orbitR * Math.cos(t * 1.8), oy = p.sy + orbitR * Math.sin(t * 1.8);
+          ctx.beginPath(); ctx.arc(ox, oy, 1.8 * p.scale, 0, Math.PI * 2);
+          ctx.fillStyle = pal.c + "dd"; ctx.shadowColor = pal.c; ctx.shadowBlur = 5; ctx.fill(); ctx.shadowBlur = 0;
+        }
+
+        // Node core — no white
+        const core = ctx.createRadialGradient(p.sx - rp * 0.28, p.sy - rp * 0.28, 0, p.sx, p.sy, rp);
+        core.addColorStop(0, pal.c); core.addColorStop(0.5, pal.c + "bb"); core.addColorStop(1, pal.d);
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, rp, 0, Math.PI * 2); ctx.fillStyle = core;
+        ctx.shadowColor = pal.c; ctx.shadowBlur = rp * (isSel ? 2.5 : 1.2); ctx.fill(); ctx.shadowBlur = 0;
+
+        // Crisp outer ring
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, rp, 0, Math.PI * 2);
+        ctx.strokeStyle = pal.c + (isSel ? "ff" : "99"); ctx.lineWidth = isSel ? 1.5 : 0.8; ctx.stroke();
+
+        // Tick marks on larger nodes (sci-viz feel)
+        if (r > 3.5) {
+          const ticks = 8;
+          for (let i = 0; i < ticks; i++) {
+            const angle = (i / ticks) * Math.PI * 2 + t * 0.08;
+            const ri = rp + 2, ro = rp + (i % 2 === 0 ? 5 : 3);
+            ctx.beginPath();
+            ctx.moveTo(p.sx + ri * Math.cos(angle), p.sy + ri * Math.sin(angle));
+            ctx.lineTo(p.sx + ro * Math.cos(angle), p.sy + ro * Math.sin(angle));
+            ctx.strokeStyle = pal.c + "55"; ctx.lineWidth = 0.6; ctx.stroke();
+          }
+        }
       });
       rafRef.current = requestAnimationFrame(render);
     }
+    ctx.fillStyle = "#010d1a"; ctx.fillRect(0, 0, width, height);
     rafRef.current = requestAnimationFrame(render);
     return () => { cancelAnimationFrame(rafRef.current); canvas.removeEventListener("click", onClick); };
   }, [width, height, camRef, NODES, LINKS]);
@@ -452,8 +503,8 @@ function CrystalGraph({ width, height, camRef, nodes: NODES, links: LINKS }: { w
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-type Style = "cosmos" | "plasma" | "crystal";
-const BG: Record<Style, string> = { cosmos: "#020008", plasma: "#02000a", crystal: "#020c18" };
+type Style = "cosmos" | "plasma" | "atomic";
+const BG: Record<Style, string> = { cosmos: "#020008", plasma: "#02000a", atomic: "#010d1a" };
 
 export default function GraphTestPage() {
   const { t } = useTranslation();
@@ -485,7 +536,7 @@ export default function GraphTestPage() {
   const STYLES = [
     { id: "cosmos" as Style, label: t("graphLab.styles.cosmos"), desc: t("graphLab.styles.cosmosDesc") },
     { id: "plasma" as Style, label: t("graphLab.styles.plasma"), desc: t("graphLab.styles.plasmaDesc") },
-    { id: "crystal" as Style, label: t("graphLab.styles.crystal"), desc: t("graphLab.styles.crystalDesc") },
+    { id: "atomic" as Style, label: t("graphLab.styles.atomic"), desc: t("graphLab.styles.atomicDesc") },
   ];
 
   useEffect(() => {
@@ -540,7 +591,7 @@ export default function GraphTestPage() {
           <>
             {style === "cosmos" && <CosmosGraph width={size.w} height={size.h} camRef={camRef} nodes={graphNodes} links={graphLinks} />}
             {style === "plasma" && <PlasmaGraph width={size.w} height={size.h} camRef={camRef} nodes={graphNodes} links={graphLinks} />}
-            {style === "crystal" && <CrystalGraph width={size.w} height={size.h} camRef={camRef} nodes={graphNodes} links={graphLinks} />}
+            {style === "atomic" && <AtomicGraph width={size.w} height={size.h} camRef={camRef} nodes={graphNodes} links={graphLinks} />}
           </>
         )}
         {size.w > 0 && !isLoading && graphNodes.length === 0 && (

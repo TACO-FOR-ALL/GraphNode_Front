@@ -73,4 +73,3 @@ React Query는 앱 루트에서 `QueryClientProvider`로 주입되며, 공용 �
 - CLI와 데스크탑이 같은 저장소를 공유
 - 동기화 재시도(backoff) + coalescing으로 서버 호출 수 절감
 - SSE 알림 이벤트를 UI 상태와 연결해 장시간 작업 상태를 반영
-- 시각화 화면과 agent toolbox를 느슨하게 연결해, 선택된 그래프 노드를 바로 후속 질의 컨텍스트로 재사용

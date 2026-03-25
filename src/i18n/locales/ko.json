@@ -44,7 +44,92 @@
     },
     "visualize": {
       "title": "그래프 생성하기",
-      "description": "이제 '그래프 생성' 버튼을 눌러서 당신의 지식 지도를 만들어보세요!"
+      "description": "대화 내용과 노트를 기반으로 나만의 지식 그래프를 만들어보세요. '그래프 생성' 버튼을 눌러 시작하세요!"
+    },
+    "permissions": {
+      "title": "앱 권한 설정",
+      "subtitle": "GraphNode가 제대로 동작하려면 아래 권한이 필요해요. 지금 허용하지 않아도 나중에 설정에서 변경할 수 있어요.",
+      "skipHint": "권한을 허용하지 않아도 계속 진행할 수 있어요.",
+      "notifications": {
+        "title": "알림 권한",
+        "description": "새 메시지, AI 응답, 업데이트 알림을 받을 수 있어요."
+      },
+      "fullDiskAccess": {
+        "title": "전체 디스크 접근",
+        "description": "MCP 파일시스템 서버가 모든 폴더에 접근할 수 있어요. 시스템 설정에서 허용해주세요.",
+        "hint": "앱 목록에 GraphNode가 없다면 + 버튼을 눌러 앱을 직접 추가해주세요."
+      },
+      "status": {
+        "granted": "허용됨",
+        "denied": "거부됨",
+        "checking": "확인 중...",
+        "waiting": "허용 대기 중..."
+      },
+      "action": {
+        "request": "허용하기",
+        "openSettings": "설정에서 허용"
+      }
+    },
+    "userType": {
+      "title": "당신은 어떤 분인가요?",
+      "subtitle": "맞춤형 경험을 위해 알려주세요. 언제든지 변경할 수 있어요.",
+      "types": {
+        "developer": "개발자",
+        "student": "학생",
+        "entrepreneur": "사업가",
+        "researcher": "연구자",
+        "creator": "크리에이터",
+        "other": "기타"
+      },
+      "desc": {
+        "developer": "코드, 기술 문서, 아키텍처",
+        "student": "강의 노트, 논문, 공부 자료",
+        "entrepreneur": "비즈니스 아이디어, 전략, 시장 분석",
+        "researcher": "논문, 연구 자료, 참고 문헌",
+        "creator": "콘텐츠, 아이디어, 영감",
+        "other": "그 외 모든 것"
+      }
+    },
+    "interests": {
+      "title": "관심 분야를 선택해주세요",
+      "subtitle": "관심 있는 주제를 선택하거나 직접 입력해보세요. 건너뛰어도 괜찮아요.",
+      "placeholder": "직접 입력...",
+      "skipText": "건너뛰기",
+      "presets": ["AI / 머신러닝", "웹 개발", "데이터 분석", "창업 / 스타트업", "디자인 / UX", "마케팅", "글쓰기 / 콘텐츠", "연구 / 논문", "자기계발", "재무 / 투자", "언어 학습", "과학 / 공학"]
+    },
+    "tone": {
+      "title": "에이전트의 말투를 골라주세요",
+      "subtitle": "AI 에이전트가 대화할 때 사용할 말투예요. 나중에 설정에서 바꿀 수 있어요.",
+      "types": {
+        "formal": "정중한 말투",
+        "friendly": "친근한 말투",
+        "casual": "간결한 말투"
+      },
+      "desc": {
+        "formal": "존댓말로 정중하게 대화해요",
+        "friendly": "편안하고 친근하게 대화해요",
+        "casual": "짧고 간결하게 핵심만 전달해요"
+      },
+      "conversations": {
+        "formal": {
+          "user1": "오늘 일정 정리해줄 수 있나요?",
+          "agent1": "네, 말씀하신 내용을 바탕으로 정리해 드릴게요.",
+          "user2": "요약도 해주실 수 있나요?",
+          "agent2": "물론이죠! 핵심만 간략히 정리해 드릴게요."
+        },
+        "friendly": {
+          "user1": "오늘 일정 정리해줘!",
+          "agent1": "응! 얘기해준 내용 바탕으로 정리해줄게~",
+          "user2": "요약도 해줘?",
+          "agent2": "당근이지! 핵심만 쏙 뽑아줄게!"
+        },
+        "casual": {
+          "user1": "일정 정리해줘",
+          "agent1": "ㅇㅇ 바로 정리해봄",
+          "user2": "요약도?",
+          "agent2": "ㄱㄱ"
+        }
+      }
     }
   },
   "toast": {
@@ -586,6 +671,10 @@
   "sync": {
     "pullFailed": "서버에서 데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요."
   },
+  "modelUpdate": {
+    "title": "AI 모델 업데이트 중...",
+    "downloading": "다운로드 중"
+  },
   "microscope": {
     "sidebarEmpty": "노드를 선택하면\n분석 정보가 표시됩니다",
     "noWorkspaces": "아직 분석한 항목이 없습니다",
@@ -608,8 +697,8 @@
       "cosmosDesc": "우주 성운 · 중력 궤도",
       "plasma": "PLASMA",
       "plasmaDesc": "뉴런 네트워크 · 전기 펄스",
-      "crystal": "CRYSTAL",
-      "crystalDesc": "결정체 기하학 · 오로라"
+      "atomic": "ATOMIC",
+      "atomicDesc": "원자 네트워크 · 과학 시각화"
     }
   },
   "graphVisualization": {

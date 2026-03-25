@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import StreamingMarkdownBubble from "./StreamingMarkdownBubble";
 import TypingBubble from "./TypingBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
@@ -58,44 +64,26 @@ function ChatSkeleton({
 }
 
 export default function ChatWindow({
-  avatarUrl,
   threadId,
   isTyping,
+  onScrollStateChange,
+  scrollToBottomRef,
 }: {
   threadId?: string;
   isTyping: boolean;
-  avatarUrl: string | null;
+  avatarUrl?: string | null;
+  onScrollStateChange?: (showButton: boolean) => void;
+  scrollToBottomRef?: React.RefObject<(() => void) | null>;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
-  const lastUserMessageRef = useRef<HTMLDivElement>(null);
-  const aiTurnRef = useRef<HTMLDivElement>(null);
+  const userMessageRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const aiResponseRef = useRef<HTMLDivElement>(null);
 
   const [visibleCount, setVisibleCount] = useState(PAGE);
-  const [containerHeight, setContainerHeight] = useState(0);
-  const [userMessageHeight, setUserMessageHeight] = useState(0);
-  const [aiResponseHeight, setAiResponseHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(!!threadId);
 
-  // 컨테이너 높이 측정
-  useEffect(() => {
-    const updateHeight = () => {
-      if (wrapRef.current) {
-        setContainerHeight(wrapRef.current.clientHeight);
-      }
-    };
-
-    updateHeight();
-
-    const resizeObserver = new ResizeObserver(updateHeight);
-    if (wrapRef.current) {
-      resizeObserver.observe(wrapRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Selector를 사용하여 특정 thread만 구독 (성능 최적화)
   const thread = useThreadsStore((state) =>
     threadId ? state.threads[threadId] : null,
   );
@@ -115,7 +103,10 @@ export default function ChatWindow({
     if (!threadId) return;
 
     await threadRepo.deleteMessageFromThreadById(threadId, messageId);
-    addToast({ type: "success", message: t("chat.deleted", "Message deleted") });
+    addToast({
+      type: "success",
+      message: t("chat.deleted", "Message deleted"),
+    });
   };
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
@@ -137,7 +128,7 @@ export default function ChatWindow({
   }, [threadId, refreshThread]);
 
   useEffect(() => {
-    if (thread !== null) {
+    if (thread != null) {
       setIsLoading(false);
     }
   }, [thread]);
@@ -157,10 +148,7 @@ export default function ChatWindow({
       (lastMessage.role === "assistant" && lastMessage.content === ""));
   const startIndex = hasActiveTurn ? 0 : pagedStartIndex;
   const visible = total ? allMessages.slice(startIndex) : [];
-  const lastVisibleMessage =
-    visible.length > 0 ? visible[visible.length - 1] : null;
 
-  // 이전 메시지(history)와 현재 활성 턴(가장 최근 user + 그 이후 assistant들) 분리
   const { history, currentTurn } = useMemo(() => {
     if (visible.length === 0 || !hasActiveTurn) {
       return { history: visible, currentTurn: [] as ChatMessage[] };
@@ -188,102 +176,86 @@ export default function ChatWindow({
   const turnUserMessage =
     currentTurn[0]?.role === "user" ? currentTurn[0] : null;
   const turnAssistantMessages = turnUserMessage ? currentTurn.slice(1) : [];
-  const lastUserMessage = turnUserMessage;
-  const lastUserMessageId = lastUserMessage?.id;
+  const lastUserMessageId = turnUserMessage?.id;
 
-  const spacerHeight = useMemo(() => {
-    if (!shouldUseTopAnchoredTurn) return 0;
-    return Math.max(
-      0,
-      containerHeight - (userMessageHeight + aiResponseHeight),
-    );
-  }, [
-    shouldUseTopAnchoredTurn,
-    containerHeight,
-    userMessageHeight,
-    aiResponseHeight,
-  ]);
+  // 새 유저 질문: spacer를 직접 DOM 조작으로 충분히 키운 뒤 스크롤
+  useLayoutEffect(() => {
+    if (!shouldUseTopAnchoredTurn) return;
 
-  const alignCurrentTurnToTop = () => {
-    const scroller = wrapRef.current;
-    const userMessageEl = lastUserMessageRef.current;
-    if (!scroller || !userMessageEl) return;
+    const wrap = wrapRef.current;
+    const userMsg = userMessageRef.current;
+    const spacerEl = spacerRef.current;
+    if (!wrap || !userMsg || !spacerEl) return;
 
-    const scrollerRect = scroller.getBoundingClientRect();
-    const userRect = userMessageEl.getBoundingClientRect();
-    const targetTop = userRect.top - scrollerRect.top + scroller.scrollTop;
+    // 스크롤 가능하도록 spacer를 viewport 높이만큼 미리 확보 (state 타이밍 문제 우회)
+    spacerEl.style.height = `${wrap.clientHeight}px`;
 
-    if (Math.abs(scroller.scrollTop - targetTop) > 1) {
-      scroller.scrollTop = targetTop;
-    }
-  };
+    const targetScrollTop = Math.max(0, userMsg.offsetTop - 16);
+    wrap.scrollTop = targetScrollTop;
+  }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
 
-  // 유저/AI 영역 높이 측정 (스트리밍 중 지속 갱신)
-  useEffect(() => {
-    if (!shouldUseTopAnchoredTurn) {
-      setUserMessageHeight(0);
-      setAiResponseHeight(0);
-      return;
-    }
-
-    const measureHeights = () => {
-      const userHeight = lastUserMessageRef.current?.offsetHeight ?? 0;
-      const aiHeight = aiTurnRef.current?.offsetHeight ?? 0;
-      setUserMessageHeight((prev) =>
-        Math.abs(prev - userHeight) > 1 ? userHeight : prev,
-      );
-      setAiResponseHeight((prev) =>
-        Math.abs(prev - aiHeight) > 1 ? aiHeight : prev,
-      );
-    };
-
-    measureHeights();
-
-    const resizeObserver = new ResizeObserver(measureHeights);
-    if (lastUserMessageRef.current) {
-      resizeObserver.observe(lastUserMessageRef.current);
-    }
-    if (aiTurnRef.current) {
-      resizeObserver.observe(aiTurnRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [
-    shouldUseTopAnchoredTurn,
-    lastUserMessageId,
-    turnAssistantMessages.length,
-    total,
-  ]);
-
-  // 유저 메시지 추가/스트리밍 높이 변경 시 상단 정렬 유지
+  // AI 응답이 커질수록 spacer를 줄이고, 응답이 viewport를 넘으면 하단 자동 스크롤
   useEffect(() => {
     if (!shouldUseTopAnchoredTurn) return;
-    if (spacerHeight <= 0) return;
 
-    requestAnimationFrame(() => {
-      alignCurrentTurnToTop();
+    const spacerEl = spacerRef.current;
+    const aiEl = aiResponseRef.current;
+    const wrap = wrapRef.current;
+    if (!spacerEl || !aiEl || !wrap) return;
+
+    const ro = new ResizeObserver(() => {
+      const aiHeight = aiEl.offsetHeight;
+      const viewportHeight = wrap.clientHeight;
+      const newSpacerHeight = Math.max(0, viewportHeight - aiHeight);
+      spacerEl.style.height = `${newSpacerHeight}px`;
+      // scrollTop은 건드리지 않음 → 유저 메시지 상단 위치 고정
     });
-  }, [
-    shouldUseTopAnchoredTurn,
-    lastUserMessageId,
-    spacerHeight,
-    userMessageHeight,
-    aiResponseHeight,
-  ]);
 
-  // AI 응답 스트리밍 중일 때 하단 자동 스크롤
+    ro.observe(aiEl);
+    return () => ro.disconnect();
+  }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
+
+  // active turn 중 visibleCount를 total로 유지: 전환 후 startIndex가 0으로 유지됨
   useEffect(() => {
-    if (!isTyping) return;
-    if (shouldUseTopAnchoredTurn) return;
+    if (hasActiveTurn && total > visibleCount) {
+      setVisibleCount(total);
+    }
+  }, [hasActiveTurn, total, visibleCount]);
+
+  // active turn 중 scrollTop을 매 렌더마다 기억 (전환 직전 값 보존용)
+  const savedScrollTopRef = useRef(0);
+  useLayoutEffect(() => {
+    if (!hasActiveTurn) return;
+    const wrap = wrapRef.current;
+    if (wrap) savedScrollTopRef.current = wrap.scrollTop;
+  });
+
+  // 스크롤 위치 추적 → 최하단이 아닐 때 플로팅 버튼 표시
+  useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    const check = () => {
+      const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 80;
+      onScrollStateChange?.(!atBottom);
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    return () => el.removeEventListener("scroll", check);
+  }, [isLoading, onScrollStateChange]);
 
-    requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-  }, [isTyping, total, shouldUseTopAnchoredTurn]);
+  // 스트리밍 완료 시 (hasActiveTurn: true → false) spacer가 사라져 scrollHeight가 줄어도 위치 유지
+  const prevHasActiveTurnRef = useRef(hasActiveTurn);
+  useLayoutEffect(() => {
+    const wasActive = prevHasActiveTurnRef.current;
+    prevHasActiveTurnRef.current = hasActiveTurn;
+
+    if (wasActive && !hasActiveTurn) {
+      const wrap = wrapRef.current;
+      if (wrap) {
+        wrap.scrollTop = savedScrollTopRef.current;
+      }
+    }
+  }, [hasActiveTurn]);
 
   // 상단 sentinel로 이전 메시지 로드
   useEffect(() => {
@@ -314,25 +286,17 @@ export default function ChatWindow({
     return () => io.disconnect();
   }, [startIndex, threadId, shouldUseTopAnchoredTurn]);
 
-  // 전체 visible 배열에서 마지막 메시지 ID 확인
   const lastMessageId =
     visible.length > 0 ? visible[visible.length - 1]?.id : null;
   const lastMessageRole =
     visible.length > 0 ? visible[visible.length - 1]?.role : null;
 
-  // 메시지 버블 렌더링 함수
-  const renderMessage = (m: ChatMessage, isInCurrentTurn: boolean = false) => {
+  const renderMessage = (m: ChatMessage) => {
     const isUser = m.role === "user";
 
-    // 전체 visible 배열에서 마지막 어시스턴트 메시지인지 확인 (스트리밍 중인 메시지)
     const isLastAssistantMessage =
       !isUser && m.id === lastMessageId && lastMessageRole === "assistant";
 
-    // currentTurn의 마지막 유저 메시지인지 확인
-    const isLastUserInTurn =
-      isInCurrentTurn && isUser && lastUserMessage?.id === m.id;
-
-    // Assistant 메시지가 빈 문자열이면 TypingBubble 표시
     if (!isUser && m.content === "") {
       return (
         <div key={m.id} className="mb-10 flex justify-start">
@@ -346,7 +310,6 @@ export default function ChatWindow({
     return (
       <div
         key={m.id}
-        ref={isLastUserInTurn ? lastUserMessageRef : null}
         className={`flex ${isUser ? "justify-end" : "justify-start"} items-start mb-10`}
         title={new Date(m.ts).toLocaleString()}
       >
@@ -376,7 +339,7 @@ export default function ChatWindow({
                 className="w-6 h-6 flex-shrink-0 pt-1"
                 style={{ marginTop: 0 }}
               />
-              <div className="flex flex-col min-w-0 overflow-hidden">
+              <div className="flex flex-col min-w-0 overflow-hidden w-full">
                 <StreamingMarkdownBubble
                   text={m.content}
                   isStreaming={isLastAssistantMessage && isTyping}
@@ -387,7 +350,7 @@ export default function ChatWindow({
               <div className="flex items-center gap-2.5 mt-2 ml-1.5">
                 <div
                   onClick={() => handleCopyMessage(m.id, m.content)}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
                 >
                   {copiedMessageId === m.id ? (
                     <FiCheck size={13} />
@@ -396,15 +359,14 @@ export default function ChatWindow({
                   )}
                 </div>
                 <div
-                  // TODO: retry 기능 구현
                   onClick={() => {}}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
                 >
                   <FiRefreshCw size={13} />
                 </div>
                 <div
                   onClick={() => void handleDeleteMessage(m.id)}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-red-500 hover:bg-bg-secondary transition-colors"
+                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-red-500 hover:bg-bg-secondary transition-colors cursor-pointer"
                   title={t("chat.deleteMessage", "Delete message")}
                 >
                   <FiTrash2 size={13} />
@@ -416,6 +378,19 @@ export default function ChatWindow({
       </div>
     );
   };
+
+  const scrollToBottom = () => {
+    const el = wrapRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  // scrollToBottomRef에 함수 등록 (early return 전에 위치해야 Rules of Hooks 준수)
+  useEffect(() => {
+    if (scrollToBottomRef) scrollToBottomRef.current = scrollToBottom;
+    return () => {
+      if (scrollToBottomRef) scrollToBottomRef.current = null;
+    };
+  });
 
   if (!threadId) {
     return (
@@ -438,8 +413,10 @@ export default function ChatWindow({
       ref={wrapRef}
       className="h-full min-h-0 overflow-y-auto overscroll-contain"
       style={{
+        position: "relative",
         scrollbarWidth: "none",
         msOverflowStyle: "none",
+        overflowAnchor: "none",
       }}
     >
       <style>{`
@@ -451,20 +428,22 @@ export default function ChatWindow({
         <div ref={topSentinelRef} />
 
         {/* 이전 메시지들 (history) */}
-        <div>{history.map((msg) => renderMessage(msg, false))}</div>
+        <div>{history.map((msg) => renderMessage(msg))}</div>
 
         {/* 현재 턴 (가장 최근 user 턴) */}
         {shouldUseTopAnchoredTurn && (
-          <>
-            <div>
-              {turnUserMessage ? renderMessage(turnUserMessage, true) : null}
-              <div ref={aiTurnRef}>
-                {turnAssistantMessages.map((msg) => renderMessage(msg, true))}
-              </div>
+          <div>
+            {/* 유저 메시지 */}
+            <div ref={userMessageRef}>
+              {turnUserMessage ? renderMessage(turnUserMessage) : null}
             </div>
-            {/* 동적 여백 - AI 응답이 길어질수록 줄어듦 */}
-            <div style={{ height: `${spacerHeight}px` }} />
-          </>
+            {/* AI 응답: userMessage 바로 아래에서 아래로 자람 */}
+            <div ref={aiResponseRef}>
+              {turnAssistantMessages.map((msg) => renderMessage(msg))}
+            </div>
+            {/* 스페이서: AI 응답 아래 빈 공간, 응답이 커질수록 줄어듦 */}
+            <div ref={spacerRef} />
+          </div>
         )}
       </div>
     </div>

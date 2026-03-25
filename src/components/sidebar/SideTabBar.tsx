@@ -61,7 +61,7 @@ export default function SideTabBar({
   });
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full select-none">
       <SideNavigationBar
         path={path.split("/")[1]}
         setOpenSearch={setOpenSearch}

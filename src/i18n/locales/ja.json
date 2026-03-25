@@ -44,7 +44,92 @@
     },
     "visualize": {
       "title": "グラフを生成する",
-      "description": "「グラフを生成」ボタンを押して、あなたの知識マップを作りましょう！"
+      "description": "会話とノートをもとに、あなただけの知識グラフを作りましょう。「グラフを生成」ボタンを押してスタート！"
+    },
+    "permissions": {
+      "title": "アプリの権限設定",
+      "subtitle": "GraphNodeが正しく動作するために以下の権限が必要です。後で設定から変更できます。",
+      "skipHint": "権限を許可しなくても続けることができます。",
+      "notifications": {
+        "title": "通知の権限",
+        "description": "新しいメッセージ、AI応答、アップデートの通知を受け取れます。"
+      },
+      "fullDiskAccess": {
+        "title": "フルディスクアクセス",
+        "description": "MCPファイルシステムサーバーがすべてのフォルダにアクセスできます。システム設定で許可してください。",
+        "hint": "リストにGraphNodeが表示されない場合は、+ボタンを押してアプリを手動で追加してください。"
+      },
+      "status": {
+        "granted": "許可済み",
+        "denied": "拒否済み",
+        "checking": "確認中...",
+        "waiting": "許可待ち中..."
+      },
+      "action": {
+        "request": "許可する",
+        "openSettings": "設定で許可"
+      }
+    },
+    "userType": {
+      "title": "あなたはどんな方ですか？",
+      "subtitle": "パーソナライズのために教えてください。いつでも変更できます。",
+      "types": {
+        "developer": "開発者",
+        "student": "学生",
+        "entrepreneur": "起業家",
+        "researcher": "研究者",
+        "creator": "クリエイター",
+        "other": "その他"
+      },
+      "desc": {
+        "developer": "コード、技術文書、アーキテクチャ",
+        "student": "講義ノート、論文、学習資料",
+        "entrepreneur": "ビジネスアイデア、戦略、市場分析",
+        "researcher": "論文、研究資料、参考文献",
+        "creator": "コンテンツ、アイデア、インスピレーション",
+        "other": "その他すべて"
+      }
+    },
+    "interests": {
+      "title": "興味のある分野を選んでください",
+      "subtitle": "関心のあるトピックを選択するか、自分で入力してください。スキップしても大丈夫です。",
+      "placeholder": "直接入力...",
+      "skipText": "スキップ",
+      "presets": ["AI / 機械学習", "Web開発", "データ分析", "起業 / スタートアップ", "デザイン / UX", "マーケティング", "ライティング / コンテンツ", "研究 / 論文", "自己啓発", "財務 / 投資", "語学学習", "科学 / 工学"]
+    },
+    "tone": {
+      "title": "エージェントの話し方を選んでください",
+      "subtitle": "AIエージェントが使う話し方です。設定でいつでも変更できます。",
+      "types": {
+        "formal": "丁寧な話し方",
+        "friendly": "フレンドリーな話し方",
+        "casual": "シンプルな話し方"
+      },
+      "desc": {
+        "formal": "礼儀正しく丁寧に",
+        "friendly": "親しみやすく温かく",
+        "casual": "短く要点だけ伝える"
+      },
+      "conversations": {
+        "formal": {
+          "user1": "今日の予定を整理していただけますか？",
+          "agent1": "はい、おっしゃった内容をもとに整理いたします。",
+          "user2": "要約もお願いできますか？",
+          "agent2": "もちろんです！要点を簡潔にまとめますね。"
+        },
+        "friendly": {
+          "user1": "今日の予定まとめてくれる？",
+          "agent1": "もちろん！話してくれた内容でまとめるね〜",
+          "user2": "要約もしてくれる？",
+          "agent2": "いいよ！ポイントだけぱっとまとめるね！"
+        },
+        "casual": {
+          "user1": "予定まとめて",
+          "agent1": "了解、まとめてみた",
+          "user2": "要約も？",
+          "agent2": "おk"
+        }
+      }
     }
   },
   "toast": {
@@ -591,6 +676,10 @@
   "sync": {
     "pullFailed": "サーバーからデータを同期できませんでした。接続状態を確認してください。"
   },
+  "modelUpdate": {
+    "title": "AIモデルを更新中...",
+    "downloading": "ダウンロード中"
+  },
   "visualizeDetail": {
     "subtitle": "Microscopeによる知識の可視化",
     "noData": {
@@ -608,8 +697,8 @@
       "cosmosDesc": "宇宙星雲 · 重力軌道",
       "plasma": "PLASMA",
       "plasmaDesc": "ニューラルネット · 電気パルス",
-      "crystal": "CRYSTAL",
-      "crystalDesc": "結晶幾何学 · オーロラ"
+      "atomic": "ATOMIC",
+      "atomicDesc": "アトミックネット · 科学的可視化"
     }
   },
   "graphVisualization": {

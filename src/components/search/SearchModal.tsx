@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getEmbedding } from "@/managers/embeddingModelManager";
 import { IoClose, IoSearch } from "react-icons/io5";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { noteRepo } from "@/managers/noteRepo";
@@ -21,6 +22,11 @@ export default function SearchModal({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const { keybinds } = useKeybindsStore();
+
+  useEffect(() => {
+    if (!debouncedSearchQuery.trim()) return;
+    getEmbedding(debouncedSearchQuery);
+  }, [debouncedSearchQuery]);
 
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const searchKeybind = keybinds.search;

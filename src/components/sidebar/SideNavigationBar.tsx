@@ -12,21 +12,51 @@ import VisualizeIconActive from "@/assets/icons/share_active.svg";
 import SearchIconActive from "@/assets/icons/search_active.svg";
 import SettingsIcon from "@/assets/icons/settings.svg";
 import SettingsIconActive from "@/assets/icons/settings_active.svg";
-import { IoNotificationsOutline, IoNotificationsOffOutline, IoFlaskOutline } from "react-icons/io5";
+import {
+  IoNotificationsOutline,
+  IoNotificationsOffOutline,
+  IoFlaskOutline,
+} from "react-icons/io5";
 import { TbMicroscope } from "react-icons/tb";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
 type NavItem =
-  | { id: string; icon: string; iconAcitve: string; label: string; isReactIcon?: false }
-  | { id: string; ReactIcon: React.ComponentType<{ className?: string }>; label: string; isReactIcon: true };
+  | {
+      id: string;
+      icon: string;
+      iconAcitve: string;
+      label: string;
+      isReactIcon?: false;
+    }
+  | {
+      id: string;
+      ReactIcon: React.ComponentType<{ className?: string }>;
+      label: string;
+      isReactIcon: true;
+    };
 
 const NAVIGATION_ITEMS: NavItem[] = [
   { id: "chat", icon: ChatIcon, iconAcitve: ChatIconActive, label: "chat" },
   { id: "notes", icon: NoteIcon, iconAcitve: NoteIconActive, label: "notes" },
-  { id: "visualize", icon: VisualizeIcon, iconAcitve: VisualizeIconActive, label: "visualize" },
-  { id: "microscope", ReactIcon: TbMicroscope, label: "microscope", isReactIcon: true },
-  { id: "search", icon: SearchIcon, iconAcitve: SearchIconActive, label: "search" },
+  {
+    id: "visualize",
+    icon: VisualizeIcon,
+    iconAcitve: VisualizeIconActive,
+    label: "visualize",
+  },
+  {
+    id: "microscope",
+    ReactIcon: TbMicroscope,
+    label: "microscope",
+    isReactIcon: true,
+  },
+  {
+    id: "search",
+    icon: SearchIcon,
+    iconAcitve: SearchIconActive,
+    label: "search",
+  },
 ];
 
 export default function SideNavigationBar({
@@ -48,7 +78,7 @@ export default function SideNavigationBar({
 
   return (
     <div
-      className={`bg-sidebar-background flex flex-col py-2.5 px-2.5 items-stretch justify-between`}
+      className={`bg-sidebar-background flex flex-col py-2.5 px-2.5 items-stretch justify-between select-none`}
     >
       <div className="flex flex-col items-center justify-center gap-2">
         <div

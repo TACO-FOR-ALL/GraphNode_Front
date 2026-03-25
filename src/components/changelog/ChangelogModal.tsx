@@ -127,7 +127,9 @@ export default function ChangelogModal() {
                 {entry.features[validLang].map((feature, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    <span className="text-sm text-text-secondary">{feature}</span>
+                    <span className="text-sm text-text-secondary">
+                      {feature}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -147,7 +149,9 @@ export default function ChangelogModal() {
                 {entry.improvements[validLang].map((improvement, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
-                    <span className="text-sm text-text-secondary">{improvement}</span>
+                    <span className="text-sm text-text-secondary">
+                      {improvement}
+                    </span>
                   </li>
                 ))}
               </ul>
