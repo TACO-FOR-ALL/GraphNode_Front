@@ -8,7 +8,11 @@ export default function widowIPC() {
   ipcMain.on("window:maximize", () => {
     const w = BrowserWindow.getFocusedWindow();
     if (!w) return;
-    w.isMaximized() ? w.unmaximize() : w.maximize();
+    if (process.platform === "darwin") {
+      w.setFullScreen(!w.isFullScreen());
+    } else {
+      w.isMaximized() ? w.unmaximize() : w.maximize();
+    }
   });
   ipcMain.on("window:close", () => BrowserWindow.getFocusedWindow()?.close());
 }
