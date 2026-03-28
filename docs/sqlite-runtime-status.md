@@ -11,6 +11,7 @@
 - threads
 - outbox
 - trash
+- local chat embeddings
 
 CLI도 같은 SQLite DB를 읽고 씁니다.
 
@@ -22,7 +23,7 @@ CLI도 같은 SQLite DB를 읽고 씁니다.
 - 구현 위치:
   - `/Users/johnhan/Development/GraphNode_Front/packages/storage/src/sqlite-migrations.ts`
 
-현재 version은 `1`이며, 다음 항목을 1회성으로 정리합니다.
+현재 version은 `1`이며, 과거 실험 스키마를 현재 런타임 구조에 맞게 정리합니다.
 
 - 과거 임베딩 실험 테이블
   - `note_chunks`
@@ -51,8 +52,10 @@ Dexie는 더 이상 active runtime path의 일부가 아닙니다.
 - repository selector가 기본적으로 SQLite adapter를 반환
 - outbox coalescing이 `window.graphnodeAPI`를 통해 동작
 - trash 동작이 SQLite IPC를 통해 동작
+- 현재 기본 스키마에 `embedding_queue`, `chat_embeddings`가 포함됨
+- 메인 프로세스의 `embeddingService`가 앱 시작/종료 시 lifecycle을 관리함
 - 현재 SQLite runtime path 기준으로 build 통과
-- 실제 로컬 DB에서 예전 임베딩 실험 테이블이 제거됨
+- 실제 로컬 DB에서 예전 임베딩 실험 테이블은 compatibility migration 대상이고, 현행 임베딩 테이블은 유지됨
 
 ## 다음 정리 후보
 

@@ -41,13 +41,8 @@ import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
 import { useOnboardingStore } from "./store/useOnboardingStore";
 import Onboarding from "./components/onboarding/Onboarding";
-import { useEmbeddingModelStore } from "./store/useEmbeddingModelStore";
-import ModelUpdateBanner from "./components/ModelUpdateBanner";
-import {
-  getChangelogModelName,
-  downloadModel,
-  removeModel,
-} from "./managers/embeddingModelManager";
+import { useEmbeddingStatusStore } from "./store/useEmbeddingStatusStore";
+import { getChangelogModelName } from "./managers/embeddingModelManager";
 
 export default function App() {
   return (
@@ -117,34 +112,13 @@ function MainLayout() {
   }, [lastSeenVersion, setModalOpen, hasCompletedOnboarding]);
 
   // 임베딩 모델 버전 체크 및 업데이트
-  const {
-    installedModelName,
-    setInstalledModelName,
-    setIsDownloading,
-    setDownloadProgress,
-    setDownloadFile,
-  } = useEmbeddingModelStore();
-
+  // changelog.json의 최신 모델명을 메인 프로세스에 전달
   useEffect(() => {
-    const changelogModel = getChangelogModelName();
-    if (!changelogModel || installedModelName === changelogModel) return;
-
-    const oldModel = installedModelName;
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    setDownloadFile("");
-
-    downloadModel(changelogModel, (file, progress) => {
-      setDownloadFile(file);
-      setDownloadProgress(Math.round(progress));
-    })
-      .then(async () => {
-        if (oldModel) await removeModel(oldModel);
-        setInstalledModelName(changelogModel);
-      })
-      .catch((e) => console.error("Model update failed:", e))
-      .finally(() => setIsDownloading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const modelName = getChangelogModelName();
+    if (modelName) {
+      window.graphnodeAPI?.setEmbeddingModel(modelName);
+    }
+  }, []);
 
   // 휴지통 만료 항목 정리
   useEffect(() => {
@@ -152,6 +126,20 @@ function MainLayout() {
       console.error("Failed to cleanup expired trash items:", err);
     });
   }, []);
+
+  // 기존 스레드 벡터 임베딩 초기 마이그레이션 - 개발 도구에서 수동 실행
+  // useEffect(() => {
+  //   window.graphnodeAPI?.runEmbeddingMigration().catch((err: unknown) =>
+  //     console.error("Embedding migration failed:", err),
+  //   );
+  // }, []);
+
+  // 임베딩 서비스 상태 구독
+  const setEmbeddingStatus = useEmbeddingStatusStore((s) => s.setStatus);
+  useEffect(() => {
+    const unsub = window.graphnodeAPI?.onEmbeddingStatusChanged(setEmbeddingStatus);
+    return () => unsub?.();
+  }, [setEmbeddingStatus]);
 
   // Visualize 페이지에서는 AgentToolTipButton 안 보이기
   const isVisualizePage = location.pathname.startsWith("/visualize") || location.pathname.startsWith("/graph-lab");
@@ -309,7 +297,6 @@ function MainLayout() {
         <Toaster />
         <ChangelogModal />
         <Onboarding />
-        <ModelUpdateBanner />
       </div>
     </div>
   );

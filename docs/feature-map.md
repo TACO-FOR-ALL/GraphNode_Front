@@ -26,6 +26,9 @@
 
 - 사용자 설정 로드 및 그래프 색상 적용
 - 언어 설정을 서버 선호 언어와 동기화
+- changelog 기준 임베딩 모델 버전 확인 및 필요 시 다운로드
+- 기존 스레드 임베딩 초기 마이그레이션 실행
+- 임베딩 상태 이벤트를 구독해 전역 store에 반영
 - 최초 실행 시 기본 노트 생성
 - 서버 최신 데이터 1회 pull 수행
 - SSE 알림 연결, 온보딩, 변경로그 모달, 전역 단축키 초기화
@@ -44,6 +47,7 @@
 - `src/components/ChatWindow.tsx`: 메시지 목록 및 스레드 표시
 - `src/components/chat/ChatSendBox.tsx`: 메시지 입력과 전송
 - `src/managers/threadRepo.ts`: 로컬 스레드 CRUD
+- `electron/main/embedding/embeddingService.ts`: 채팅 Q&A pair 임베딩 생성과 유사도 검색
 
 ### 그래프 시각화
 
@@ -61,6 +65,7 @@
 - `src/components/settings/MCPPanel.tsx`: MCP 서버 관리
 - `src/components/settings/ApiKeyManager.tsx`: API 키 관리
 - `src/components/settings/DataPrivacyPanel.tsx`: import/export, CLI 설치, 데이터 삭제
+- `src/components/settings/DeveloperToolsPanel.tsx`: 강제 sync, 그래프 디버그, 임베딩 상태/샘플 확인
 - `electron/main/mcp/*`: 내장/커스텀 MCP 서버 런타임
 
 ## 상태와 데이터 흐름
@@ -69,10 +74,12 @@
 - 서버 캐시: React Query
 - 공용 React Query 인스턴스: `src/queryClient.ts`
 - 로컬 영속성(활성): SQLite
+- 로컬 semantic retrieval: `embedding_queue`, `chat_embeddings`
 - 로컬 영속성(레거시): `src/legacy/indexeddb/graphnode.db.ts`
 - 동기화: `src/managers/outboxRepo.ts`, `src/managers/syncWorker.ts`, `src/managers/pullWorker.ts`
 - 실시간 알림: `src/managers/notificationClient.ts`, `src/store/useNotificationStore.ts`
 - 시각화-에이전트 연계: `src/store/useAgentToolBoxStore.ts`, `src/components/layout/AiAgentChatBox.tsx`
+- 임베딩 상태 표시: `src/store/useEmbeddingStatusStore.ts`, `src/components/sidebar/SideNavigationBar.tsx`
 
 ## 처음 읽어볼 파일 추천
 
@@ -83,3 +90,4 @@
 5. `docs/architecture.md`
 6. `docs/data-sync-ipc.md`
 7. `docs/microscope-agent-flow.md`
+8. `docs/embedding-runtime.md`

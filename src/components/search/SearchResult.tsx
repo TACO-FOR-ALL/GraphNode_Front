@@ -5,7 +5,16 @@ import { useMemo, useCallback } from "react";
 import SearchResultItem from "./SearchResultItem";
 import { useTranslation } from "react-i18next";
 
-type SearchResultData = ChatThread[] | Note[] | undefined;
+type SemanticChatResult = {
+  id: string;
+  title: string;
+  threadId: string;
+  messageId: string;
+  messageSnippet: string;
+  score: number;
+};
+
+type SearchResultData = ChatThread[] | Note[] | SemanticChatResult[] | undefined;
 
 export default function SearchResult({
   type,
@@ -14,7 +23,7 @@ export default function SearchResult({
   searchQuery,
   setOpenSearch,
 }: {
-  type: "chat" | "note";
+  type: "chat" | "note" | "semantic-chat";
   title: string;
   data: SearchResultData;
   searchQuery: string;
@@ -23,7 +32,6 @@ export default function SearchResult({
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // searchQuery가 변경될 때만 정규식 재생성
   const searchRegex = useMemo(() => {
     if (!searchQuery || searchQuery.length === 0) return null;
     return new RegExp(
@@ -33,35 +41,72 @@ export default function SearchResult({
   }, [searchQuery]);
 
   const onItemClick = useCallback(
-    (item: ChatThread | Note) => {
-      navigate(`/${type}/${item.id}`);
+    (item: ChatThread | Note | { id: string; title: string }) => {
+      if (type === "semantic-chat") {
+        const sem = item as unknown as SemanticChatResult;
+        navigate(`/chat/${sem.threadId}?messageId=${sem.messageId}`);
+      } else if (type === "chat") {
+        const thread = item as ChatThread;
+        const msgId = thread.matchedMessageId;
+        navigate(`/chat/${thread.id}${msgId ? `?messageId=${msgId}` : ""}`);
+      } else {
+        navigate(`/note/${item.id}`);
+      }
       setOpenSearch(false);
     },
     [navigate, type, setOpenSearch],
   );
+
+  if (!data || data.length === 0) {
+    return (
+      <div>
+        <p className="font-noto-sans-kr font-medium text-[12px] text-text-secondary mb-2">
+          {title}
+        </p>
+        <div className="w-full flex items-center justify-center py-1">
+          <p className="text-[14px] font-medium text-text-secondary">
+            {t("search.noResultFound", { provider: title })}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <p className="font-noto-sans-kr font-medium text-[12px] text-text-secondary mb-2">
         {title}
       </p>
-      {data && data.length > 0 ? (
-        data.map((item) => (
+      {(data as Array<ChatThread | Note | SemanticChatResult>).map((item) => {
+        if (type === "semantic-chat") {
+          const sem = item as SemanticChatResult;
+          return (
+            <SearchResultItem
+              key={`${sem.threadId}-${sem.messageId}`}
+              type="semantic-chat"
+              item={{ id: sem.threadId, title: sem.title }}
+              onItemClick={() => onItemClick(sem as unknown as ChatThread)}
+              searchRegex={null}
+              matchedMessageContent={sem.messageSnippet}
+            />
+          );
+        }
+        const thread = item as ChatThread;
+        const note = item as Note;
+        return (
           <SearchResultItem
             key={item.id}
             type={type}
-            item={item}
+            item={type === "chat" ? thread : note}
             onItemClick={onItemClick}
             searchRegex={searchRegex}
+            matchedMessageId={type === "chat" ? thread.matchedMessageId : null}
+            matchedMessageContent={
+              type === "chat" ? thread.matchedMessageContent : null
+            }
           />
-        ))
-      ) : (
-        <div className="w-full flex items-center justify-center py-1">
-          <p className="text-[14px] font-medium text-text-secondary">
-            {t("search.noResultFound", { provider: title })}
-          </p>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }

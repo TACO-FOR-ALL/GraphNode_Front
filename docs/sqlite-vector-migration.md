@@ -1,10 +1,18 @@
-# SQLite + 벡터 확장 전환 계획
+# SQLite + 벡터 계층 상태
 
-이 문서는 현재 적용된 기본 스키마 설명이 아니라, 추후 임베딩/유사도 검색 기능을
-도입할 때의 확장 방향을 정리한 계획 문서입니다.
+이 문서는 초기 계획 문서에서 갱신된 버전입니다.
+현재 GraphNode는 SQLite 본체 위에 로컬 임베딩 계층을 실제 런타임으로 포함합니다.
 
-현재 기본 SQLite 스키마에는 `note_chunks`, `embeddings`, `embedding_jobs` 테이블이
-포함되어 있지 않습니다.
+현재 기본 SQLite 스키마에는 아래 임베딩 관련 테이블이 포함됩니다.
+
+- `embedding_queue`
+- `chat_embeddings`
+
+반면 과거 실험 단계의 아래 테이블은 현행 스키마가 아니며, compatibility migration 정리 대상입니다.
+
+- `note_chunks`
+- `embeddings`
+- `embedding_jobs`
 
 ## 왜 저장소를 바꾸는가
 
@@ -36,13 +44,14 @@
   - `threads`
   - `outbox_ops`
 
-### 시맨틱 검색 계층
+### 현재 임베딩 계층
 
-- 노트 내용을 `note_chunks`로 분할
-- embedding vector는 `embeddings`에 저장
-- 백그라운드 작업 상태는 `embedding_jobs`에 저장
+- 채팅 메시지에서 Q&A pair를 추출
+- 작업 큐는 `embedding_queue`
+- 실제 벡터 저장은 `chat_embeddings`
+- 생성/검색 서비스는 Electron main의 `embeddingService`
 
-이 구조는 CRUD와 sync를 안정적으로 유지하면서도 로컬 semantic search를 가능하게 합니다.
+현재 구조는 CRUD와 sync를 안정적으로 유지하면서도 로컬 semantic search를 가능하게 합니다.
 
 ## 왜 순수 벡터 DB를 메인 저장소로 쓰지 않는가
 
@@ -84,8 +93,14 @@ GraphNode에는 다음 조합이 더 적합합니다.
 - desktop read path를 SQLite-backed repository로 전환
 - Dexie는 rollback/debug 용으로만 남김
 
-### 4단계: vector 기능 추가
+### 현재까지 완료된 단계
 
-- note chunking 추가
-- embedding 생성 작업 추가
-- vector search/related notes/RAG 흐름 추가
+- SQLite가 notes/folders/threads/outbox의 기본 저장소가 됨
+- 채팅 스레드 기반 임베딩 큐/저장 테이블이 런타임에 포함됨
+- 메인 프로세스에서 모델 로드, 배치 추론, 유사도 검색, 초기 마이그레이션을 처리함
+
+### 남은 확장 후보
+
+- note chunking 기반 임베딩 계층 추가
+- note/graph 문맥을 섞은 retrieval 설계
+- richer ranking / RAG 흐름 추가

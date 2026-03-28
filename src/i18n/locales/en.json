@@ -629,7 +629,11 @@
         "connectedTo": "Successfully connected to {{service}}",
         "authenticate": "Connect with Google",
         "authenticating": "Connecting...",
-        "disconnect": "Disconnect"
+        "disconnect": "Disconnect",
+        "credentialsMissing": "Credentials file not found",
+        "credentialsMissingDesc": "Google credentials file not found. Click the ⚙️ settings icon to upload the file.",
+        "openFolder": "Open Folder",
+        "uploadCredentials": "Upload File"
       },
       "vscode": {
         "title": "VS Code Settings",

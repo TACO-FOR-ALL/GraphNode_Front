@@ -629,7 +629,11 @@
         "connectedTo": "{{service}} に正常に接続しました",
         "authenticate": "Google で接続",
         "authenticating": "接続中...",
-        "disconnect": "接続を解除"
+        "disconnect": "接続を解除",
+        "credentialsMissing": "認証情報ファイルが見つかりません",
+        "credentialsMissingDesc": "Google認証情報ファイルが見つかりません。⚙️ 設定アイコンをクリックしてファイルをアップロードしてください。",
+        "openFolder": "フォルダを開く",
+        "uploadCredentials": "ファイルをアップロード"
       },
       "vscode": {
         "title": "VS Code 設定",

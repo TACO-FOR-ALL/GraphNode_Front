@@ -303,9 +303,34 @@ export async function applyStartupSyncToSQLite(
   try {
     db.exec("BEGIN");
 
+    // notes.folder_id → folders(id) FK 때문에 폴더를 노트보다 먼저 upsert해야 함
+    const upsertFolder = db.prepare(`
+      INSERT INTO folders (id, name, parent_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        parent_id = excluded.parent_id,
+        created_at = excluded.created_at,
+        updated_at = excluded.updated_at
+    `);
+    const deleteFolder = db.prepare(`DELETE FROM folders WHERE id = ?`);
+
+    payload.folders.upserts.forEach((folder) => {
+      upsertFolder.run(
+        folder.id,
+        folder.name,
+        folder.parentId,
+        folder.createdAt,
+        folder.updatedAt,
+      );
+    });
+    payload.folders.deleteIds.forEach((id) => {
+      deleteFolder.run(id);
+    });
+
     const upsertNote = db.prepare(`
       INSERT INTO notes (id, title, content, folder_id, created_at, updated_at, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, NULL)
+      VALUES (?, ?, ?, (SELECT id FROM folders WHERE id = ?), ?, ?, NULL)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         content = excluded.content,
@@ -332,30 +357,6 @@ export async function applyStartupSyncToSQLite(
     });
     payload.notes.deleteIds.forEach((id) => {
       deleteNote.run(Date.now(), id);
-    });
-
-    const upsertFolder = db.prepare(`
-      INSERT INTO folders (id, name, parent_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        name = excluded.name,
-        parent_id = excluded.parent_id,
-        created_at = excluded.created_at,
-        updated_at = excluded.updated_at
-    `);
-    const deleteFolder = db.prepare(`DELETE FROM folders WHERE id = ?`);
-
-    payload.folders.upserts.forEach((folder) => {
-      upsertFolder.run(
-        folder.id,
-        folder.name,
-        folder.parentId,
-        folder.createdAt,
-        folder.updatedAt,
-      );
-    });
-    payload.folders.deleteIds.forEach((id) => {
-      deleteFolder.run(id);
     });
 
     const includeLegacyMessagesJson = hasLegacyMessagesJsonColumn(db);
@@ -527,7 +528,7 @@ export async function upsertSQLiteNote(note: SQLiteNoteInput) {
     db.prepare(
       `
         INSERT INTO notes (id, title, content, folder_id, created_at, updated_at, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, (SELECT id FROM folders WHERE id = ?), ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title,
           content = excluded.content,
@@ -559,10 +560,12 @@ export async function bulkUpsertSQLiteNotes(notes: SQLiteNoteInput[]) {
 
   try {
     db.exec("BEGIN");
+    // folder_id는 해당 폴더가 folders 테이블에 존재할 때만 설정, 없으면 NULL
+    // → FK 위반 방지 (삭제된 폴더 참조, 아직 동기화 안 된 폴더 등)
     const stmt = db.prepare(
       `
         INSERT INTO notes (id, title, content, folder_id, created_at, updated_at, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, (SELECT id FROM folders WHERE id = ?), ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title,
           content = excluded.content,
@@ -770,18 +773,43 @@ export async function searchSQLiteThreads(query: string) {
   const db = await openDatabase();
   try {
     const rows = db.prepare(`
-      SELECT DISTINCT t.id, t.title, t.updated_at
+      SELECT
+        t.id, t.title, t.updated_at,
+        (
+          SELECT tm2.id FROM thread_messages tm2
+          WHERE tm2.thread_id = t.id
+            AND LOWER(tm2.content) LIKE '%' || LOWER(?) || '%'
+          ORDER BY tm2.ts ASC
+          LIMIT 1
+        ) as matched_message_id,
+        (
+          SELECT tm2.content FROM thread_messages tm2
+          WHERE tm2.thread_id = t.id
+            AND LOWER(tm2.content) LIKE '%' || LOWER(?) || '%'
+          ORDER BY tm2.ts ASC
+          LIMIT 1
+        ) as matched_message_content
       FROM threads t
-      JOIN thread_messages tm ON tm.thread_id = t.id
       WHERE t.deleted_at IS NULL
         AND (
           LOWER(t.title) LIKE '%' || LOWER(?) || '%'
-          OR LOWER(tm.content) LIKE '%' || LOWER(?) || '%'
+          OR EXISTS (
+            SELECT 1 FROM thread_messages tm
+            WHERE tm.thread_id = t.id
+              AND LOWER(tm.content) LIKE '%' || LOWER(?) || '%'
+          )
         )
       ORDER BY t.updated_at DESC
-    `).all(query, query) as SQLiteThreadRow[];
+    `).all(query, query, query, query) as (SQLiteThreadRow & {
+      matched_message_id: string | null;
+      matched_message_content: string | null;
+    })[];
 
-    return rows.map((row) => mapSQLiteThreadWithMessages(db, row));
+    return rows.map((row) => ({
+      ...mapSQLiteThreadWithMessages(db, row),
+      matchedMessageId: row.matched_message_id ?? null,
+      matchedMessageContent: row.matched_message_content ?? null,
+    }));
   } finally {
     db.close();
   }

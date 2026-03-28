@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEmbeddingStatusStore } from "@/store/useEmbeddingStatusStore";
 import { api } from "@/apiClient";
 import { noteRepo } from "@/managers/noteRepo";
 import { folderRepo } from "@/managers/folderRepo";
@@ -25,11 +26,47 @@ export function isDeveloperToolsEnabled() {
   );
 }
 
+const EMBEDDING_MODELS = [
+  { id: "Xenova/paraphrase-multilingual-MiniLM-L12-v2", label: "MiniLM-L12-v2 (384d)" },
+  { id: "Xenova/multilingual-e5-base", label: "multilingual-e5-base (768d)" },
+] as const;
+
+const DTYPE_OPTIONS = [
+  { id: "fp32",  label: "fp32",  accuracy: "★★★★★", load: "heavy",    note: "최고 정확도 / 메모리 가장 큼" },
+  { id: "fp16",  label: "fp16",  accuracy: "★★★★☆", load: "moderate", note: "권장 ✦ 정확도↑ / 메모리 1/2", recommended: true },
+  { id: "q8",    label: "q8",    accuracy: "★★★☆☆", load: "light",    note: "균형 / 메모리 1/4" },
+  { id: "int8",  label: "int8",  accuracy: "★★★☆☆", load: "light",    note: "q8 유사 (정수 양자화)" },
+  { id: "q4",    label: "q4",    accuracy: "★★☆☆☆", load: "lightest", note: "최소 메모리 / 정확도↓" },
+] as const;
+
 export default function DeveloperToolsPanel() {
   const queryClient = useQueryClient();
   const [isReconcilingNotes, setIsReconcilingNotes] = useState(false);
   const [isSyncingChatFromServer, setIsSyncingChatFromServer] = useState(false);
   const [isSyncingChatFromClient, setIsSyncingChatFromClient] = useState(false);
+  const { currentModel: storeModel, setStatus } = useEmbeddingStatusStore();
+  const [selectedModel, setSelectedModel] = useState<string>(
+    storeModel || EMBEDDING_MODELS[0].id,
+  );
+  // 실제 서비스 모델이 바뀌면 드롭다운도 동기화
+  useEffect(() => {
+    if (storeModel && storeModel !== selectedModel) {
+      setSelectedModel(storeModel);
+    }
+  }, [storeModel]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [isSwitchingModel, setIsSwitchingModel] = useState(false);
+  const [selectedDtype, setSelectedDtype] = useState<string>("fp16");
+  const [isSwitchingDtype, setIsSwitchingDtype] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ file: string; progress: number } | null>(null);
+
+  useEffect(() => {
+    const unsub = window.graphnodeAPI.onEmbeddingStatusChanged((status) => {
+      setStatus(status);
+      setDownloadProgress(status.downloadProgress ?? null);
+      if (status.modelLoaded) setIsSwitchingModel(false);
+    });
+    return unsub;
+  }, [setStatus]);
 
   const { resetOnboarding, startOnboarding } = useOnboardingStore();
   const { resetLastSeenVersion, setModalOpen } = useChangelogStore();
@@ -233,6 +270,7 @@ export default function DeveloperToolsPanel() {
                 await threadRepo.clearAll();
                 await trashRepo.clearThreadsTrash();
                 await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("thread");
+                await window.graphnodeAPI.clearAllEmbeddings();
                 const result = await api.conversations.deleteAll();
                 console.log(result);
               }}
@@ -337,6 +375,108 @@ export default function DeveloperToolsPanel() {
               className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
             >
               delete graph
+            </button>
+          </div>
+        </div>
+
+        {/* Embedding */}
+        <div className="p-4">
+          <p className="text-[10px] font-semibold text-text-tertiary mb-3 uppercase tracking-widest">
+            Embedding
+          </p>
+          <div className="flex gap-2 flex-wrap items-center mb-3">
+            <select
+              value={selectedModel}
+              onChange={async (e) => {
+                const model = e.target.value;
+                setSelectedModel(model);
+                setIsSwitchingModel(true);
+                setDownloadProgress(null);
+                await window.graphnodeAPI.switchEmbeddingModel(model, "cpu");
+                console.log(`model switched to: ${model} (cpu)`);
+              }}
+              disabled={isSwitchingModel || isSwitchingDtype}
+              className="px-2 py-1.5 text-xs text-text-secondary bg-bg-tertiary border border-text-tertiary/30 rounded transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {EMBEDDING_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+            <select
+              value={selectedDtype}
+              onChange={async (e) => {
+                const dtype = e.target.value;
+                setSelectedDtype(dtype);
+                setIsSwitchingDtype(true);
+                setDownloadProgress(null);
+                await window.graphnodeAPI.switchEmbeddingDtype(dtype, "cpu");
+                setIsSwitchingDtype(false);
+                console.log(`dtype switched to: ${dtype}`);
+              }}
+              disabled={isSwitchingModel || isSwitchingDtype}
+              className="px-2 py-1.5 text-xs text-text-secondary bg-bg-tertiary border border-text-tertiary/30 rounded transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {DTYPE_OPTIONS.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}{d.recommended ? " ✦" : ""} — {d.accuracy} {d.load}
+                </option>
+              ))}
+            </select>
+            {(isSwitchingModel || isSwitchingDtype) && (
+              <span className="text-[10px] text-text-tertiary">switching...</span>
+            )}
+          </div>
+          <div className="mb-3">
+            {(() => {
+              const opt = DTYPE_OPTIONS.find((d) => d.id === selectedDtype);
+              return opt ? (
+                <p className="text-[10px] text-text-tertiary">{opt.note}</p>
+              ) : null;
+            })()}
+          </div>
+          {(isSwitchingModel || isSwitchingDtype) && (
+            <div className="mb-3">
+              {downloadProgress ? (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-text-tertiary">
+                    <span className="truncate max-w-[260px]">{downloadProgress.file}</span>
+                    <span>{downloadProgress.progress.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-bg-tertiary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-400/60 rounded-full transition-all duration-300"
+                      style={{ width: `${downloadProgress.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-text-tertiary">모델 로드 중...</p>
+              )}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={async () => {
+                const [chats, notes] = await Promise.all([
+                  window.graphnodeAPI.inspectEmbeddingsFull(20),
+                  window.graphnodeAPI.inspectNoteEmbeddingsFull(20),
+                ]);
+                console.log("[chat embeddings]", chats);
+                console.log("[note embeddings]", notes);
+              }}
+              className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
+            >
+              check embeddings
+            </button>
+            <button
+              onClick={async () => {
+                await window.graphnodeAPI.resetAndRegenerateEmbeddings();
+                await window.graphnodeAPI.startEmbeddingService("cpu");
+                console.log("reset and regenerate done (batch cpu, size 10)");
+              }}
+              className="px-3 py-1.5 text-xs text-red-400/70 hover:text-red-400 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
+            >
+              reset + regenerate all embeddings
             </button>
           </div>
         </div>

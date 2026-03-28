@@ -11,6 +11,7 @@ import path from "node:path";
 import fs from "node:fs";
 import ipc from "./ipc";
 import { config, isAllowedOrigin } from "./config";
+import { embeddingService } from "./embedding/embeddingService";
 
 // CommonJS 모듈을 ES module에서 로드 (import 사용하면 npm run dist에서 오류 발생 함)
 const require = createRequire(import.meta.url);
@@ -601,6 +602,11 @@ app.whenReady().then(() => {
   registerNotificationHandlers();
   createLoginWindow();
 
+  // 임베딩 서비스 시작 (모델 로드 + stuck job 복구)
+  embeddingService.start().catch((err) =>
+    console.error("[main] EmbeddingService start failed:", err),
+  );
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       if (mainWindow) {
@@ -610,6 +616,13 @@ app.whenReady().then(() => {
       }
     }
   });
+});
+
+app.on("before-quit", () => {
+  // 앱 종료 전 processing 잡 pending으로 복구
+  embeddingService.stop().catch((err) =>
+    console.error("[main] EmbeddingService stop failed:", err),
+  );
 });
 
 app.on("window-all-closed", () => {

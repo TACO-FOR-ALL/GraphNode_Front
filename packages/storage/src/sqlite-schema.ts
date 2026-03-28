@@ -113,4 +113,38 @@ CREATE TABLE IF NOT EXISTS app_meta (
   value_json TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS embedding_queue (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  user_message_id TEXT NOT NULL,
+  assistant_message_id TEXT NOT NULL,
+  combined_text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_embedding_queue_status ON embedding_queue(status);
+CREATE INDEX IF NOT EXISTS idx_embedding_queue_thread ON embedding_queue(thread_id);
+
+CREATE TABLE IF NOT EXISTS chat_embeddings (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  user_message_id TEXT NOT NULL,
+  assistant_message_id TEXT NOT NULL,
+  embedding BLOB NOT NULL,
+  model_name TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_embeddings_thread ON chat_embeddings(thread_id);
+
+CREATE TABLE IF NOT EXISTS note_embeddings (
+  note_id TEXT PRIMARY KEY,
+  embedding BLOB NOT NULL,
+  model_name TEXT NOT NULL,
+  embedded_at INTEGER NOT NULL
+);
 `;

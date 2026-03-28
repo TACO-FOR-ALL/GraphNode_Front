@@ -1,13 +1,15 @@
 import ChatWindow from "../components/ChatWindow";
 import ChatSendBox from "../components/chat/ChatSendBox";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { FiArrowDown } from "react-icons/fi";
 
 export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
   const [isTyping, setIsTyping] = useState(false);
   const { threadId } = useParams<{ threadId?: string }>();
+  const [searchParams] = useSearchParams();
+  const scrollToMessageId = searchParams.get("messageId") ?? undefined;
   const { isExpanded } = useSidebarExpandStore();
   const [is2xl, setIs2xl] = useState(
     () => window.matchMedia("(min-width: 1536px)").matches,
@@ -50,6 +52,7 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
           avatarUrl={avatarUrl}
           onScrollStateChange={handleScrollStateChange}
           scrollToBottomRef={scrollToBottomRef}
+          scrollToMessageId={scrollToMessageId}
         />
       </div>
 

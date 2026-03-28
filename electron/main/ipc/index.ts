@@ -5,6 +5,7 @@ import keytarIPC from "./keytar";
 import fileIPC from "./file";
 import mcpIPC from "./mcp";
 import graphNodeIPC from "./graphnode";
+import embeddingIPC from "./embedding";
 
 export default function ipc() {
   systemIPC();
@@ -14,4 +15,5 @@ export default function ipc() {
   fileIPC();
   mcpIPC();
   graphNodeIPC();
+  embeddingIPC();
 }

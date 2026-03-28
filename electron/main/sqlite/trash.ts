@@ -7,6 +7,7 @@ import {
   getDefaultDatabaseLocation,
   readSQLiteSchema,
 } from "@graphnode/storage";
+import { deleteEmbeddingsByThread } from "./embedding";
 
 type TrashedNoteRow = {
   id: string;
@@ -249,6 +250,7 @@ export async function deleteSQLiteTrashedNote(id: string) {
 export async function deleteSQLiteTrashedThread(id: string) {
   const db = await openDatabase();
   try {
+    deleteEmbeddingsByThread(id, db);
     db.prepare(`DELETE FROM trashed_threads WHERE id = ?`).run(id);
     return { ok: true };
   } finally {
@@ -269,6 +271,10 @@ export async function deleteSQLiteTrashedFolder(id: string) {
 export async function clearSQLiteTrash() {
   const db = await openDatabase();
   try {
+    const threadRows = db.prepare(`SELECT id FROM trashed_threads`).all() as { id: string }[];
+    for (const row of threadRows) {
+      deleteEmbeddingsByThread(row.id, db);
+    }
     db.exec(`
       DELETE FROM trashed_notes;
       DELETE FROM trashed_threads;
@@ -284,6 +290,12 @@ export async function bulkDeleteExpiredSQLiteTrash(now: number) {
   const db = await openDatabase();
   try {
     db.exec("BEGIN");
+    const expiredThreadRows = db.prepare(
+      `SELECT id FROM trashed_threads WHERE expires_at < ?`,
+    ).all(now) as { id: string }[];
+    for (const row of expiredThreadRows) {
+      deleteEmbeddingsByThread(row.id, db);
+    }
     db.prepare(`DELETE FROM trashed_notes WHERE expires_at < ?`).run(now);
     db.prepare(`DELETE FROM trashed_threads WHERE expires_at < ?`).run(now);
     db.prepare(`DELETE FROM trashed_folders WHERE expires_at < ?`).run(now);

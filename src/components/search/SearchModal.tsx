@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getEmbedding } from "@/managers/embeddingModelManager";
 import { IoClose, IoSearch } from "react-icons/io5";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { noteRepo } from "@/managers/noteRepo";
@@ -13,6 +12,15 @@ import useDebounce from "@/hooks/useDebounce";
 import { useKeybindsStore } from "@/store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 
+type SemanticChatResult = {
+  id: string;
+  title: string;
+  threadId: string;
+  messageId: string;
+  messageSnippet: string;
+  score: number;
+};
+
 export default function SearchModal({
   setOpenSearch,
 }: {
@@ -22,11 +30,6 @@ export default function SearchModal({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const { keybinds } = useKeybindsStore();
-
-  useEffect(() => {
-    if (!debouncedSearchQuery.trim()) return;
-    getEmbedding(debouncedSearchQuery);
-  }, [debouncedSearchQuery]);
 
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const searchKeybind = keybinds.search;
@@ -38,17 +41,42 @@ export default function SearchModal({
     return mod;
   });
 
+  const enabled = debouncedSearchQuery.length > 1;
+
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["notes", debouncedSearchQuery],
     queryFn: () => noteRepo.getNoteByQuery(debouncedSearchQuery),
-    enabled: searchQuery.length > 1,
+    enabled,
   });
 
   const { data: chatThreads } = useQuery<ChatThread[]>({
     queryKey: ["chatThreads", debouncedSearchQuery],
     queryFn: () => threadRepo.getThreadByQuery(debouncedSearchQuery),
-    enabled: searchQuery.length > 1,
+    enabled,
   });
+
+  const { data: semanticChats } = useQuery<SemanticChatResult[]>({
+    queryKey: ["semanticChats", debouncedSearchQuery],
+    queryFn: async () => {
+      const results = await window.graphnodeAPI.searchEmbeddingChats(
+        debouncedSearchQuery,
+        5,
+      );
+      return results.map((r) => ({
+        id: r.threadId,
+        title: r.threadTitle,
+        threadId: r.threadId,
+        messageId: r.messageId,
+        messageSnippet: r.messageSnippet,
+        score: r.score,
+      }));
+    },
+    enabled,
+    retry: false,
+  });
+
+  // 기존 렌더러 임베딩 모델은 사용하지 않음 (메인 프로세스에서 처리)
+  useEffect(() => {}, [debouncedSearchQuery]);
 
   return (
     <DraggableModal setOpenModal={setOpenSearch}>
@@ -62,6 +90,7 @@ export default function SearchModal({
             className="w-full bg-transparent outline-none border-none text-[14px] placeholder:text-text-secondary text-text-primary"
             type="text"
             placeholder={t("search.placeholder")}
+            autoFocus
           />
         </div>
         <div
@@ -76,6 +105,17 @@ export default function SearchModal({
       </div>
       {/* content */}
       <section className="flex flex-col w-full flex-1 overflow-y-scroll custom-scrollbar px-4 py-3 gap-3">
+        {/* 시맨틱 검색 결과 (AI 유사도) */}
+        {semanticChats && semanticChats.length > 0 && (
+          <SearchResult
+            type="semantic-chat"
+            title={t("search.semanticChats", "AI 유사 채팅")}
+            data={semanticChats}
+            searchQuery={searchQuery}
+            setOpenSearch={setOpenSearch}
+          />
+        )}
+        {/* 키워드 검색 결과 */}
         <SearchResult
           type="chat"
           title={t("search.chats")}

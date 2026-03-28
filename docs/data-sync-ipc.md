@@ -43,9 +43,12 @@ SQLite 스키마 정의 위치:
 - `trashed_threads`
 - `trashed_folders`
 - `app_meta`
+- `embedding_queue`
+- `chat_embeddings`
 
-현재 기본 SQLite 스키마에는 임베딩/벡터 검색용 테이블을 포함하지 않습니다.
-관련 구조는 실제 요구사항이 정리된 뒤 별도 migration으로 추가할 예정입니다.
+현재 기본 SQLite 스키마에는 로컬 채팅 임베딩을 위한 큐와 저장 테이블이 포함됩니다.
+이 계층은 채팅 semantic retrieval과 유사도 검색을 위한 보조 계층이며,
+notes/folders/threads/outbox의 canonical storage를 대체하지 않습니다.
 
 추가로, 현재 런타임 스키마와 과거 실험 스키마 차이를 정리하기 위한
 compatibility migration이 존재합니다.
@@ -161,6 +164,34 @@ Outbox는 SQLite에 저장되며 아래 계층을 통해 다뤄집니다.
 - 만료된 trash는 cleanup에서 정리
 - Data Privacy 동작에서 명시적으로 비울 수 있음
 
+## 임베딩 런타임
+
+임베딩은 SQLite 위에서 동작하는 메인 프로세스 백그라운드 서비스입니다.
+
+- 서비스 위치:
+  - `/Users/johnhan/Development/GraphNode_Front/electron/main/embedding/embeddingService.ts`
+- SQLite helper:
+  - `/Users/johnhan/Development/GraphNode_Front/electron/main/sqlite/embedding.ts`
+- IPC:
+  - `/Users/johnhan/Development/GraphNode_Front/electron/main/ipc/embedding.ts`
+
+현재 동작:
+
+1. 앱 시작 시 메인 프로세스가 embedding service를 시작
+2. 서비스는 model을 로드하고, 이전 실행에서 `processing`으로 남은 잡을 복구
+3. 스레드별 Q&A 쌍을 `embedding_queue`에 enqueue
+4. 백그라운드 batch 추론으로 `chat_embeddings`에 저장
+5. 상태 변화는 `embedding:statusChanged` 이벤트로 렌더러에 push
+
+현재 renderer에서 쓰는 주요 표면:
+
+- `window.graphnodeAPI.enqueueThreadEmbedding(threadId)`
+- `window.graphnodeAPI.searchEmbeddings(queryText, limit?)`
+- `window.graphnodeAPI.getEmbeddingStatus()`
+- `window.graphnodeAPI.inspectEmbeddings(limit?)`
+- `window.graphnodeAPI.runEmbeddingMigration()`
+- `window.graphnodeAPI.clearAllEmbeddings()`
+
 ## Data Privacy 관련 동작
 
 Settings UI:
@@ -204,6 +235,14 @@ Preload 노출 위치:
 - startup sync apply/bootstrap status
 - 데이터 export
 - CLI install/status
+
+별도 `embedding:*` IPC 범위:
+
+- embedding queue enqueue
+- semantic similarity search
+- 상태 조회 / 상태 push 구독
+- 기존 스레드 임베딩 초기 마이그레이션
+- 디버그용 inspect / clearAll
 
 ## 운영 체크리스트
 

@@ -46,9 +46,33 @@ export class MCPClient extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       try {
+        // 패키징된 앱에서는 PATH에 Node.js/npm 경로가 없으므로 직접 추가
+        const isWindows = process.platform === "win32";
+        const extraPaths = isWindows
+          ? [
+              "C:\\Program Files\\nodejs",
+              process.env.LOCALAPPDATA
+                ? `${process.env.LOCALAPPDATA}\\Programs\\nodejs`
+                : "",
+              process.env.APPDATA ? `${process.env.APPDATA}\\npm` : "",
+            ]
+              .filter(Boolean)
+              .join(";")
+          : [
+              "/usr/local/bin",
+              "/opt/homebrew/bin",
+              "/opt/homebrew/sbin",
+              "/usr/bin",
+              "/bin",
+            ].join(":");
+        const sep = isWindows ? ";" : ":";
+        const resolvedPath = process.env.PATH
+          ? `${process.env.PATH}${sep}${extraPaths}`
+          : extraPaths;
+
         this.process = spawn(command, args, {
           stdio: ["pipe", "pipe", "pipe"],
-          env: { ...process.env, ...this.config.env },
+          env: { ...process.env, PATH: resolvedPath, ...this.config.env },
           shell: true,
         });
 

@@ -173,12 +173,14 @@ export default function ChatWindow({
   isTyping,
   onScrollStateChange,
   scrollToBottomRef,
+  scrollToMessageId,
 }: {
   threadId?: string;
   isTyping: boolean;
   avatarUrl?: string | null;
   onScrollStateChange?: (showButton: boolean) => void;
   scrollToBottomRef?: React.RefObject<(() => void) | null>;
+  scrollToMessageId?: string;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -395,6 +397,18 @@ export default function ChatWindow({
     }
   }, [hasActiveTurn]);
 
+  // 턴 완료 시 (hasActiveTurn: true → false) 임베딩 큐에 추가
+  useEffect(() => {
+    if (hasActiveTurn || !threadId) return;
+    // prevHasActiveTurnRef는 위의 useLayoutEffect에서 업데이트됨
+    // hasActiveTurn이 false가 된 직후 한 번 실행됨
+    window.graphnodeAPI
+      ?.enqueueThreadEmbedding(threadId)
+      .catch((err: unknown) =>
+        console.error("[ChatWindow] enqueue embedding failed:", err),
+      );
+  }, [hasActiveTurn, threadId]);
+
   // 상단 sentinel로 이전 메시지 로드
   useEffect(() => {
     const el = wrapRef.current;
@@ -429,19 +443,52 @@ export default function ChatWindow({
   const lastMessageRole =
     visible.length > 0 ? visible[visible.length - 1]?.role : null;
 
+  // scrollToMessageId: 특정 메시지로 스크롤
+  useEffect(() => {
+    if (!scrollToMessageId || isLoading || !thread) return;
+
+    // 해당 메시지 인덱스 찾기
+    const idx = allMessages.findIndex((m) => m.id === scrollToMessageId);
+    if (idx === -1) return;
+
+    // 메시지가 visible 범위 밖이면 visibleCount 늘리기
+    if (idx < startIndex) {
+      setVisibleCount(total - idx + PAGE);
+    }
+
+    // 렌더링 후 스크롤
+    requestAnimationFrame(() => {
+      const el = wrapRef.current?.querySelector(
+        `[data-message-id="${scrollToMessageId}"]`,
+      ) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // 강조 표시 (1.5초)
+        el.style.transition = "background-color 0.3s";
+        el.style.backgroundColor = "rgba(var(--color-primary), 0.08)";
+        el.style.borderRadius = "12px";
+        setTimeout(() => {
+          el.style.backgroundColor = "";
+        }, 1500);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollToMessageId, isLoading, thread?.id]);
+
   const renderMessage = (m: ChatMessage) => {
     const isLastAssistant =
       m.role === "assistant" && m.id === lastMessageId && lastMessageRole === "assistant";
     return (
-      <ChatMessageItem
-        key={m.id}
-        message={m}
-        isLastAssistant={isLastAssistant}
-        isStreaming={isLastAssistant && isTyping}
-        userMaxWidth={userMaxWidth}
-        assistantMaxWidth={assistantMaxWidth}
-        onDelete={handleDeleteMessage}
-      />
+      <div key={m.id} data-message-id={m.id}>
+        <ChatMessageItem
+          message={m}
+          isLastAssistant={isLastAssistant}
+          isStreaming={isLastAssistant && isTyping}
+          userMaxWidth={userMaxWidth}
+          assistantMaxWidth={assistantMaxWidth}
+          onDelete={handleDeleteMessage}
+        />
+      </div>
     );
   };
 

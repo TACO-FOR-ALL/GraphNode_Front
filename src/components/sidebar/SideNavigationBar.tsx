@@ -20,6 +20,7 @@ import {
 import { TbMicroscope } from "react-icons/tb";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useEmbeddingStatusStore } from "@/store/useEmbeddingStatusStore";
 
 type NavItem =
   | {
@@ -75,6 +76,7 @@ export default function SideNavigationBar({
   const desktopNotification = useSettingsStore(
     (state) => state.desktopNotification,
   );
+  const { isProcessing: isEmbedding, pendingCount } = useEmbeddingStatusStore();
 
   return (
     <div
@@ -119,7 +121,13 @@ export default function SideNavigationBar({
         ))}
       </div>
       <div className="flex flex-col items-center justify-center gap-2">
-        <div key="profile" className="flex items-center justify-center p-[6px]">
+        {/* 프로필 아바타 + 임베딩 상태 점 */}
+        <div
+          key="profile"
+          className="relative flex items-center justify-center p-[6px]"
+          onMouseEnter={() => setHoveredItem("profile")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
           <img
             src={avatarUrl && avatarUrl.trim() ? avatarUrl : profile}
             alt="profile"
@@ -130,6 +138,23 @@ export default function SideNavigationBar({
               e.currentTarget.src = profile;
             }}
           />
+          {/* 임베딩 처리 중 표시 점 */}
+          {isEmbedding && (
+            <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+          )}
+          {/* hover 툴팁 */}
+          {hoveredItem === "profile" && isEmbedding && (
+            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none">
+              <div className="bg-bg-secondary border border-base-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                <p className="text-xs font-medium text-text-primary mb-0.5">
+                  벡터 임베딩 처리 중
+                </p>
+                <p className="text-xs text-text-secondary">
+                  {pendingCount}개 대기 중
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <div
           key="notification"

@@ -126,6 +126,17 @@ export default function mcpIPC() {
         throw new Error(`Server not found: ${serverId}`);
       }
 
+      // Google Calendar 활성화 시 자격 증명 파일 존재 여부 사전 확인
+      if (enabled && server.builtinType === "google-calendar") {
+        const credentialsDir = path.join(app.getPath("userData"), "mcp-credentials");
+        const credentialsPath = path.join(credentialsDir, "google-oauth-credentials.json");
+        try {
+          await fs.access(credentialsPath);
+        } catch {
+          throw new Error("CREDENTIALS_MISSING");
+        }
+      }
+
       await updateServerConfig(serverId, { enabled });
 
       if (enabled) {
@@ -137,6 +148,14 @@ export default function mcpIPC() {
       return manager.getServerState(serverId);
     },
   );
+
+  // 자격 증명 폴더 열기 (Finder / Explorer)
+  ipcMain.handle("mcp:open-credentials-folder", async () => {
+    const credentialsDir = path.join(app.getPath("userData"), "mcp-credentials");
+    await fs.mkdir(credentialsDir, { recursive: true });
+    await shell.openPath(credentialsDir);
+    return { success: true };
+  });
 
   // Built-in 서버 설정 업데이트 (예: allowedPaths)
   ipcMain.handle(

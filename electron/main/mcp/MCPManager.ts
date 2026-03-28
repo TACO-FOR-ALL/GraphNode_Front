@@ -10,6 +10,63 @@ import {
 import { loadMCPConfig, saveMCPConfig } from "./config";
 import { getBuiltinServerConfig } from "./builtins";
 
+// tool 호출 결과 텍스트를 파싱하여 MCPResource 배열을 구성
+function buildNotionResources(text: string): MCPResource[] {
+  try {
+    const data = JSON.parse(text);
+    const results: unknown[] = Array.isArray(data) ? data : (data.results ?? []);
+    return (results as Record<string, unknown>[]).flatMap((item) => {
+      const id = item.id as string | undefined;
+      if (!id) return [];
+
+      // page 타입
+      if (item.object === "page") {
+        const props = item.properties as Record<string, unknown> | undefined;
+        let title = "";
+        if (props) {
+          const titleProp = Object.values(props).find(
+            (p) => (p as Record<string, unknown>).type === "title",
+          ) as Record<string, unknown> | undefined;
+          const titleArr = titleProp?.title as { text?: { content?: string } }[] | undefined;
+          title = titleArr?.[0]?.text?.content ?? "Untitled";
+        }
+        return [{ uri: `notion://page/${id}`, name: title || "Untitled Page", mimeType: "text/html" }];
+      }
+
+      // database 타입
+      if (item.object === "database") {
+        const titleArr = item.title as { text?: { content?: string } }[] | undefined;
+        const title = titleArr?.[0]?.text?.content ?? "Untitled Database";
+        return [{ uri: `notion://database/${id}`, name: title, mimeType: "application/json" }];
+      }
+
+      return [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function buildGoogleCalendarResources(text: string): MCPResource[] {
+  try {
+    const data = JSON.parse(text);
+    const items: unknown[] = Array.isArray(data) ? data : (data.items ?? data.calendars ?? []);
+    return (items as Record<string, unknown>[]).flatMap((cal) => {
+      const id = cal.id as string | undefined;
+      const summary = cal.summary as string | undefined;
+      if (!id) return [];
+      return [{
+        uri: `google-calendar://${id}`,
+        name: summary ?? id,
+        description: cal.description as string | undefined,
+        mimeType: "application/json",
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
 class MCPManager {
   private static instance: MCPManager;
   private clients: Map<string, MCPClient> = new Map();
@@ -165,10 +222,13 @@ class MCPManager {
         const resourcesResult = await client.listResources();
         resources = resourcesResult.resources || [];
       } catch (e) {
-        console.warn(
-          `[MCPManager] Failed to list resources for ${serverId}:`,
-          e,
-        );
+        // "Method not found"는 서버가 resources를 미구현한 것 — tool 기반으로 직접 빌드
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("Method not found")) {
+          resources = await this.discoverResourcesViaTool(client, serverConfig);
+        } else {
+          console.warn(`[MCPManager] Failed to list resources for ${serverId}:`, e);
+        }
       }
 
       this.updateState(serverId, {
@@ -240,6 +300,33 @@ class MCPManager {
     }
 
     return result;
+  }
+
+  // tool 호출로 리소스 목록 구성 (resources/list 미지원 서버용)
+  private async discoverResourcesViaTool(
+    client: MCPClient,
+    server: MCPServerConfig,
+  ): Promise<MCPResource[]> {
+    try {
+      if (server.builtinType === "notion") {
+        const result = await client.callTool("notion_search", { query: "" });
+        const text = result.content.find((c) => c.type === "text")?.text ?? "";
+        const resources = buildNotionResources(text);
+        console.log(`[MCPManager] Notion resources discovered: ${resources.length}`);
+        return resources;
+      }
+
+      if (server.builtinType === "google-calendar") {
+        const result = await client.callTool("list_calendars", {});
+        const text = result.content.find((c) => c.type === "text")?.text ?? "";
+        const resources = buildGoogleCalendarResources(text);
+        console.log(`[MCPManager] Google Calendar resources discovered: ${resources.length}`);
+        return resources;
+      }
+    } catch (e) {
+      console.warn(`[MCPManager] Resource discovery via tool failed for ${server.id}:`, e);
+    }
+    return [];
   }
 
   // 상태 업데이트 및 알림

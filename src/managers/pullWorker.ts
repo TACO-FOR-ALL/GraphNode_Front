@@ -43,6 +43,26 @@ export async function pullOnce() {
     serverTime,
   };
 
+  // ── Folders ────────────────────────────────────────────────────────────
+  // notes.folder_id → folders(id) FK 때문에 폴더를 노트보다 먼저 upsert해야 함
+  if (folders.length > 0) {
+    const deletedIds = folders.filter((f) => f.deletedAt).map((f) => f.id);
+    const active = folders.filter((f) => !f.deletedAt);
+    const ids = folders.map((f) => f.id);
+    const ops = await outboxRepo.listOpsByEntityIds(ids);
+    const locked = new Set(
+      ops
+        .filter((op) => op.status === "pending" || op.status === "processing")
+        .map((op) => op.entityId),
+    );
+
+    const toUpsert = active.filter((f) => !locked.has(f.id)).map(mapFolder);
+    if (toUpsert.length > 0) await folderRepo.upsertMany(toUpsert);
+
+    const toDelete = deletedIds.filter((id) => !locked.has(id));
+    if (toDelete.length > 0) await folderRepo.deleteMany(toDelete);
+  }
+
   // ── Notes ──────────────────────────────────────────────────────────────
   if (notes.length > 0) {
     const deletedIds = notes.filter((n) => n.deletedAt).map((n) => n.id);
@@ -60,25 +80,6 @@ export async function pullOnce() {
 
     const toDelete = deletedIds.filter((id) => !locked.has(id));
     if (toDelete.length > 0) await noteRepo.deleteMany(toDelete);
-  }
-
-  // ── Folders ────────────────────────────────────────────────────────────
-  if (folders.length > 0) {
-    const deletedIds = folders.filter((f) => f.deletedAt).map((f) => f.id);
-    const active = folders.filter((f) => !f.deletedAt);
-    const ids = folders.map((f) => f.id);
-    const ops = await outboxRepo.listOpsByEntityIds(ids);
-    const locked = new Set(
-      ops
-        .filter((op) => op.status === "pending" || op.status === "processing")
-        .map((op) => op.entityId),
-    );
-
-    const toUpsert = active.filter((f) => !locked.has(f.id)).map(mapFolder);
-    if (toUpsert.length > 0) await folderRepo.upsertMany(toUpsert);
-
-    const toDelete = deletedIds.filter((id) => !locked.has(id));
-    if (toDelete.length > 0) await folderRepo.deleteMany(toDelete);
   }
 
   // ── Conversations / Threads ────────────────────────────────────────────

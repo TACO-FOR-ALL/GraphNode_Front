@@ -66,12 +66,15 @@ CLI 관련:
 - 실시간 기능(알림/SSE, 그래프 생성)은 `VITE_API_BASE` 주입이 필요하므로 개발 실행은 Infisical 명령 기준으로 맞추세요.
 - React Query 캐시 무효화가 컴포넌트 밖에서도 필요하면 `src/queryClient.ts`의 공용 인스턴스를 사용하세요.
 - microscope 관련 상태는 `useMicroscopeGenerationStore`, agent 연계 상태는 `useAgentToolBoxStore`에 모여 있습니다.
+- 임베딩 관련 런타임 상태는 `useEmbeddingStatusStore`, 모델 다운로드 UI 상태는 `useEmbeddingModelStore`에서 관리합니다.
+- `window.graphnodeAPI`에는 SQLite CRUD 외에 embedding IPC도 함께 노출되므로, 메인 프로세스 기능 추가 시 preload/type 정의도 같이 갱신하세요.
 
 ## SQLite 전환 상태
 
 - 현재 active runtime path는 SQLite 기반입니다.
 - renderer는 `window.graphnodeAPI`를 통해 main process의 SQLite IPC를 사용합니다.
 - Dexie 코드는 레거시 어댑터와 옛 테스트에만 남아 있으며, 신규 코드는 Dexie를 직접 참조하지 않아야 합니다.
+- 로컬 임베딩은 SQLite의 보조 계층으로 함께 동작하며, 기본 데이터 저장소를 대체하지 않습니다.
 
 ## 코딩 컨벤션
 

@@ -624,7 +624,11 @@
         "connectedTo": "{{service}}에 성공적으로 연결되었습니다",
         "authenticate": "Google로 연결",
         "authenticating": "연결 중...",
-        "disconnect": "연결 해제"
+        "disconnect": "연결 해제",
+        "credentialsMissing": "자격 증명 파일이 없습니다",
+        "credentialsMissingDesc": "Google 자격 증명 파일이 없습니다. ⚙️ 설정 아이콘을 눌러 파일을 업로드하세요.",
+        "openFolder": "폴더 열기",
+        "uploadCredentials": "파일 업로드"
       },
       "vscode": {
         "title": "VS Code 설정",

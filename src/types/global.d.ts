@@ -357,6 +357,94 @@ declare global {
           threadDeletes: number;
         };
       }>;
+      // ── 임베딩 API ──────────────────────────────────────────────────────
+      enqueueThreadEmbedding: (threadId: string) => Promise<{ ok: true }>;
+      searchEmbeddings: (
+        queryText: string,
+        limit?: number,
+      ) => Promise<
+        Array<{
+          threadId: string;
+          userMessageId: string;
+          assistantMessageId: string;
+          score: number;
+        }>
+      >;
+      getEmbeddingStatus: () => Promise<{
+        modelLoaded: boolean;
+        pendingCount: number;
+        isProcessing: boolean;
+        embeddingCount: number;
+      }>;
+      runEmbeddingMigration: () => Promise<{ ok: true }>;
+      inspectEmbeddings: (limit?: number) => Promise<{
+        status: { modelLoaded: boolean; pendingCount: number; isProcessing: boolean; embeddingCount: number };
+        queueStats: Record<string, number>;
+        samples: Array<{
+          id: string;
+          thread_id: string;
+          user_message_snippet: string;
+          assistant_message_snippet: string;
+          model_name: string;
+          vector_preview: number[];
+          created_at: number;
+        }>;
+      }>;
+      inspectEmbeddingsFull: (limit?: number) => Promise<Array<{
+        id: string;
+        thread_id: string;
+        user_message_snippet: string;
+        assistant_message_snippet: string;
+        model_name: string;
+        dims: number;
+        vector: number[];
+        created_at: number;
+      }>>;
+      inspectNoteEmbeddingsFull: (limit?: number) => Promise<Array<{
+        note_id: string;
+        note_title_snippet: string;
+        note_content_snippet: string;
+        model_name: string;
+        dims: number;
+        vector: number[];
+        embedded_at: number;
+      }>>;
+      setEmbeddingModel: (modelName: string) => Promise<{ ok: true }>;
+      switchEmbeddingModel: (modelName: string, mode?: "auto" | "coreml" | "cpu") => Promise<{ ok: true }>;
+      switchEmbeddingDtype: (dtype: string, mode?: "auto" | "coreml" | "cpu") => Promise<{ ok: true }>;
+      startEmbeddingService: (mode?: "auto" | "coreml" | "cpu") => Promise<{ ok: true }>;
+      startEmbeddingServiceSingle: (mode?: "auto" | "coreml" | "cpu") => Promise<{ ok: true }>;
+      clearAllEmbeddings: () => Promise<{ ok: true }>;
+      resetAndRegenerateEmbeddings: () => Promise<{ ok: true }>;
+      searchEmbeddingChats: (
+        queryText: string,
+        limit?: number,
+      ) => Promise<
+        Array<{
+          threadId: string;
+          threadTitle: string;
+          messageId: string;
+          messageSnippet: string;
+          score: number;
+        }>
+      >;
+      searchEmbeddingNotes: (
+        queryText: string,
+        limit?: number,
+      ) => Promise<Array<{ noteId: string; score: number }>>;
+      onEmbeddingMigrationProgress: (
+        callback: (progress: { done: number; total: number }) => void,
+      ) => () => void;
+      onEmbeddingStatusChanged: (
+        callback: (status: {
+          isProcessing: boolean;
+          pendingCount: number;
+          embeddingCount: number;
+          modelLoaded: boolean;
+          currentModel: string;
+          downloadProgress?: { file: string; progress: number } | null;
+        }) => void,
+      ) => () => void;
     };
     openaiAPI: {
       checkAPIKeyValid: (apiKey: string) => Promise<Result<true>>;
@@ -459,6 +547,7 @@ declare global {
         serverType: "google-drive" | "google-calendar",
       ) => Promise<{ success: boolean }>;
       openGoogleCloudConsole: () => Promise<{ success: boolean }>;
+      openCredentialsFolder: () => Promise<{ success: boolean }>;
       // Google 자격 증명 파일
       selectGoogleCredentialsFile: () => Promise<{
         success: boolean;

@@ -102,6 +102,10 @@ export default function exposeMCPBridge() {
     openGoogleCloudConsole: (): Promise<{ success: boolean }> =>
       ipcRenderer.invoke("mcp:open-google-cloud-console"),
 
+    // 자격 증명 폴더 열기 (Finder / Explorer)
+    openCredentialsFolder: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke("mcp:open-credentials-folder"),
+
     // Google 자격 증명 파일 선택
     selectGoogleCredentialsFile: (): Promise<{
       success: boolean;

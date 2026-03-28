@@ -13,6 +13,8 @@ export type ChatThread = {
   title: string;
   messages: ChatMessage[];
   updatedAt: number;
+  matchedMessageId?: string | null;
+  matchedMessageContent?: string | null;
 };
 
 export type ChatMessageRequest = {

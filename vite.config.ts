@@ -24,7 +24,11 @@ export default defineConfig({
           },
           build: {
             rollupOptions: {
-              external: ["keytar"],
+              input: {
+                main: "electron/main/main.ts",
+                embeddingWorker: "electron/main/embedding/embeddingWorker.ts",
+              },
+              external: ["keytar", "@huggingface/transformers", "onnxruntime-node"],
             },
           },
         },

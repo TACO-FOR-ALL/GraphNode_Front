@@ -26,6 +26,14 @@ const mockExportSQLiteNotesToDirectory = jest.fn();
 const mockExportSQLiteThreadsToDirectory = jest.fn();
 const mockGetCliInstallStatus = jest.fn();
 const mockInstallBundledCli = jest.fn();
+const mockInspectEmbeddings = jest.fn();
+const mockInspectEmbeddingsFull = jest.fn();
+const mockInspectNoteEmbeddingsFull = jest.fn();
+const mockClearAllEmbeddings = jest.fn();
+const mockOnEmbeddingStatusChanged = jest.fn();
+const mockSwitchEmbeddingModel = jest.fn();
+const mockStartEmbeddingService = jest.fn();
+const mockStartEmbeddingServiceSingle = jest.fn();
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -209,6 +217,59 @@ describe("DataPrivacyPanel developer tools", () => {
       shellConfigPath: "/Users/test/.zprofile",
     });
     mockInvalidateQueries.mockResolvedValue(undefined);
+    mockInspectEmbeddings.mockResolvedValue({
+      status: {
+        modelLoaded: true,
+        pendingCount: 0,
+        isProcessing: false,
+        embeddingCount: 2,
+      },
+      queueStats: {
+        pending: 0,
+        processing: 0,
+        done: 2,
+        failed: 0,
+      },
+      samples: [],
+    });
+    mockInspectEmbeddingsFull.mockResolvedValue([
+      {
+        id: "chat-embedding-1",
+        thread_id: "thread-1",
+        user_message_snippet: "hello",
+        assistant_message_snippet: "world",
+        model_name: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+        dims: 384,
+        vector: [0.1, 0.2],
+        created_at: 1,
+      },
+    ]);
+    mockInspectNoteEmbeddingsFull.mockResolvedValue([
+      {
+        note_id: "note-1",
+        note_title_snippet: "Note 1",
+        note_content_snippet: "# Note 1",
+        model_name: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+        dims: 384,
+        vector: [0.3, 0.4],
+        embedded_at: 1,
+      },
+    ]);
+    mockClearAllEmbeddings.mockResolvedValue({ ok: true });
+    mockOnEmbeddingStatusChanged.mockImplementation((callback) => {
+      callback({
+        modelLoaded: true,
+        pendingCount: 0,
+        isProcessing: false,
+        embeddingCount: 0,
+        currentModel: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+        downloadProgress: null,
+      });
+      return jest.fn();
+    });
+    mockSwitchEmbeddingModel.mockResolvedValue({ ok: true });
+    mockStartEmbeddingService.mockResolvedValue({ ok: true });
+    mockStartEmbeddingServiceSingle.mockResolvedValue({ ok: true });
 
     Object.defineProperty(globalThis, "__GRAPHNODE_TEST_DEVTOOLS__", {
       configurable: true,
@@ -224,6 +285,14 @@ describe("DataPrivacyPanel developer tools", () => {
         deleteSQLiteOutboxByEntityType: mockDeleteSQLiteOutboxByEntityType,
         exportSQLiteNotesToDirectory: mockExportSQLiteNotesToDirectory,
         exportSQLiteThreadsToDirectory: mockExportSQLiteThreadsToDirectory,
+        inspectEmbeddings: mockInspectEmbeddings,
+        inspectEmbeddingsFull: mockInspectEmbeddingsFull,
+        inspectNoteEmbeddingsFull: mockInspectNoteEmbeddingsFull,
+        clearAllEmbeddings: mockClearAllEmbeddings,
+        onEmbeddingStatusChanged: mockOnEmbeddingStatusChanged,
+        switchEmbeddingModel: mockSwitchEmbeddingModel,
+        startEmbeddingService: mockStartEmbeddingService,
+        startEmbeddingServiceSingle: mockStartEmbeddingServiceSingle,
       },
     });
   });
@@ -302,15 +371,22 @@ describe("DataPrivacyPanel developer tools", () => {
     ]);
   });
 
-  test("force sync chat uploads local-only chats and pulls server-only chats", async () => {
-    mockGetThreadList.mockResolvedValueOnce([
-      { id: "local-thread", title: "Local Chat", messages: [], updatedAt: 1 },
-    ]);
-    mockBulkCreateConversations.mockResolvedValueOnce({
-      isSuccess: true,
-      statusCode: 200,
-      data: { conversations: [] },
+  test("embedding samples button requests full stored chat and note vectors", async () => {
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    await renderPanel();
+
+    await act(async () => {
+      clickButtonByText("get embedding samples");
     });
+
+    expect(mockInspectEmbeddings).toHaveBeenCalledWith(20);
+    expect(mockInspectEmbeddingsFull).toHaveBeenCalledWith(5);
+    expect(mockInspectNoteEmbeddingsFull).toHaveBeenCalledWith(5);
+
+    consoleSpy.mockRestore();
+  });
+
+  test("force sync chat by server pulls server chats into local state", async () => {
     const { api } = jest.requireMock("@/apiClient") as {
       api: { conversations: { list: jest.Mock } };
     };
@@ -332,18 +408,10 @@ describe("DataPrivacyPanel developer tools", () => {
     await renderPanel();
 
     await act(async () => {
-      clickButtonByText("force sync chat");
+      clickButtonByText("force sync chat by server");
     });
 
-    expect(mockBulkCreateConversations).toHaveBeenCalledWith({
-      conversations: [
-        {
-          id: "local-thread",
-          title: "Local Chat",
-          messages: [],
-        },
-      ],
-    });
+    expect(mockClearThreads).toHaveBeenCalledTimes(1);
     expect(mockUpsertManyThreads).toHaveBeenCalledWith([
       expect.objectContaining({ id: "server-thread", title: "Server Chat" }),
     ]);
@@ -434,6 +502,7 @@ describe("DataPrivacyPanel developer tools", () => {
     expect(mockClearThreads).toHaveBeenCalledTimes(1);
     expect(mockClearThreadsTrash).toHaveBeenCalledTimes(1);
     expect(mockDeleteSQLiteOutboxByEntityType).toHaveBeenCalledWith("thread");
+    expect(mockClearAllEmbeddings).toHaveBeenCalledTimes(1);
     expect(mockDeleteAllConversations).toHaveBeenCalledTimes(1);
   });
 

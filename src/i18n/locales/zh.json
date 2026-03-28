@@ -629,7 +629,11 @@
         "connectedTo": "已成功连接到 {{service}}",
         "authenticate": "使用 Google 连接",
         "authenticating": "连接中...",
-        "disconnect": "断开连接"
+        "disconnect": "断开连接",
+        "credentialsMissing": "未找到凭据文件",
+        "credentialsMissingDesc": "未找到 Google 凭据文件。请点击 ⚙️ 设置图标上传文件。",
+        "openFolder": "打开文件夹",
+        "uploadCredentials": "上传文件"
       },
       "vscode": {
         "title": "VS Code 设置",

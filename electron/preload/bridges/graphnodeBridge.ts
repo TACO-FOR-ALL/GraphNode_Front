@@ -334,5 +334,159 @@ export default function exposeGraphNodeBridge() {
         threadDeletes: number;
       };
     }> => ipcRenderer.invoke("graphnode:applyStartupSync", payload),
+
+    // ── 임베딩 API ──────────────────────────────────────────────────────────
+
+    /** 스레드의 새 Q&A 쌍을 메인 프로세스 임베딩 큐에 추가 */
+    enqueueThreadEmbedding: (threadId: string): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:enqueue", threadId),
+
+    /** 텍스트 쿼리로 유사한 Q&A 쌍 검색 */
+    searchEmbeddings: (
+      queryText: string,
+      limit?: number,
+    ): Promise<
+      Array<{
+        threadId: string;
+        userMessageId: string;
+        assistantMessageId: string;
+        score: number;
+      }>
+    > => ipcRenderer.invoke("embedding:search", queryText, limit),
+
+    /** 임베딩 서비스 상태 조회 */
+    getEmbeddingStatus: (): Promise<{
+      modelLoaded: boolean;
+      pendingCount: number;
+      isProcessing: boolean;
+      embeddingCount: number;
+    }> => ipcRenderer.invoke("embedding:getStatus"),
+
+    /** 기존 스레드 초기 마이그레이션 실행 (최초 1회) */
+    runEmbeddingMigration: (): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:runMigration"),
+
+    /** 임베딩 샘플 + 큐 통계 조회 (디버그/인스펙션) */
+    inspectEmbeddings: (limit?: number): Promise<{
+      status: { modelLoaded: boolean; pendingCount: number; isProcessing: boolean; embeddingCount: number };
+      queueStats: Record<string, number>;
+      samples: Array<{
+        id: string;
+        thread_id: string;
+        user_message_snippet: string;
+        assistant_message_snippet: string;
+        model_name: string;
+        vector_preview: number[];
+        created_at: number;
+      }>;
+    }> => ipcRenderer.invoke("embedding:inspect", limit),
+
+    /** 임베딩 전체 벡터 조회 (차원 검증용) */
+    inspectEmbeddingsFull: (limit?: number): Promise<Array<{
+      id: string;
+      thread_id: string;
+      user_message_snippet: string;
+      assistant_message_snippet: string;
+      model_name: string;
+      dims: number;
+      vector: number[];
+      created_at: number;
+    }>> => ipcRenderer.invoke("embedding:inspectFull", limit),
+
+    /** 노트 임베딩 전체 벡터 조회 (차원 검증용) */
+    inspectNoteEmbeddingsFull: (limit?: number): Promise<Array<{
+      note_id: string;
+      note_title_snippet: string;
+      note_content_snippet: string;
+      model_name: string;
+      dims: number;
+      vector: number[];
+      embedded_at: number;
+    }>> => ipcRenderer.invoke("embedding:inspectNotesFull", limit),
+
+    /** changelog 모델명 메인 프로세스에 전달 */
+    setEmbeddingModel: (modelName: string): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:setModel", modelName),
+
+    /** 실행 중인 모델을 교체하고 재시작 (개발 도구용) */
+    switchEmbeddingModel: (modelName: string, mode?: "auto" | "coreml" | "cpu"): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:switchModel", modelName, mode ?? "cpu"),
+
+    /** dtype 변경 후 worker 재시작 (개발 도구용) */
+    switchEmbeddingDtype: (dtype: string, mode?: "auto" | "coreml" | "cpu"): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:switchDtype", dtype, mode ?? "cpu"),
+
+    /** 모델 로드 + 처리 수동 시작 (개발 도구용, 배치 추론) */
+    startEmbeddingService: (mode?: "auto" | "coreml" | "cpu"): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:startService", mode ?? "auto"),
+
+    /** 모델 로드 + 처리 수동 시작 (단일 추론 - 배치 비교용) */
+    startEmbeddingServiceSingle: (mode?: "auto" | "coreml" | "cpu"): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:startServiceSingle", mode ?? "auto"),
+
+    /** 모든 임베딩 삭제 (개발 도구용) */
+    clearAllEmbeddings: (): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:clearAll"),
+
+    /** 모든 임베딩 초기화 후 전체 재생성 */
+    resetAndRegenerateEmbeddings: (): Promise<{ ok: true }> =>
+      ipcRenderer.invoke("embedding:resetAndRegenerate"),
+
+    /** 채팅 유사도 검색 (context 포함) */
+    searchEmbeddingChats: (
+      queryText: string,
+      limit?: number,
+    ): Promise<
+      Array<{
+        threadId: string;
+        threadTitle: string;
+        messageId: string;
+        messageSnippet: string;
+        score: number;
+      }>
+    > => ipcRenderer.invoke("embedding:searchChats", queryText, limit),
+
+    /** 노트 유사도 검색 */
+    searchEmbeddingNotes: (
+      queryText: string,
+      limit?: number,
+    ): Promise<Array<{ noteId: string; score: number }>> =>
+      ipcRenderer.invoke("embedding:searchNotes", queryText, limit),
+
+    /** 임베딩 마이그레이션 진행률 이벤트 구독/해제 */
+    onEmbeddingMigrationProgress: (
+      callback: (progress: { done: number; total: number }) => void,
+    ) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        progress: { done: number; total: number },
+      ) => callback(progress);
+      ipcRenderer.on("embedding:migrationProgress", handler);
+      return () =>
+        ipcRenderer.removeListener("embedding:migrationProgress", handler);
+    },
+
+    /** 임베딩 서비스 상태 변화 구독 (isProcessing, pendingCount 등) */
+    onEmbeddingStatusChanged: (
+      callback: (status: {
+        isProcessing: boolean;
+        pendingCount: number;
+        embeddingCount: number;
+        modelLoaded: boolean;
+      }) => void,
+    ) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        status: {
+          isProcessing: boolean;
+          pendingCount: number;
+          embeddingCount: number;
+          modelLoaded: boolean;
+        },
+      ) => callback(status);
+      ipcRenderer.on("embedding:statusChanged", handler);
+      return () =>
+        ipcRenderer.removeListener("embedding:statusChanged", handler);
+    },
   });
 }
