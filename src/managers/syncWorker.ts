@@ -23,6 +23,9 @@ export async function syncOnce(limit = 20) {
     for (const op of ops) {
       await processOp(op);
     }
+  } catch (e) {
+    // IPC 핸들러 미등록(앱 초기화 경쟁) 또는 DB 오류 등 일시적 실패 — 다음 인터벌에서 재시도
+    console.warn("[syncOnce] sync failed, will retry:", e);
   } finally {
     running = false;
   }

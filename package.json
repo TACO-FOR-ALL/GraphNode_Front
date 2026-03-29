@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "node -e \"require('fs').rmSync('dist-electron',{recursive:true,force:true})\" && vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
