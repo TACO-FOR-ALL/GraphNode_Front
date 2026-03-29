@@ -1,0 +1,111 @@
+erDiagram
+    folders {
+        text id PK
+        text name
+        text parent_id FK
+        integer created_at
+        integer updated_at
+    }
+
+    notes {
+        text id PK
+        text title
+        text content
+        text folder_id FK
+        integer created_at
+        integer updated_at
+        integer deleted_at
+    }
+
+    threads {
+        text id PK
+        text title
+        integer updated_at
+        integer deleted_at
+    }
+
+    thread_messages {
+        text id PK
+        text thread_id FK
+        integer message_index
+        text role
+        text content
+        integer ts
+        integer temp
+    }
+
+    outbox_ops {
+        text op_id PK
+        text entity_id
+        text entity_type
+        text op_type
+        text payload_json
+        text status
+        integer retry_count
+        integer next_retry_at
+        integer created_at
+        integer updated_at
+        text last_error
+    }
+
+    trashed_notes {
+        text id PK
+        text original_note_json
+        integer deleted_at
+        integer expires_at
+    }
+
+    trashed_threads {
+        text id PK
+        text original_thread_json
+        integer deleted_at
+        integer expires_at
+    }
+
+    trashed_folders {
+        text id PK
+        text original_folder_json
+        text note_ids_json
+        integer deleted_at
+        integer expires_at
+    }
+
+    app_meta {
+        text key PK
+        text value_json
+        integer updated_at
+    }
+
+    embedding_queue {
+        text id PK
+        text thread_id
+        text user_message_id
+        text assistant_message_id
+        text combined_text
+        text status
+        integer retry_count
+        integer started_at
+        integer created_at
+    }
+
+    chat_embeddings {
+        text id PK
+        text thread_id FK
+        text user_message_id
+        text assistant_message_id
+        blob embedding
+        text model_name
+        integer created_at
+    }
+
+    note_embeddings {
+        text note_id PK
+        blob embedding
+        text model_name
+        integer embedded_at
+    }
+
+    folders ||--o{ folders : "parent_id"
+    folders ||--o{ notes : "folder_id"
+    threads ||--o{ thread_messages : "thread_id"
+    threads ||--o{ chat_embeddings : "thread_id"
