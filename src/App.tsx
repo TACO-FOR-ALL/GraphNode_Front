@@ -3,7 +3,6 @@ import {
   Routes,
   Route,
   useNavigate,
-  useLocation,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +12,7 @@ import Home from "./routes/Home";
 import Visualize from "./routes/Visualize";
 import Settings from "./routes/Settings";
 import Login from "./routes/Login";
+import Setup from "./routes/Setup";
 import Chat from "./routes/Chat";
 import { noteRepo } from "./managers/noteRepo";
 import { folderRepo } from "./managers/folderRepo";
@@ -41,18 +41,19 @@ import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
 import { useOnboardingStore } from "./store/useOnboardingStore";
 import Onboarding from "./components/onboarding/Onboarding";
-import { useEmbeddingModelStore } from "./store/useEmbeddingModelStore";
-import ModelUpdateBanner from "./components/ModelUpdateBanner";
-import {
-  getChangelogModelName,
-  downloadModel,
-  removeModel,
-} from "./managers/embeddingModelManager";
+// import { useEmbeddingModelStore } from "./store/useEmbeddingModelStore";
+// import ModelUpdateBanner from "./components/ModelUpdateBanner";
+// import {
+//   getChangelogModelName,
+//   downloadModel,
+//   removeModel,
+// } from "./managers/embeddingModelManager";
 
 export default function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/setup" element={<Setup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={<MainLayout />} />
       </Routes>
@@ -66,7 +67,6 @@ function MainLayout() {
   const { theme } = useThemeStore();
   const { keybinds } = useKeybindsStore();
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
 
   // SSE 알림 연결
@@ -116,35 +116,35 @@ function MainLayout() {
     }
   }, [lastSeenVersion, setModalOpen, hasCompletedOnboarding]);
 
-  // 임베딩 모델 버전 체크 및 업데이트
-  const {
-    installedModelName,
-    setInstalledModelName,
-    setIsDownloading,
-    setDownloadProgress,
-    setDownloadFile,
-  } = useEmbeddingModelStore();
+  // 임베딩 모델 버전 체크 및 업데이트 (온디바이스 비활성화)
+  // const {
+  //   installedModelName,
+  //   setInstalledModelName,
+  //   setIsDownloading,
+  //   setDownloadProgress,
+  //   setDownloadFile,
+  // } = useEmbeddingModelStore();
 
-  useEffect(() => {
-    const changelogModel = getChangelogModelName();
-    if (!changelogModel || installedModelName === changelogModel) return;
+  // useEffect(() => {
+  //   const changelogModel = getChangelogModelName();
+  //   if (!changelogModel || installedModelName === changelogModel) return;
 
-    const oldModel = installedModelName;
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    setDownloadFile("");
+  //   const oldModel = installedModelName;
+  //   setIsDownloading(true);
+  //   setDownloadProgress(0);
+  //   setDownloadFile("");
 
-    downloadModel(changelogModel, (file, progress) => {
-      setDownloadFile(file);
-      setDownloadProgress(Math.round(progress));
-    })
-      .then(async () => {
-        if (oldModel) await removeModel(oldModel);
-        setInstalledModelName(changelogModel);
-      })
-      .catch((e) => console.error("Model update failed:", e))
-      .finally(() => setIsDownloading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  //   downloadModel(changelogModel, (file, progress) => {
+  //     setDownloadFile(file);
+  //     setDownloadProgress(Math.round(progress));
+  //   })
+  //     .then(async () => {
+  //       if (oldModel) await removeModel(oldModel);
+  //       setInstalledModelName(changelogModel);
+  //     })
+  //     .catch((e) => console.error("Model update failed:", e))
+  //     .finally(() => setIsDownloading(false));
+  // }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 휴지통 만료 항목 정리
   useEffect(() => {
@@ -152,9 +152,6 @@ function MainLayout() {
       console.error("Failed to cleanup expired trash items:", err);
     });
   }, []);
-
-  // Visualize 페이지에서는 AgentToolTipButton 안 보이기
-  const isVisualizePage = location.pathname.startsWith("/visualize") || location.pathname.startsWith("/graph-lab");
 
   const { t } = useTranslation();
 
@@ -304,12 +301,12 @@ function MainLayout() {
           </Routes>
         </div>
         {openSearch && <SearchModal setOpenSearch={setOpenSearch} />}
-        {!isVisualizePage && <AgentToolTipButton setIsOpen={setIsOpen} />}
+        <AgentToolTipButton setIsOpen={setIsOpen} />
         {isOpen && <AiAgentChatBox setIsOpen={setIsOpen} />}
         <Toaster />
         <ChangelogModal />
         <Onboarding />
-        <ModelUpdateBanner />
+        {/* <ModelUpdateBanner /> */}
       </div>
     </div>
   );

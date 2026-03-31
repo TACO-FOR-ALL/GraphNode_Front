@@ -24,7 +24,7 @@ export default defineConfig({
           },
           build: {
             rollupOptions: {
-              external: ["keytar"],
+              external: ["keytar", /^node:/],
             },
           },
         },
@@ -47,7 +47,7 @@ export default defineConfig({
     }),
   ],
   optimizeDeps: {
-    exclude: ["@huggingface/transformers"],
+    exclude: ["@huggingface/transformers", "@graphnode/storage"],
   },
   resolve: {
     alias: {
@@ -57,5 +57,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      external: [/^node:/],
+    },
   },
 });

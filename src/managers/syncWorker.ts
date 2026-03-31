@@ -23,6 +23,9 @@ export async function syncOnce(limit = 20) {
     for (const op of ops) {
       await processOp(op);
     }
+  } catch (e) {
+    // IPC 핸들러 미등록(앱 초기화 경쟁) 또는 DB 오류 등 일시적 실패 — 다음 인터벌에서 재시도
+    console.warn("[syncOnce] sync failed, will retry:", e);
   } finally {
     running = false;
   }
@@ -75,25 +78,33 @@ async function processOp(op: OutboxOp) {
         if (serverId !== localId) {
           const localFolder =
             await window.graphnodeAPI.getSQLiteFolderById(localId);
+
           if (localFolder) {
+            // 폴더 삭제 전에 영향받는 notes 조회
+            // (삭제 후 ON DELETE SET NULL이 발동해 folderId가 NULL이 되므로 먼저 읽어야 함)
+            const notes = await window.graphnodeAPI.listSQLiteNotes();
+            const affectedNotes = notes.filter(
+              (note) => note.folderId === localId,
+            );
+
+            // serverId로 새 폴더 upsert (notes FK 참조 전에 먼저 생성)
             await window.graphnodeAPI.upsertSQLiteFolder({
               ...localFolder,
               id: serverId,
             });
-            await window.graphnodeAPI.bulkDeleteSQLiteFolders([localId]);
-          }
 
-          const notes = await window.graphnodeAPI.listSQLiteNotes();
-          const affectedNotes = notes.filter(
-            (note) => note.folderId === localId,
-          );
-          if (affectedNotes.length > 0) {
-            await window.graphnodeAPI.bulkUpsertSQLiteNotes(
-              affectedNotes.map((note) => ({
-                ...note,
-                folderId: serverId,
-              })),
-            );
+            // notes folderId를 serverId로 업데이트 (serverId가 folders에 존재하는 상태)
+            if (affectedNotes.length > 0) {
+              await window.graphnodeAPI.bulkUpsertSQLiteNotes(
+                affectedNotes.map((note) => ({
+                  ...note,
+                  folderId: serverId,
+                })),
+              );
+            }
+
+            // 구 localId 폴더 삭제 (이미 notes가 serverId를 참조하므로 SET NULL 불필요)
+            await window.graphnodeAPI.bulkDeleteSQLiteFolders([localId]);
           }
 
           await window.graphnodeAPI.replaceSQLiteOutboxEntityId(

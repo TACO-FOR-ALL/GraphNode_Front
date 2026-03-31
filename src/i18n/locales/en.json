@@ -1,4 +1,19 @@
 {
+  "setup": {
+    "welcome": {
+      "title": "Welcome to GraphNode",
+      "subtitle": "Experience smarter notes and AI conversations.",
+      "checkingUpdate": "Checking for updates...",
+      "upToDate": "You're up to date",
+      "next": "Next"
+    },
+    "consent": {
+      "title": "Privacy Consent",
+      "disagree": "I do not agree",
+      "agree": "I agree to the collection and use of personal information",
+      "start": "Get Started"
+    }
+  },
   "login": {
     "welcome": "Welcome Back!",
     "signInWithGoogle": "Sign in with Google",
@@ -7,6 +22,11 @@
     "minimizeWindow": "Minimize window",
     "maximizeWindow": "Maximize window",
     "popupBlocked": "Popup blocked. Please allow popups.",
+    "agreePrefix": "By signing in, you agree to our",
+    "terms": "Terms of Service",
+    "agreeMiddle": "and",
+    "privacy": "Privacy Policy",
+    "agreeSuffix": "",
     "error": {
       "server": "Server error occurred.",
       "sessionNotSet": "Login session was not set. Please try again.",
@@ -95,7 +115,20 @@
       "subtitle": "Choose topics you care about or add your own. Feel free to skip.",
       "placeholder": "Type your own...",
       "skipText": "Skip for now",
-      "presets": ["AI / Machine Learning", "Web Development", "Data Analysis", "Startup / Entrepreneurship", "Design / UX", "Marketing", "Writing / Content", "Research / Academia", "Self-Improvement", "Finance / Investing", "Language Learning", "Science / Engineering"]
+      "presets": [
+        "AI / Machine Learning",
+        "Web Development",
+        "Data Analysis",
+        "Startup / Entrepreneurship",
+        "Design / UX",
+        "Marketing",
+        "Writing / Content",
+        "Research / Academia",
+        "Self-Improvement",
+        "Finance / Investing",
+        "Language Learning",
+        "Science / Engineering"
+      ]
     },
     "tone": {
       "title": "Choose the agent's tone",
@@ -161,7 +194,8 @@
     "done": "Done",
     "noteCreated": "Note has been created!",
     "error": "Error",
-    "errorOccurred": "Error occurred"
+    "errorOccurred": "Error occurred",
+    "retry": "Retry"
   },
   "home": {
     "title": "Hello {{provider}}",
@@ -178,7 +212,9 @@
     "noChat": "No saved conversations yet",
     "selectChat": "Please select a chat on the left or start a new chat.",
     "helpMessage": "How can I help you?",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "networkError": "A network error occurred.",
+    "retryMessage": "Retry"
   },
   "notes": {
     "workspace": "workspace",
@@ -409,6 +445,8 @@
       "mcp": "MCP Servers"
     },
     "feedback": "Send Feedback",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
     "logout": "Logout",
     "dropJsonZone": {
       "title": "Drag & Drop JSON File Upload",

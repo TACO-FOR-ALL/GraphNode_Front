@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -16,7 +17,136 @@ import logo from "@/assets/icons/logo.svg";
 import { FiCopy, FiCheck, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import threadRepo from "@/managers/threadRepo";
 
+const NETWORK_ERROR_CONTENT = "__NETWORK_ERROR__";
+
 const PAGE = 10;
+
+const ChatMessageItem = React.memo(function ChatMessageItem({
+  message,
+  isLastAssistant,
+  isStreaming,
+  userMaxWidth,
+  assistantMaxWidth,
+  onDelete,
+  onRetry,
+}: {
+  message: ChatMessage;
+  isLastAssistant: boolean;
+  isStreaming: boolean;
+  userMaxWidth: string;
+  assistantMaxWidth: string;
+  onDelete: (id: string) => void;
+  onRetry?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addToast = useToastStore((s) => s.addToast);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(message.content);
+    addToast({ type: "success", message: t("chat.copied") });
+    setCopied(true);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+  };
+
+  const isUser = message.role === "user";
+
+  if (!isUser && message.content === "") {
+    return (
+      <div className="mb-10 flex justify-start">
+        <div style={{ maxWidth: assistantMaxWidth }}>
+          <TypingBubble />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isUser && message.content === NETWORK_ERROR_CONTENT) {
+    return (
+      <div className="mb-10 flex justify-start">
+        <div className="flex flex-col items-start" style={{ maxWidth: assistantMaxWidth }}>
+          <div className="rounded-2xl px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+            {t("chat.networkError", "네트워크 오류가 발생했습니다.")}
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="flex items-center gap-1.5 mt-1.5 ml-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
+              <FiRefreshCw size={11} />
+              {t("chat.retryMessage", "재시도하기")}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex ${isUser ? "justify-end" : "justify-start"} items-start mb-10`}
+      title={new Date(message.ts).toLocaleString()}
+    >
+      {isUser ? (
+        <div className="flex items-start gap-3 ml-20" style={{ maxWidth: userMaxWidth }}>
+          <div
+            className="flex-1 text-text-chat-bubble bg-bg-secondary rounded-2xl rounded-tr-sm px-4 py-3 break-words"
+            style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+          >
+            {message.content}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-start" style={{ maxWidth: assistantMaxWidth }}>
+          <div className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] w-full">
+            <img
+              src={logo}
+              alt="Profile"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
+              className="w-6 h-6 flex-shrink-0 pt-1"
+              style={{ marginTop: 0 }}
+            />
+            <div className="flex flex-col min-w-0 overflow-hidden w-full">
+              <StreamingMarkdownBubble text={message.content} isStreaming={isStreaming} />
+            </div>
+          </div>
+          {!(isLastAssistant && isStreaming) && (
+            <div className="flex items-center gap-2.5 mt-2 ml-1.5">
+              <div
+                onClick={handleCopy}
+                className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+              >
+                {copied ? <FiCheck size={13} /> : <FiCopy size={13} />}
+              </div>
+              <div
+                onClick={() => {}}
+                className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+              >
+                <FiRefreshCw size={13} />
+              </div>
+              <div
+                onClick={() => onDelete(message.id)}
+                className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-red-500 hover:bg-bg-secondary transition-colors cursor-pointer"
+                title={t("chat.deleteMessage", "Delete message")}
+              >
+                <FiTrash2 size={13} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 function ChatSkeleton({
   assistantMaxWidth,
@@ -68,12 +198,14 @@ export default function ChatWindow({
   isTyping,
   onScrollStateChange,
   scrollToBottomRef,
+  onRetry,
 }: {
   threadId?: string;
   isTyping: boolean;
   avatarUrl?: string | null;
   onScrollStateChange?: (showButton: boolean) => void;
   scrollToBottomRef?: React.RefObject<(() => void) | null>;
+  onRetry?: (userMessageId: string, userContent: string, errorMessageId: string) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -88,50 +220,51 @@ export default function ChatWindow({
     threadId ? state.threads[threadId] : null,
   );
   const refreshThread = useThreadsStore((state) => state.refreshThread);
+  const evictThread = useThreadsStore((state) => state.evictThread);
   const { isExpanded } = useSidebarExpandStore();
   const addToast = useToastStore((s) => s.addToast);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-
-  const handleCopyMessage = async (messageId: string, content: string) => {
-    await navigator.clipboard.writeText(content);
-    addToast({ type: "success", message: t("chat.copied") });
-    setCopiedMessageId(messageId);
-    setTimeout(() => setCopiedMessageId(null), 2000);
-  };
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!threadId) return;
-
-    await threadRepo.deleteMessageFromThreadById(threadId, messageId);
-    addToast({
-      type: "success",
-      message: t("chat.deleted", "Message deleted"),
-    });
-  };
+  const { t } = useTranslation();
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
 
-  const { t } = useTranslation();
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    if (!threadId) return;
+    await threadRepo.deleteMessageFromThreadById(threadId, messageId);
+    addToast({ type: "success", message: t("chat.deleted", "Message deleted") });
+  }, [threadId, addToast, t]);
+
+  const shouldScrollToBottomRef = useRef(false);
+  const isFollowingBottomRef = useRef(false);
 
   useEffect(() => {
-    if (threadId) {
-      setIsLoading(true);
-      setVisibleCount(PAGE);
-      refreshThread(threadId);
-      requestAnimationFrame(() => {
-        if (wrapRef.current) {
-          wrapRef.current.scrollTop = wrapRef.current.scrollHeight;
-        }
-      });
-    }
-  }, [threadId, refreshThread]);
+    if (!threadId) return;
+    setIsLoading(true);
+    setVisibleCount(PAGE);
+    refreshThread(threadId);
+    shouldScrollToBottomRef.current = true;
+    return () => {
+      evictThread(threadId);
+    };
+  }, [threadId, refreshThread, evictThread]);
 
   useEffect(() => {
     if (thread != null) {
       setIsLoading(false);
     }
   }, [thread]);
+
+  // 로딩 완료 후 스크롤을 맨 아래로 이동
+  useEffect(() => {
+    if (!isLoading && shouldScrollToBottomRef.current) {
+      shouldScrollToBottomRef.current = false;
+      requestAnimationFrame(() => {
+        if (wrapRef.current) {
+          wrapRef.current.scrollTop = wrapRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [isLoading]);
 
   const allMessages = useMemo<ChatMessage[]>(() => {
     const msgs = thread?.messages ?? [];
@@ -147,7 +280,10 @@ export default function ChatWindow({
       lastMessage.role === "user" ||
       (lastMessage.role === "assistant" && lastMessage.content === ""));
   const startIndex = hasActiveTurn ? 0 : pagedStartIndex;
-  const visible = total ? allMessages.slice(startIndex) : [];
+  const visible = useMemo(
+    () => (total ? allMessages.slice(startIndex) : []),
+    [allMessages, startIndex, total],
+  );
 
   const { history, currentTurn } = useMemo(() => {
     if (visible.length === 0 || !hasActiveTurn) {
@@ -178,20 +314,58 @@ export default function ChatWindow({
   const turnAssistantMessages = turnUserMessage ? currentTurn.slice(1) : [];
   const lastUserMessageId = turnUserMessage?.id;
 
-  // 새 유저 질문: spacer를 직접 DOM 조작으로 충분히 키운 뒤 스크롤
+  // shouldUseTopAnchoredTurn을 scroll 리스너가 동기적으로 읽을 수 있도록 ref로 유지
+  // (spacer 높이 주입 → scrollTop 변경 → scroll 이벤트 순으로 동기 실행되기 때문에
+  //  useLayoutEffect 선언 순서가 spacer 효과보다 먼저여야 ref가 미리 갱신됨)
+  const shouldUseTopAnchoredTurnRef = useRef(shouldUseTopAnchoredTurn);
+  useLayoutEffect(() => {
+    shouldUseTopAnchoredTurnRef.current = shouldUseTopAnchoredTurn;
+  }, [shouldUseTopAnchoredTurn]);
+
+  // 새 유저 질문: spacer 확보 + 유저 메시지를 viewport 하단에 배치 (paint 전)
   useLayoutEffect(() => {
     if (!shouldUseTopAnchoredTurn) return;
-
     const wrap = wrapRef.current;
-    const userMsg = userMessageRef.current;
     const spacerEl = spacerRef.current;
-    if (!wrap || !userMsg || !spacerEl) return;
+    const userMsg = userMessageRef.current;
+    if (!wrap || !spacerEl || !userMsg) return;
 
-    // 스크롤 가능하도록 spacer를 viewport 높이만큼 미리 확보 (state 타이밍 문제 우회)
+    // spacer로 viewport 높이만큼 하단 여백 확보
     spacerEl.style.height = `${wrap.clientHeight}px`;
 
+    // 유저 메시지가 viewport 하단에 보이도록 scrollTop 설정
+    // → 이후 useEffect 애니메이션의 시작점
+    const userMsgBottom = userMsg.offsetTop + userMsg.offsetHeight;
+    wrap.scrollTop = Math.max(0, userMsgBottom - wrap.clientHeight + 24);
+  }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
+
+  // 새 유저 질문: paint 후 유저 메시지를 viewport 상단으로 부드럽게 올리는 애니메이션
+  useEffect(() => {
+    if (!shouldUseTopAnchoredTurn) return;
+    const wrap = wrapRef.current;
+    const userMsg = userMessageRef.current;
+    if (!wrap || !userMsg) return;
+
     const targetScrollTop = Math.max(0, userMsg.offsetTop - 16);
-    wrap.scrollTop = targetScrollTop;
+    const startScrollTop = wrap.scrollTop;
+    const distance = targetScrollTop - startScrollTop;
+    if (Math.abs(distance) < 2) return;
+
+    const duration = 480;
+    const startTime = performance.now();
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    let cancelled = false;
+
+    const animate = (now: number) => {
+      if (cancelled) return;
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      wrap.scrollTop = startScrollTop + distance * easeOut(progress);
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+
+    return () => { cancelled = true; };
   }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
 
   // AI 응답이 커질수록 spacer를 줄이고, 응답이 viewport를 넘으면 하단 자동 스크롤
@@ -209,6 +383,20 @@ export default function ChatWindow({
       const newSpacerHeight = Math.max(0, viewportHeight - aiHeight);
       spacerEl.style.height = `${newSpacerHeight}px`;
       // scrollTop은 건드리지 않음 → 유저 메시지 상단 위치 고정
+
+      // 최하단 따라가기 중이면 새 scrollHeight로 따라감
+      if (isFollowingBottomRef.current) {
+        wrap.scrollTop = wrap.scrollHeight;
+      }
+
+      // spacer 변경으로 scroll 이벤트가 발생하지 않으므로 floating 버튼 상태 직접 재평가
+      const realScrollHeight = wrap.scrollHeight - newSpacerHeight;
+      if (realScrollHeight <= wrap.clientHeight) {
+        onScrollStateChange?.(false);
+      } else {
+        const atBottom = wrap.scrollTop >= wrap.scrollHeight - newSpacerHeight - wrap.clientHeight - 80;
+        onScrollStateChange?.(!atBottom);
+      }
     });
 
     ro.observe(aiEl);
@@ -231,17 +419,46 @@ export default function ChatWindow({
   });
 
   // 스크롤 위치 추적 → 최하단이 아닐 때 플로팅 버튼 표시
+  // active turn 중에는 spacer가 scrollHeight를 인위적으로 늘리므로
+  // "spacer 제외 실제 콘텐츠 높이"가 뷰포트 이하면 버튼 숨김,
+  // 실제로 콘텐츠가 넘치는 경우(긴 답변)엔 기존 atBottom 판단 유지
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const check = () => {
+      if (shouldUseTopAnchoredTurnRef.current) {
+        const spacerHeight = spacerRef.current?.offsetHeight ?? 0;
+        const realScrollHeight = el.scrollHeight - spacerHeight;
+        if (realScrollHeight <= el.clientHeight) {
+          onScrollStateChange?.(false);
+          return;
+        }
+        const atBottom = el.scrollTop >= el.scrollHeight - spacerHeight - el.clientHeight - 80;
+        if (!atBottom) isFollowingBottomRef.current = false;
+        onScrollStateChange?.(!atBottom);
+        return;
+      }
       const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 80;
+      if (!atBottom) isFollowingBottomRef.current = false;
       onScrollStateChange?.(!atBottom);
     };
     check();
     el.addEventListener("scroll", check, { passive: true });
     return () => el.removeEventListener("scroll", check);
   }, [isLoading, onScrollStateChange]);
+
+  // active turn 진입 직후 scroll 이벤트 없이 scrollTop이 변하지 않는 경우(첫 메시지)
+  // scroll 리스너가 재실행되지 않으므로 spacer 주입 후 명시적으로 재평가
+  useEffect(() => {
+    if (!shouldUseTopAnchoredTurn) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const spacerHeight = spacerRef.current?.offsetHeight ?? 0;
+    const realScrollHeight = el.scrollHeight - spacerHeight;
+    if (realScrollHeight <= el.clientHeight) {
+      onScrollStateChange?.(false);
+    }
+  }, [shouldUseTopAnchoredTurn, onScrollStateChange]);
 
   // 스트리밍 완료 시 (hasActiveTurn: true → false) spacer가 사라져 scrollHeight가 줄어도 위치 유지
   const prevHasActiveTurnRef = useRef(hasActiveTurn);
@@ -254,6 +471,7 @@ export default function ChatWindow({
       if (wrap) {
         wrap.scrollTop = savedScrollTopRef.current;
       }
+      isFollowingBottomRef.current = false;
     }
   }, [hasActiveTurn]);
 
@@ -292,96 +510,40 @@ export default function ChatWindow({
     visible.length > 0 ? visible[visible.length - 1]?.role : null;
 
   const renderMessage = (m: ChatMessage) => {
-    const isUser = m.role === "user";
+    const isLastAssistant =
+      m.role === "assistant" && m.id === lastMessageId && lastMessageRole === "assistant";
 
-    const isLastAssistantMessage =
-      !isUser && m.id === lastMessageId && lastMessageRole === "assistant";
-
-    if (!isUser && m.content === "") {
-      return (
-        <div key={m.id} className="mb-10 flex justify-start">
-          <div style={{ maxWidth: assistantMaxWidth }}>
-            <TypingBubble />
-          </div>
-        </div>
-      );
+    let retryHandler: (() => void) | undefined;
+    if (m.role === "assistant" && m.content === NETWORK_ERROR_CONTENT && onRetry) {
+      const msgIndex = allMessages.findIndex((msg) => msg.id === m.id);
+      if (msgIndex > 0) {
+        const prevUserMsg = allMessages.slice(0, msgIndex).reverse().find((msg) => msg.role === "user");
+        if (prevUserMsg) {
+          retryHandler = () => onRetry(prevUserMsg.id, prevUserMsg.content, m.id);
+        }
+      }
     }
 
     return (
-      <div
+      <ChatMessageItem
         key={m.id}
-        className={`flex ${isUser ? "justify-end" : "justify-start"} items-start mb-10`}
-        title={new Date(m.ts).toLocaleString()}
-      >
-        {isUser ? (
-          <div
-            className="flex items-start gap-3 ml-20"
-            style={{ maxWidth: userMaxWidth }}
-          >
-            <div
-              className="flex-1 text-text-chat-bubble bg-bg-secondary rounded-2xl rounded-tr-sm px-4 py-3 break-words"
-              style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
-            >
-              {m.content}
-            </div>
-          </div>
-        ) : (
-          <div
-            className="flex flex-col items-start"
-            style={{ maxWidth: assistantMaxWidth }}
-          >
-            <div className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] w-full">
-              <img
-                src={logo}
-                alt="Profile"
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
-                className="w-6 h-6 flex-shrink-0 pt-1"
-                style={{ marginTop: 0 }}
-              />
-              <div className="flex flex-col min-w-0 overflow-hidden w-full">
-                <StreamingMarkdownBubble
-                  text={m.content}
-                  isStreaming={isLastAssistantMessage && isTyping}
-                />
-              </div>
-            </div>
-            {!(isLastAssistantMessage && isTyping) && (
-              <div className="flex items-center gap-2.5 mt-2 ml-1.5">
-                <div
-                  onClick={() => handleCopyMessage(m.id, m.content)}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
-                >
-                  {copiedMessageId === m.id ? (
-                    <FiCheck size={13} />
-                  ) : (
-                    <FiCopy size={13} />
-                  )}
-                </div>
-                <div
-                  onClick={() => {}}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
-                >
-                  <FiRefreshCw size={13} />
-                </div>
-                <div
-                  onClick={() => void handleDeleteMessage(m.id)}
-                  className="flex p-1 items-center justify-center rounded text-text-secondary hover:text-red-500 hover:bg-bg-secondary transition-colors cursor-pointer"
-                  title={t("chat.deleteMessage", "Delete message")}
-                >
-                  <FiTrash2 size={13} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        message={m}
+        isLastAssistant={isLastAssistant}
+        isStreaming={isLastAssistant && isTyping}
+        userMaxWidth={userMaxWidth}
+        assistantMaxWidth={assistantMaxWidth}
+        onDelete={handleDeleteMessage}
+        onRetry={retryHandler}
+      />
     );
   };
 
   const scrollToBottom = () => {
     const el = wrapRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+      isFollowingBottomRef.current = true;
+    }
   };
 
   // scrollToBottomRef에 함수 등록 (early return 전에 위치해야 Rules of Hooks 준수)

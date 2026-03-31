@@ -309,3 +309,8 @@ button {
 .animate-node-pulse {
   animation: node-pulse 1s ease-out 3;
 }
+
+@keyframes streamChunkFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -9,6 +9,7 @@ import type { ChatMessage } from "../types";
 interface UseAgentChatOptions {
   ensureSession: () => string;
   addMessage: (message: ChatMessage) => void;
+  removeLastMessage: () => void;
   replaceLastSystemMessage: (content: string, status?: ChatMessage["status"]) => void;
   getSourceContent: () => Promise<string>;
 }
@@ -16,6 +17,7 @@ interface UseAgentChatOptions {
 export function useAgentChat({
   ensureSession,
   addMessage,
+  removeLastMessage,
   replaceLastSystemMessage,
   getSourceContent,
 }: UseAgentChatOptions) {
@@ -23,20 +25,15 @@ export function useAgentChat({
   const queryClient = useQueryClient();
   const { phase, setPhase, reset } = useNoteGenerationStore();
   const noteCreatedRef = useRef(false);
+  const lastUserMessageRef = useRef<string>("");
 
   const isProcessing = phase !== "idle" && phase !== "done" && phase !== "error";
 
-  const sendMessage = useCallback(
-    async (userMessage: string) => {
-      const trimmed = userMessage.trim();
-      if (!trimmed || isProcessing) return;
-
-      ensureSession();
+  // Core streaming logic — does NOT add the user bubble
+  const executeChat = useCallback(
+    async (trimmed: string) => {
       noteCreatedRef.current = false;
-      reset();
 
-      // Add user message and loading indicator
-      addMessage({ role: "user", content: trimmed });
       addMessage({
         role: "system",
         content: t("aiAgentChatBox.generatingResponse", "Generating response..."),
@@ -64,7 +61,6 @@ export function useAgentChat({
               setPhase("done", t("aiAgentChatBox.done", "Done"));
               replaceLastSystemMessage(event.answer, "completed");
 
-              // Handle note creation
               if (event.mode === "note" && event.noteContent) {
                 if (noteCreatedRef.current) return;
                 noteCreatedRef.current = true;
@@ -89,10 +85,10 @@ export function useAgentChat({
             },
             onError: (event) => {
               setPhase("error", event.message);
-              addMessage({
-                role: "system",
-                content: `${t("aiAgentChatBox.error", "Error")}: ${event.message}`,
-              });
+              replaceLastSystemMessage(
+                `${t("aiAgentChatBox.error", "Error")}: ${event.message}`,
+                "error"
+              );
             },
           },
         });
@@ -100,28 +96,44 @@ export function useAgentChat({
         console.error("Failed to send message:", error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         setPhase("error", errorMessage);
-        addMessage({
-          role: "system",
-          content: `${t("aiAgentChatBox.errorOccurred", "Error occurred")}: ${errorMessage}`,
-        });
+        replaceLastSystemMessage(
+          `${t("aiAgentChatBox.errorOccurred", "Error occurred")}: ${errorMessage}`,
+          "error"
+        );
       }
     },
-    [
-      isProcessing,
-      ensureSession,
-      reset,
-      addMessage,
-      replaceLastSystemMessage,
-      getSourceContent,
-      setPhase,
-      queryClient,
-      t,
-    ]
+    [addMessage, replaceLastSystemMessage, getSourceContent, setPhase, queryClient, t]
   );
+
+  const sendMessage = useCallback(
+    async (userMessage: string) => {
+      const trimmed = userMessage.trim();
+      if (!trimmed || isProcessing) return;
+
+      ensureSession();
+      lastUserMessageRef.current = trimmed;
+      reset();
+
+      addMessage({ role: "user", content: trimmed });
+      await executeChat(trimmed);
+    },
+    [isProcessing, ensureSession, reset, addMessage, executeChat]
+  );
+
+  const retryLastMessage = useCallback(async () => {
+    const trimmed = lastUserMessageRef.current;
+    if (!trimmed || isProcessing) return;
+
+    // Remove the error system message, then re-run
+    removeLastMessage();
+    reset();
+    await executeChat(trimmed);
+  }, [isProcessing, removeLastMessage, reset, executeChat]);
 
   return {
     isProcessing,
     sendMessage,
+    retryLastMessage,
     reset,
   };
 }

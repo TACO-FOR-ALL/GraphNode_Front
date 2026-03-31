@@ -44,10 +44,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let loginWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
+let setupWindow: BrowserWindow | null = null;
 
 // 로그인/메인 창에 렌더링할 URL 반환
 function resolveRendererUrl(hash = "") {
   // 개발 모드: 개발 서버 URL 반환 http://localhost:5173/#/login
+  // dev 환경에서 app.isPackaged는 false
   if (!app.isPackaged) {
     return `${process.env.VITE_DEV_SERVER_URL!}${hash}`;
   }
@@ -359,6 +361,78 @@ function registerAuthHandlers() {
   });
 }
 
+function registerSetupHandlers() {
+  ipcMain.on("setup-complete", () => {
+    if (setupWindow && !setupWindow.isDestroyed()) {
+      setupWindow.close();
+      setupWindow = null;
+    }
+    createLoginWindow();
+  });
+}
+
+function createSetupWindow() {
+  if (setupWindow) {
+    setupWindow.focus();
+    return;
+  }
+
+  if (app.isPackaged) {
+    splashWindow = createSplashWindow();
+  }
+
+  setupWindow = new BrowserWindow({
+    width: 480,
+    height: 600,
+    frame: false,
+    alwaysOnTop: true,
+    show: false,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  setupWindow.removeMenu();
+
+  const setupUrl = resolveRendererUrl("#/setup");
+
+  if (app.isPackaged) {
+    const texts = getSplashTexts();
+    const timeoutId = setTimeout(() => {
+      showSplashError(texts.timeout);
+    }, config.connectionTimeout);
+
+    setupWindow.webContents.on("did-finish-load", () => {
+      clearTimeout(timeoutId);
+      closeSplashWindow();
+      setupWindow?.show();
+    });
+
+    setupWindow.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription) => {
+        clearTimeout(timeoutId);
+        showSplashError(`${texts.cannotConnect}\n(${errorDescription})`);
+      },
+    );
+  }
+
+  setupWindow.loadURL(setupUrl);
+
+  if (!app.isPackaged) {
+    setupWindow.once("ready-to-show", () => {
+      setupWindow?.show();
+    });
+  }
+
+  setupWindow.on("closed", () => {
+    setupWindow = null;
+  });
+}
+
 function createLoginWindow() {
   if (loginWindow) {
     loginWindow.focus();
@@ -598,16 +672,13 @@ function registerNotificationHandlers() {
 app.whenReady().then(() => {
   ipc();
   registerAuthHandlers();
+  registerSetupHandlers();
   registerNotificationHandlers();
-  createLoginWindow();
+  createSetupWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      if (mainWindow) {
-        createMainWindow();
-      } else {
-        createLoginWindow();
-      }
+      createSetupWindow();
     }
   });
 });

@@ -3,8 +3,6 @@ import ToggleSettingItem from "./ToggleSettingItem";
 import { FaCheck } from "react-icons/fa";
 import {
   IoCamera,
-  IoChatbubbleEllipses,
-  IoLogOut,
   IoMail,
 } from "react-icons/io5";
 import { Me } from "@/types/Me";
@@ -335,38 +333,31 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
         onChange={handleDevModeToggle}
       />
 
-      {/* Feedback & Logout Section */}
-      <div className="flex gap-2">
+      {/* Feedback, Links & Logout Section */}
+      <div className="flex items-center gap-4 flex-wrap">
         <button
-          onClick={() => {
-            window.systemAPI?.openExternal(
-              "https://www.graphnode.site/feedback",
-            );
-          }}
-          className="
-            flex items-center gap-2.5 px-4 py-2.5 rounded-md
-            text-primary
-            bg-primary/10 dark:bg-primary/20
-            hover:bg-primary/20 dark:hover:bg-primary/30
-            transition-all duration-200
-            cursor-pointer
-          "
+          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/feedback")}
+          className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
         >
-          <IoChatbubbleEllipses className="text-lg" />
-          <span className="text-sm font-medium">{t("settings.feedback")}</span>
+          {t("settings.feedback")}
+        </button>
+        <button
+          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/privacy")}
+          className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
+        >
+          {t("settings.privacy")}
+        </button>
+        <button
+          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/terms")}
+          className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
+        >
+          {t("settings.terms")}
         </button>
         <button
           onClick={handleLogout}
-          className="
-            flex items-center gap-2.5 px-4 py-2.5 rounded-md
-            text-red-600 dark:text-red-400
-            bg-red-50 dark:bg-red-900/20
-            hover:bg-red-100 dark:hover:bg-red-900/30
-            transition-all duration-200
-          "
+          className="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer"
         >
-          <IoLogOut className="text-lg" />
-          <span className="text-sm font-medium">{t("settings.logout")}</span>
+          {t("settings.logout")}
         </button>
       </div>
     </SettingsPanelLayout>
