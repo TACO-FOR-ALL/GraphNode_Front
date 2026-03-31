@@ -1,4 +1,4 @@
-export type MessageStatus = "progress" | "completed";
+export type MessageStatus = "progress" | "completed" | "error";
 
 export type ChatMessage = {
   role: "system" | "user";

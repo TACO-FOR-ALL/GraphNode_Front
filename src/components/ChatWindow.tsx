@@ -17,6 +17,8 @@ import logo from "@/assets/icons/logo.svg";
 import { FiCopy, FiCheck, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import threadRepo from "@/managers/threadRepo";
 
+const NETWORK_ERROR_CONTENT = "__NETWORK_ERROR__";
+
 const PAGE = 10;
 
 const ChatMessageItem = React.memo(function ChatMessageItem({
@@ -26,6 +28,7 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
   userMaxWidth,
   assistantMaxWidth,
   onDelete,
+  onRetry,
 }: {
   message: ChatMessage;
   isLastAssistant: boolean;
@@ -33,6 +36,7 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
   userMaxWidth: string;
   assistantMaxWidth: string;
   onDelete: (id: string) => void;
+  onRetry?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,6 +64,27 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
       <div className="mb-10 flex justify-start">
         <div style={{ maxWidth: assistantMaxWidth }}>
           <TypingBubble />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isUser && message.content === NETWORK_ERROR_CONTENT) {
+    return (
+      <div className="mb-10 flex justify-start">
+        <div className="flex flex-col items-start" style={{ maxWidth: assistantMaxWidth }}>
+          <div className="rounded-2xl px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+            {t("chat.networkError", "네트워크 오류가 발생했습니다.")}
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="flex items-center gap-1.5 mt-1.5 ml-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
+              <FiRefreshCw size={11} />
+              {t("chat.retryMessage", "재시도하기")}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -173,12 +198,14 @@ export default function ChatWindow({
   isTyping,
   onScrollStateChange,
   scrollToBottomRef,
+  onRetry,
 }: {
   threadId?: string;
   isTyping: boolean;
   avatarUrl?: string | null;
   onScrollStateChange?: (showButton: boolean) => void;
   scrollToBottomRef?: React.RefObject<(() => void) | null>;
+  onRetry?: (userMessageId: string, userContent: string, errorMessageId: string) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -208,6 +235,7 @@ export default function ChatWindow({
   }, [threadId, addToast, t]);
 
   const shouldScrollToBottomRef = useRef(false);
+  const isFollowingBottomRef = useRef(false);
 
   useEffect(() => {
     if (!threadId) return;
@@ -355,6 +383,20 @@ export default function ChatWindow({
       const newSpacerHeight = Math.max(0, viewportHeight - aiHeight);
       spacerEl.style.height = `${newSpacerHeight}px`;
       // scrollTop은 건드리지 않음 → 유저 메시지 상단 위치 고정
+
+      // 최하단 따라가기 중이면 새 scrollHeight로 따라감
+      if (isFollowingBottomRef.current) {
+        wrap.scrollTop = wrap.scrollHeight;
+      }
+
+      // spacer 변경으로 scroll 이벤트가 발생하지 않으므로 floating 버튼 상태 직접 재평가
+      const realScrollHeight = wrap.scrollHeight - newSpacerHeight;
+      if (realScrollHeight <= wrap.clientHeight) {
+        onScrollStateChange?.(false);
+      } else {
+        const atBottom = wrap.scrollTop >= wrap.scrollHeight - newSpacerHeight - wrap.clientHeight - 80;
+        onScrollStateChange?.(!atBottom);
+      }
     });
 
     ro.observe(aiEl);
@@ -392,10 +434,12 @@ export default function ChatWindow({
           return;
         }
         const atBottom = el.scrollTop >= el.scrollHeight - spacerHeight - el.clientHeight - 80;
+        if (!atBottom) isFollowingBottomRef.current = false;
         onScrollStateChange?.(!atBottom);
         return;
       }
       const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 80;
+      if (!atBottom) isFollowingBottomRef.current = false;
       onScrollStateChange?.(!atBottom);
     };
     check();
@@ -427,6 +471,7 @@ export default function ChatWindow({
       if (wrap) {
         wrap.scrollTop = savedScrollTopRef.current;
       }
+      isFollowingBottomRef.current = false;
     }
   }, [hasActiveTurn]);
 
@@ -467,6 +512,18 @@ export default function ChatWindow({
   const renderMessage = (m: ChatMessage) => {
     const isLastAssistant =
       m.role === "assistant" && m.id === lastMessageId && lastMessageRole === "assistant";
+
+    let retryHandler: (() => void) | undefined;
+    if (m.role === "assistant" && m.content === NETWORK_ERROR_CONTENT && onRetry) {
+      const msgIndex = allMessages.findIndex((msg) => msg.id === m.id);
+      if (msgIndex > 0) {
+        const prevUserMsg = allMessages.slice(0, msgIndex).reverse().find((msg) => msg.role === "user");
+        if (prevUserMsg) {
+          retryHandler = () => onRetry(prevUserMsg.id, prevUserMsg.content, m.id);
+        }
+      }
+    }
+
     return (
       <ChatMessageItem
         key={m.id}
@@ -476,13 +533,17 @@ export default function ChatWindow({
         userMaxWidth={userMaxWidth}
         assistantMaxWidth={assistantMaxWidth}
         onDelete={handleDeleteMessage}
+        onRetry={retryHandler}
       />
     );
   };
 
   const scrollToBottom = () => {
     const el = wrapRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+      isFollowingBottomRef.current = true;
+    }
   };
 
   // scrollToBottomRef에 함수 등록 (early return 전에 위치해야 Rules of Hooks 준수)

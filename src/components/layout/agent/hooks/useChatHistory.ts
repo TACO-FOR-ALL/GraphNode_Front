@@ -104,6 +104,10 @@ export function useChatHistory() {
     setMessages((prev) => [...prev, message]);
   }, []);
 
+  const removeLastMessage = useCallback(() => {
+    setMessages((prev) => prev.slice(0, -1));
+  }, []);
+
   const updateLastMessage = useCallback(
     (updater: (msg: ChatMessage) => ChatMessage) => {
       setMessages((prev) => {
@@ -141,6 +145,7 @@ export function useChatHistory() {
     loadSession,
     deleteSession,
     addMessage,
+    removeLastMessage,
     updateLastMessage,
     replaceLastSystemMessage,
   };

@@ -194,7 +194,8 @@
     "done": "完了",
     "noteCreated": "メモが作成されました！",
     "error": "エラー",
-    "errorOccurred": "エラーが発生しました"
+    "errorOccurred": "エラーが発生しました",
+    "retry": "再試行"
   },
   "home": {
     "title": "こんにちは、{{provider}}さん",
@@ -211,7 +212,9 @@
     "noChat": "保存された会話はまだありません",
     "selectChat": "左側からチャットを選択するか、新しいチャットを開始してください。",
     "helpMessage": "何かお手伝いできますか？",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "networkError": "ネットワークエラーが発生しました。",
+    "retryMessage": "再試行"
   },
   "notes": {
     "workspace": "ワークスペース",

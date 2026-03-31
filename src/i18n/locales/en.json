@@ -194,7 +194,8 @@
     "done": "Done",
     "noteCreated": "Note has been created!",
     "error": "Error",
-    "errorOccurred": "Error occurred"
+    "errorOccurred": "Error occurred",
+    "retry": "Retry"
   },
   "home": {
     "title": "Hello {{provider}}",
@@ -211,7 +212,9 @@
     "noChat": "No saved conversations yet",
     "selectChat": "Please select a chat on the left or start a new chat.",
     "helpMessage": "How can I help you?",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "networkError": "A network error occurred.",
+    "retryMessage": "Retry"
   },
   "notes": {
     "workspace": "workspace",

@@ -4,9 +4,10 @@ import type { ChatMessage } from "../types";
 
 interface MessageListProps {
   messages: ChatMessage[];
+  onRetry?: () => void;
 }
 
-export default function MessageList({ messages }: MessageListProps) {
+export default function MessageList({ messages, onRetry }: MessageListProps) {
   const userMessageRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -17,6 +18,9 @@ export default function MessageList({ messages }: MessageListProps) {
     }
     return -1;
   })();
+
+  // The last message index for error retry button
+  const lastMsgIdx = messages.length - 1;
 
   // Scroll handling
   useEffect(() => {
@@ -48,6 +52,7 @@ export default function MessageList({ messages }: MessageListProps) {
           key={idx}
           ref={idx === lastUserMsgIdx ? userMessageRef : null}
           message={msg}
+          onRetry={msg.status === "error" && idx === lastMsgIdx ? onRetry : undefined}
         />
       ))}
       <div ref={messagesEndRef} />

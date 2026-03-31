@@ -194,7 +194,8 @@
     "done": "완료",
     "noteCreated": "노트가 생성되었습니다!",
     "error": "오류",
-    "errorOccurred": "오류 발생"
+    "errorOccurred": "오류 발생",
+    "retry": "재시도"
   },
   "home": {
     "title": "{{provider}}님 안녕하세요.",
@@ -211,7 +212,9 @@
     "noChat": "아직 저장된 대화가 없어요",
     "selectChat": "왼쪽에서 대화를 선택하거나 새 대화를 시작하세요.",
     "helpMessage": "어떻게 도와드릴까요?",
-    "copied": "복사되었습니다"
+    "copied": "복사되었습니다",
+    "networkError": "네트워크 에러가 발생했습니다",
+    "retryMessage": "재시도"
   },
   "notes": {
     "workspace": "워크스페이스",

@@ -194,7 +194,8 @@
     "done": "完成",
     "noteCreated": "笔记已创建！",
     "error": "错误",
-    "errorOccurred": "发生错误"
+    "errorOccurred": "发生错误",
+    "retry": "重试"
   },
   "home": {
     "title": "你好，{{provider}}。",
@@ -211,7 +212,9 @@
     "noChat": "还没有保存的对话",
     "selectChat": "请先选择一个对话或开始新对话。",
     "helpMessage": "怎么帮到您？",
-    "copied": "已复制"
+    "copied": "已复制",
+    "networkError": "发生网络错误。",
+    "retryMessage": "重试"
   },
   "notes": {
     "workspace": "工作区",

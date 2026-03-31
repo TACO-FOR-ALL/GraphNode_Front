@@ -20,10 +20,22 @@ import {
 import ModelSelector from "@/components/common/ModelSelector";
 import { playSound } from "@/utils/sound";
 
+const NETWORK_ERROR_CONTENT = "__NETWORK_ERROR__";
+
+const isNetworkErrorMessage = (msg: string) =>
+  msg.toLowerCase().includes("failed to fetch") ||
+  msg.toLowerCase().includes("networkerror") ||
+  msg.toLowerCase().includes("network request failed") ||
+  !navigator.onLine;
+
 export default function ChatSendBox({
   setIsTyping,
+  retrySendRef,
 }: {
   setIsTyping: (v: boolean) => void;
+  retrySendRef?: React.RefObject<
+    ((userMessageId: string, userContent: string, errorMessageId: string) => void) | null
+  >;
 }) {
   const { t } = useTranslation();
   const { addToast } = useToastStore();
@@ -66,8 +78,18 @@ export default function ChatSendBox({
     id: string,
     filesOverride?: File[], // [Fixed] 인자 추가: 외부(Home 등)에서 전달된 파일 강제 사용
     modelOverride?: LLMModel, // Home에서 전달된 모델
+    isNewThread = false, // 새 채팅방에서 첫 메시지 여부
   ) => {
     if (!messageText || sending || sendingRef.current) return;
+
+    // 새 채팅방에서 에러 발생 시 채팅방 자체를 삭제하고 돌아가는 헬퍼
+    const cleanupNewThreadOnError = async () => {
+      if (!isNewThread) return false;
+      await threadRepo.deleteThreadById(targetThreadId);
+      queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+      navigate("/chat");
+      return true;
+    };
 
     // 첨부파일 우선순위: filesOverride > attachedFiles
     const filesToSend =
@@ -188,25 +210,46 @@ export default function ChatSendBox({
                     },
                   });
 
-                  // 빈 메시지 삭제
-                  await threadRepo.deleteMessageFromThreadById(
-                    targetThreadId,
-                    assistantMessageId,
-                  );
+                  const cleaned = await cleanupNewThreadOnError();
+                  if (!cleaned) {
+                    // 기존 채팅방: 유저/어시스턴트 메시지만 삭제
+                    await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
+                    await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+                  }
 
-                  // 타이핑 상태 해제
                   setIsTyping(false);
                   setSending(false);
                   sendingRef.current = false;
                   return;
                 }
 
-                // 기타 에러는 에러 메시지로 업데이트
-                await threadRepo.updateMessageInThreadById(
-                  targetThreadId,
-                  assistantMessageId,
-                  `❌ API 오류: ${event.data.message || "unknown_error"}`,
-                );
+                // 네트워크 오류 처리
+                if (isNetworkErrorMessage(event.data.message || "")) {
+                  const cleaned = await cleanupNewThreadOnError();
+                  if (!cleaned) {
+                    await threadRepo.updateMessageInThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                      NETWORK_ERROR_CONTENT,
+                    );
+                  }
+                  setIsTyping(false);
+                  setSending(false);
+                  sendingRef.current = false;
+                  break;
+                }
+
+                // 기타 에러
+                {
+                  const cleaned = await cleanupNewThreadOnError();
+                  if (!cleaned) {
+                    await threadRepo.updateMessageInThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                      `❌ API 오류: ${event.data.message || "unknown_error"}`,
+                    );
+                  }
+                }
 
                 // 타이핑 상태 해제
                 setIsTyping(false);
@@ -261,7 +304,6 @@ export default function ChatSendBox({
         console.log("Is 403 error:", is403Error);
 
         if (is403Error) {
-          console.log("Attempting to show 403 toast...");
           addToast({
             message: t("toast.apiKeyRequired"),
             type: "error",
@@ -270,20 +312,30 @@ export default function ChatSendBox({
               onClick: () => navigate("/settings"),
             },
           });
-          console.log("Toast added");
 
-          // 빈 메시지 삭제
-          await threadRepo.deleteMessageFromThreadById(
-            targetThreadId,
-            assistantMessageId,
-          );
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
+            await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+          }
+        } else if (isNetworkErrorMessage(streamError?.message || "")) {
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.updateMessageInThreadById(
+              targetThreadId,
+              assistantMessageId,
+              NETWORK_ERROR_CONTENT,
+            );
+          }
         } else {
-          // 기타 연결 실패 - 에러 메시지로 업데이트
-          await threadRepo.updateMessageInThreadById(
-            targetThreadId,
-            assistantMessageId,
-            `❌ 연결 실패: ${streamError?.message || "알 수 없는 오류"}`,
-          );
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.updateMessageInThreadById(
+              targetThreadId,
+              assistantMessageId,
+              `❌ 연결 실패: ${streamError?.message || "알 수 없는 오류"}`,
+            );
+          }
         }
 
         // 타이핑 상태 해제
@@ -291,13 +343,37 @@ export default function ChatSendBox({
         setSending(false);
         sendingRef.current = false;
       }
+
+      // 안전망: SDK가 콜백 없이 조용히 종료된 경우 (예: 403 응답)
+      // result/error 이벤트 없이 await가 완료되면 sendingRef가 여전히 true임
+      if (sendingRef.current) {
+        addToast({
+          message: t("toast.apiKeyRequired"),
+          type: "error",
+          action: {
+            label: t("toast.goToSettings"),
+            onClick: () => navigate("/settings"),
+          },
+        });
+        const cleaned = await cleanupNewThreadOnError();
+        if (!cleaned) {
+          await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
+          await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+        }
+        setIsTyping(false);
+        setSending(false);
+        sendingRef.current = false;
+      }
     } catch (err: any) {
-      await threadRepo.addMessageToThreadById(targetThreadId, {
-        id: uuid(),
-        role: "assistant",
-        content: `❌ 오류: ${err?.message || err}`,
-        ts: Date.now(),
-      });
+      const cleaned = await cleanupNewThreadOnError();
+      if (!cleaned) {
+        await threadRepo.addMessageToThreadById(targetThreadId, {
+          id: uuid(),
+          role: "assistant",
+          content: `❌ 오류: ${err?.message || err}`,
+          ts: Date.now(),
+        });
+      }
       // 외부 에러 발생 시 상태 해제
       setIsTyping(false);
       setSending(false);
@@ -367,6 +443,25 @@ export default function ChatSendBox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, sending, location.key]);
 
+  // 재시도 함수를 ref에 등록 (ChatWindow에서 호출 가능)
+  useEffect(() => {
+    if (!retrySendRef) return;
+    retrySendRef.current = async (
+      userMessageId: string,
+      userContent: string,
+      errorMessageId: string,
+    ) => {
+      if (!threadId) return;
+      // 에러 어시스턴트 메시지 삭제
+      await threadRepo.deleteMessageFromThreadById(threadId, errorMessageId);
+      // 동일한 유저 메시지로 재전송 (유저 메시지는 DB에 이미 있음)
+      await handleSendMessage(userContent, threadId, userMessageId);
+    };
+    return () => {
+      if (retrySendRef) retrySendRef.current = null;
+    };
+  });
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
@@ -374,6 +469,7 @@ export default function ChatSendBox({
 
     // 1) 스레드 준비 (없으면 새로 만들고 URL 업데이트)
     let tid = threadId;
+    const isNewThread = !tid; // 새 채팅방 여부를 스레드 생성 전에 판단
     if (!tid) {
       const created = await threadRepo.create("loading…", []);
       tid = created.id;
@@ -393,7 +489,7 @@ export default function ChatSendBox({
     setInput("");
 
     // 3) 메시지 전송 로직 실행
-    await handleSendMessage(text, tid!, id);
+    await handleSendMessage(text, tid!, id, undefined, undefined, isNewThread);
   };
 
   return (

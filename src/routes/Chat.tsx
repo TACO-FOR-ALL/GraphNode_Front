@@ -16,6 +16,11 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
   const scrollToBottomRef = useRef<(() => void) | null>(
     null,
   ) as React.RefObject<(() => void) | null>;
+  const retrySendRef = useRef<
+    ((userMessageId: string, userContent: string, errorMessageId: string) => void) | null
+  >(null) as React.RefObject<
+    ((userMessageId: string, userContent: string, errorMessageId: string) => void) | null
+  >;
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1536px)");
@@ -50,6 +55,9 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
           avatarUrl={avatarUrl}
           onScrollStateChange={handleScrollStateChange}
           scrollToBottomRef={scrollToBottomRef}
+          onRetry={(userMessageId, userContent, errorMessageId) =>
+            retrySendRef.current?.(userMessageId, userContent, errorMessageId)
+          }
         />
       </div>
 
@@ -69,7 +77,7 @@ export default function Chat({ avatarUrl }: { avatarUrl: string | null }) {
 
       {/* ChatSendBox - 고정 높이 */}
       <div className="flex-1 absolute bottom-8 w-full px-6">
-        <ChatSendBox setIsTyping={setIsTyping} />
+        <ChatSendBox setIsTyping={setIsTyping} retrySendRef={retrySendRef} />
       </div>
     </div>
   );

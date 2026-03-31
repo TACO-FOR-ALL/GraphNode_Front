@@ -34,6 +34,7 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
     loadSession,
     deleteSession,
     addMessage,
+    removeLastMessage,
     replaceLastSystemMessage,
   } = useChatHistory();
 
@@ -45,9 +46,10 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
     getSourceContent,
   } = useSourceSelection();
 
-  const { isProcessing, sendMessage, reset } = useAgentChat({
+  const { isProcessing, sendMessage, retryLastMessage, reset } = useAgentChat({
     ensureSession,
     addMessage,
+    removeLastMessage,
     replaceLastSystemMessage,
     getSourceContent,
   });
@@ -132,7 +134,7 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
         }`}
       >
         {hasMessages ? (
-          <MessageList messages={messages} />
+          <MessageList messages={messages} onRetry={retryLastMessage} />
         ) : (
           <EmptyState
             onSummary={() => handleQuickAction("summary")}
