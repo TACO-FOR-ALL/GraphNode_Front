@@ -1,4 +1,19 @@
 {
+  "setup": {
+    "welcome": {
+      "title": "GraphNode에 오신 것을 환영합니다",
+      "subtitle": "더 스마트한 노트와 AI 대화를 경험해보세요.",
+      "checkingUpdate": "최신 버전 확인 중...",
+      "upToDate": "최신 버전입니다",
+      "next": "다음"
+    },
+    "consent": {
+      "title": "개인정보 수집·이용 동의",
+      "disagree": "동의하지 않습니다",
+      "agree": "개인정보 수집 및 이용에 동의합니다",
+      "start": "앱 시작하기"
+    }
+  },
   "login": {
     "welcome": "환영합니다!",
     "signInWithGoogle": "Google로 로그인",
@@ -7,6 +22,11 @@
     "minimizeWindow": "창 최소화",
     "maximizeWindow": "창 최대화",
     "popupBlocked": "팝업이 차단되었습니다. 팝업 허용을 해주세요.",
+    "agreePrefix": "로그인하면",
+    "terms": "이용약관",
+    "agreeMiddle": "과",
+    "privacy": "개인정보 수집 및 이용",
+    "agreeSuffix": "에 동의하는 것으로 간주합니다.",
     "error": {
       "server": "서버 오류가 발생했습니다.",
       "sessionNotSet": "로그인 세션이 설정되지 않았습니다. 다시 시도해 주세요.",
@@ -95,7 +115,20 @@
       "subtitle": "관심 있는 주제를 선택하거나 직접 입력해보세요. 건너뛰어도 괜찮아요.",
       "placeholder": "직접 입력...",
       "skipText": "건너뛰기",
-      "presets": ["AI / 머신러닝", "웹 개발", "데이터 분석", "창업 / 스타트업", "디자인 / UX", "마케팅", "글쓰기 / 콘텐츠", "연구 / 논문", "자기계발", "재무 / 투자", "언어 학습", "과학 / 공학"]
+      "presets": [
+        "AI / 머신러닝",
+        "웹 개발",
+        "데이터 분석",
+        "창업 / 스타트업",
+        "디자인 / UX",
+        "마케팅",
+        "글쓰기 / 콘텐츠",
+        "연구 / 논문",
+        "자기계발",
+        "재무 / 투자",
+        "언어 학습",
+        "과학 / 공학"
+      ]
     },
     "tone": {
       "title": "에이전트의 말투를 골라주세요",
@@ -403,7 +436,9 @@
       "language-time": "언어 및 시간",
       "mcp": "MCP 서버"
     },
-    "feedback": "피드백 보내기",
+    "feedback": "피드백 의견 보내기",
+    "privacy": "개인정보처리방침",
+    "terms": "이용약관",
     "logout": "로그아웃",
     "dropJsonZone": {
       "title": "드래그 & 드롭으로 JSON 파일 업로드하기",

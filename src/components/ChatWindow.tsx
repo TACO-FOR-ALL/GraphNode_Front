@@ -286,6 +286,14 @@ export default function ChatWindow({
   const turnAssistantMessages = turnUserMessage ? currentTurn.slice(1) : [];
   const lastUserMessageId = turnUserMessage?.id;
 
+  // shouldUseTopAnchoredTurn을 scroll 리스너가 동기적으로 읽을 수 있도록 ref로 유지
+  // (spacer 높이 주입 → scrollTop 변경 → scroll 이벤트 순으로 동기 실행되기 때문에
+  //  useLayoutEffect 선언 순서가 spacer 효과보다 먼저여야 ref가 미리 갱신됨)
+  const shouldUseTopAnchoredTurnRef = useRef(shouldUseTopAnchoredTurn);
+  useLayoutEffect(() => {
+    shouldUseTopAnchoredTurnRef.current = shouldUseTopAnchoredTurn;
+  }, [shouldUseTopAnchoredTurn]);
+
   // 새 유저 질문: spacer 확보 + 유저 메시지를 viewport 하단에 배치 (paint 전)
   useLayoutEffect(() => {
     if (!shouldUseTopAnchoredTurn) return;
@@ -369,10 +377,24 @@ export default function ChatWindow({
   });
 
   // 스크롤 위치 추적 → 최하단이 아닐 때 플로팅 버튼 표시
+  // active turn 중에는 spacer가 scrollHeight를 인위적으로 늘리므로
+  // "spacer 제외 실제 콘텐츠 높이"가 뷰포트 이하면 버튼 숨김,
+  // 실제로 콘텐츠가 넘치는 경우(긴 답변)엔 기존 atBottom 판단 유지
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const check = () => {
+      if (shouldUseTopAnchoredTurnRef.current) {
+        const spacerHeight = spacerRef.current?.offsetHeight ?? 0;
+        const realScrollHeight = el.scrollHeight - spacerHeight;
+        if (realScrollHeight <= el.clientHeight) {
+          onScrollStateChange?.(false);
+          return;
+        }
+        const atBottom = el.scrollTop >= el.scrollHeight - spacerHeight - el.clientHeight - 80;
+        onScrollStateChange?.(!atBottom);
+        return;
+      }
       const atBottom = el.scrollTop >= el.scrollHeight - el.clientHeight - 80;
       onScrollStateChange?.(!atBottom);
     };
@@ -380,6 +402,19 @@ export default function ChatWindow({
     el.addEventListener("scroll", check, { passive: true });
     return () => el.removeEventListener("scroll", check);
   }, [isLoading, onScrollStateChange]);
+
+  // active turn 진입 직후 scroll 이벤트 없이 scrollTop이 변하지 않는 경우(첫 메시지)
+  // scroll 리스너가 재실행되지 않으므로 spacer 주입 후 명시적으로 재평가
+  useEffect(() => {
+    if (!shouldUseTopAnchoredTurn) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const spacerHeight = spacerRef.current?.offsetHeight ?? 0;
+    const realScrollHeight = el.scrollHeight - spacerHeight;
+    if (realScrollHeight <= el.clientHeight) {
+      onScrollStateChange?.(false);
+    }
+  }, [shouldUseTopAnchoredTurn, onScrollStateChange]);
 
   // 스트리밍 완료 시 (hasActiveTurn: true → false) spacer가 사라져 scrollHeight가 줄어도 위치 유지
   const prevHasActiveTurnRef = useRef(hasActiveTurn);

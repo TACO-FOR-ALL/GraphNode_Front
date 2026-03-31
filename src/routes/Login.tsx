@@ -212,6 +212,34 @@ export default function Login() {
             <p className="text-[14px]">{t("login.signInWithApple")}</p>
           </div>
 
+          <div className="mt-6 text-[11px] text-text-secondary text-center leading-relaxed px-4">
+            {t("login.agreePrefix")}{" "}
+            <div className="flex gap-x-1">
+              <div
+                onClick={() =>
+                  window.systemAPI?.openExternal(
+                    "https://www.graphnode.site/terms",
+                  )
+                }
+                className="underline hover:text-text-primary transition-colors cursor-pointer"
+              >
+                {t("login.terms")}
+              </div>
+              {t("login.agreeMiddle")}{" "}
+              <div
+                onClick={() =>
+                  window.systemAPI?.openExternal(
+                    "https://www.graphnode.site/privacy",
+                  )
+                }
+                className="underline hover:text-text-primary transition-colors cursor-pointer"
+              >
+                {t("login.privacy")}
+              </div>
+            </div>
+            {t("login.agreeSuffix")}
+          </div>
+
           {error && (
             <div role="alert" className="mt-4 text-red-400 text-[13px]">
               {error}
