@@ -2,8 +2,6 @@ import { Note } from "@/types/Note";
 import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
-import i18n from "@/i18n";
-import { getDefaultNoteContent } from "@/constants/defaultNotes";
 import { trashRepo } from "./trashRepo";
 import {
   getPreferredNoteReadStorage,
@@ -103,17 +101,6 @@ export const noteRepo = {
     if (!trashedNote) return null;
 
     return id;
-  },
-
-  async initializeDefaultNote(): Promise<Note | null> {
-    const notes = await this.getAllNotes();
-    if (notes.length > 0) return null;
-
-    // 현재 설정된 언어에 맞는 기본 노트 내용 가져오기
-    const currentLanguage = i18n.language || "en";
-    const defaultContent = getDefaultNoteContent(currentLanguage);
-
-    return await this.create(defaultContent);
   },
 
   async upsertMany(newOnes: Note[]): Promise<void> {
