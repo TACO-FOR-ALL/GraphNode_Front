@@ -1,42 +1,24 @@
-import { api } from "@/apiClient";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import GoogleIcon from "@/assets/icons/google.svg";
 import AppleIcon from "@/assets/icons/apple.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { Me } from "@/types/Me";
+import { api } from "@/apiClient";
+import { useOAuthPopup } from "@/hooks/useOAuthPopup";
 
 export default function Login() {
   const { t } = useTranslation();
   const [hasSession, setHasSession] = useState<boolean | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const popupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const handleCloseWindow = () => window.windowAPI.close();
   const handleMinimizeWindow = () => window.windowAPI.minimize();
   const handleToggleMaximize = () => window.windowAPI.maximize();
 
-  // 세션 상태로 로그인 여부 확인
+  // 세션 확인
   useEffect(() => {
     (async () => {
-      // 백엔드 인증 없이 테스트용
-      // if (import.meta.env.DEV) {
-      //   setHasSession(true);
-      //   await window.keytarAPI.setMe({
-      //     userId: "123",
-      //     profile: {
-      //       id: "123",
-      //       avatarUrl:
-      //         "https://lh3.googleusercontent.com/ogw/AF2bZyj8t00d6e-pJ9uS-qktXuPTf2SlhPlB7sqgoIF-RwuqBQ=s32-c-mo",
-      //       displayName: "John Han",
-      //       email: "work.johnhan@gmail.com",
-      //     },
-      //   });
-      //   window.electron?.send("auth-success");
-      //   return;
-      // }
-
       const result = await api.me.get();
 
       if (result.isSuccess) {
@@ -55,109 +37,18 @@ export default function Login() {
       }
 
       setHasSession(false);
-      setError(t("login.error.server"));
+      setSessionError(t("login.error.server"));
     })();
   }, []);
 
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      // 메시지 오리진 검증
-      if (event.origin !== "https://taco4graphnode.online") return;
+  // OAuth 팝업 로그인
+  const { isLoggingIn, error: oauthError, login } = useOAuthPopup(async (me: Me) => {
+    setHasSession(true);
+    await window.keytarAPI.setMe(me);
+    window.electron?.send("auth-success");
+  });
 
-      // 백엔드 콜백 HTML postMessage 객체
-      const data = event.data;
-      if (!data || typeof data !== "object") return;
-
-      if (data.type === "oauth-success") {
-        // 팝업 모니터링 interval 정리
-        if (popupIntervalRef.current) {
-          clearInterval(popupIntervalRef.current);
-          popupIntervalRef.current = null;
-        }
-        setIsLoggingIn(false);
-        (async () => {
-          try {
-            const me = await api.me.get();
-            if (me.isSuccess) {
-              setHasSession(true);
-              await window.keytarAPI.setMe(me.data as Me);
-              window.electron?.send("auth-success");
-            } else {
-              setError(t("login.error.sessionNotSet"));
-            }
-          } catch (err: any) {
-            console.error("getMe failed after oauth:", err);
-            if (err.status === 401) {
-              setError(t("login.error.sessionNotSet"));
-            } else {
-              setError(t("login.error.fetchUserFailed"));
-            }
-          }
-        })();
-      } else if (data.type === "oauth-error") {
-        if (popupIntervalRef.current) {
-          clearInterval(popupIntervalRef.current);
-          popupIntervalRef.current = null;
-        }
-        setIsLoggingIn(false);
-        setError(data.message ?? t("login.error.oauthError"));
-      }
-    }
-
-    // 백엔드 콜백 HTML postMessage 수신 이벤트 리스너 등록
-    // message: 다른 Window 간 메시지(데이터) 송수신 시 발생하는 이벤트
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  const handleSocialLogin = async (provider: "google" | "apple") => {
-    if (isLoggingIn) return;
-
-    const width = 480;
-    const height = 640;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    try {
-      setIsLoggingIn(true);
-      setError(null);
-      const url =
-        provider === "google"
-          ? await api.googleAuth.startUrl()
-          : await api.appleAuth.startUrl();
-
-      const popup = window.open(
-        url,
-        `${provider}-oauth`,
-        `width=${width},height=${height},left=${left},top=${top}`,
-      );
-
-      if (!popup) {
-        setIsLoggingIn(false);
-        alert(t("login.popupBlocked"));
-        return;
-      }
-
-      // 팝업이 닫혔는지 모니터링
-      popupIntervalRef.current = setInterval(() => {
-        if (popup.closed) {
-          if (popupIntervalRef.current) {
-            clearInterval(popupIntervalRef.current);
-            popupIntervalRef.current = null;
-          }
-          setIsLoggingIn(false);
-        }
-      }, 500);
-    } catch (err) {
-      console.error(err);
-      setIsLoggingIn(false);
-      setError(
-        provider === "google"
-          ? t("login.error.googleLoginFailed")
-          : t("login.error.appleLoginFailed"),
-      );
-    }
-  };
+  const error = sessionError || oauthError;
 
   if (!hasSession) {
     return (
@@ -190,7 +81,7 @@ export default function Login() {
           <div className="h-[96px]" />
           <div
             className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
-            onClick={() => !isLoggingIn && handleSocialLogin("google")}
+            onClick={() => login("google")}
           >
             <img
               src={GoogleIcon}
@@ -202,7 +93,7 @@ export default function Login() {
           <div className="h-3" />
           <div
             className={`flex items-center justify-center relative w-[230px] border-solid border-[1px] rounded-full py-2 cursor-pointer ${isLoggingIn ? "opacity-50 cursor-not-allowed" : ""}`}
-            onClick={() => !isLoggingIn && handleSocialLogin("apple")}
+            onClick={() => login("apple")}
           >
             <img
               src={AppleIcon}

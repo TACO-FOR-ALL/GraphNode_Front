@@ -26,6 +26,8 @@ import GraphTestPage from "./routes/GraphTestPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
+import { isElectron } from "./utils/platform";
+import WebLoginModal from "./components/auth/WebLoginModal";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
@@ -69,6 +71,11 @@ function MainLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // 웹
+  const [webAuthenticated, setWebAuthenticated] = useState<boolean | null>(
+    isElectron() ? true : null,
+  );
+
   // SSE 알림 연결
   useNotificationConnection();
 
@@ -101,11 +108,13 @@ function MainLayout() {
   }, []);
 
   // 온보딩이 완료되지 않은 경우 자동 시작
+  // 웹에서는 인증이 완료된 후에만 시작 (미인증 상태에서 설정 페이지 접근 시 에러 방지)
   useEffect(() => {
+    if (!isElectron() && webAuthenticated !== true) return;
     if (!hasCompletedOnboarding) {
       startOnboarding();
     }
-  }, [hasCompletedOnboarding, startOnboarding]);
+  }, [hasCompletedOnboarding, startOnboarding, webAuthenticated]);
 
   // 버전 체크 및 Changelog 모달 표시
   useEffect(() => {
@@ -231,9 +240,25 @@ function MainLayout() {
 
   // GET USER INFO
   useEffect(() => {
+    if (!isElectron()) return;
     (async () => {
       const me = await window.keytarAPI.getMe();
       setMe(me as Me);
+    })();
+  }, []);
+
+  // 웹: 세션 확인 후 미인증이면 홈으로 리다이렉트 + 로그인 모달 표시
+  useEffect(() => {
+    if (isElectron()) return;
+    (async () => {
+      const result = await api.me.get();
+      if (result.isSuccess) {
+        setMe(result.data as Me);
+        setWebAuthenticated(true);
+      } else {
+        navigate("/");
+        setWebAuthenticated(false);
+      }
     })();
   }, []);
 
@@ -307,6 +332,14 @@ function MainLayout() {
         <ChangelogModal />
         <Onboarding />
         {/* <ModelUpdateBanner /> */}
+        {!isElectron() && webAuthenticated === false && (
+          <WebLoginModal
+            onSuccess={(me) => {
+              setMe(me);
+              setWebAuthenticated(true);
+            }}
+          />
+        )}
       </div>
     </div>
   );
