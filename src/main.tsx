@@ -6,8 +6,11 @@ import { initI18n } from "./i18n";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { startSyncLoop } from "./managers/startSyncLoop";
 import { queryClient } from "./queryClient";
+import { isElectron } from "./utils/platform";
 
-startSyncLoop();
+if (isElectron()) {
+  startSyncLoop();
+}
 
 (async () => {
   await initI18n();

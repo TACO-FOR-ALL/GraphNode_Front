@@ -26,6 +26,11 @@ import GraphTestPage from "./routes/GraphTestPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
 import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
+import { isElectron } from "./utils/platform";
+import WebLoginModal from "./components/auth/WebLoginModal";
+import { getDefaultNoteContent } from "./constants/defaultNotes";
+import uuid from "./utils/uuid";
+import extractTitleFromMarkdown from "./utils/extractTitleFromMarkdown";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
@@ -61,6 +66,7 @@ export default function App() {
   );
 }
 
+// WEB은 무조건 서버 데이터 직접 CRUD 해서 동기화 작업 건너띄기
 function MainLayout() {
   const [openSearch, setOpenSearch] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
@@ -68,6 +74,11 @@ function MainLayout() {
   const { keybinds } = useKeybindsStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // 웹
+  const [webAuthenticated, setWebAuthenticated] = useState<boolean | null>(
+    isElectron() ? true : null,
+  );
 
   // SSE 알림 연결
   useNotificationConnection();
@@ -101,11 +112,13 @@ function MainLayout() {
   }, []);
 
   // 온보딩이 완료되지 않은 경우 자동 시작
+  // 웹에서는 인증이 완료된 후에만 시작 (미인증 상태에서 설정 페이지 접근 시 에러 방지)
   useEffect(() => {
+    if (!isElectron() && webAuthenticated !== true) return;
     if (!hasCompletedOnboarding) {
       startOnboarding();
     }
-  }, [hasCompletedOnboarding, startOnboarding]);
+  }, [hasCompletedOnboarding, startOnboarding, webAuthenticated]);
 
   // 버전 체크 및 Changelog 모달 표시
   useEffect(() => {
@@ -148,6 +161,11 @@ function MainLayout() {
 
   // 휴지통 만료 항목 정리
   useEffect(() => {
+    if (!isElectron()) {
+      // console.log("[웹] 휴지통 정리 스킵");
+      return;
+    }
+    // console.log("[앱] 휴지통 만료 항목 정리");
     trashRepo.cleanupExpiredItems().catch((err) => {
       console.error("Failed to cleanup expired trash items:", err);
     });
@@ -155,19 +173,36 @@ function MainLayout() {
 
   const { t } = useTranslation();
 
+  // 최초 가입 유저 기본 노트 생성
+  // - 서버 노트 목록 기준으로 판단 → 앱/웹 어디서 먼저 시작해도 중복 생성 없음
+  // - 웹은 인증 완료 후 실행, 앱은 즉시 실행
   useEffect(() => {
-    // 최초 실행 시 기본 노트 추가
-    const FIRST_LAUNCH_KEY = "graphnode_first_launch";
-    const hasLaunched = localStorage.getItem(FIRST_LAUNCH_KEY);
+    if (!isElectron() && webAuthenticated !== true) return;
 
-    if (!hasLaunched) {
-      noteRepo.initializeDefaultNote().catch((err) => {
-        console.error("Failed to initialize default note:", err);
-      });
-      localStorage.setItem(FIRST_LAUNCH_KEY, "true");
-      console.log("Initialized default note");
-    }
-  }, []);
+    (async () => {
+      const result = await api.note.listNotes();
+      if (!result.isSuccess || result.data.length > 0) return;
+
+      const defaultContent = getDefaultNoteContent(i18n.language || "en");
+
+      if (isElectron()) {
+        noteRepo.create(defaultContent).catch((err) => {
+          console.error("Failed to create default note:", err);
+        });
+      } else {
+        api.note
+          .createNote({
+            id: uuid(),
+            title: extractTitleFromMarkdown(defaultContent),
+            content: defaultContent,
+            folderId: null,
+          })
+          .catch((err) => {
+            console.error("Failed to create default note:", err);
+          });
+      }
+    })();
+  }, [webAuthenticated]);
 
   // 키바인드 단축키 처리
   useEffect(() => {
@@ -231,14 +266,35 @@ function MainLayout() {
 
   // GET USER INFO
   useEffect(() => {
+    if (!isElectron()) return;
     (async () => {
       const me = await window.keytarAPI.getMe();
       setMe(me as Me);
     })();
   }, []);
 
+  // 웹: 세션 확인 후 미인증이면 홈으로 리다이렉트 + 로그인 모달 표시
+  useEffect(() => {
+    if (isElectron()) return;
+    (async () => {
+      const result = await api.me.get();
+      if (result.isSuccess) {
+        setMe(result.data as Me);
+        setWebAuthenticated(true);
+      } else {
+        navigate("/");
+        setWebAuthenticated(false);
+      }
+    })();
+  }, []);
+
   // 앱 시작 시 서버 최신 데이터 pull (notes, folders, conversations)
   useEffect(() => {
+    if (!isElectron()) {
+      // console.log("[웹] 초기 동기화(pull) 스킵");
+      return;
+    }
+    // console.log("[앱] 초기 동기화(pull) 시작");
     pullOnce().catch((err) => {
       console.error("Initial sync pull failed:", err);
       useToastStore.getState().addToast({
@@ -307,6 +363,14 @@ function MainLayout() {
         <ChangelogModal />
         <Onboarding />
         {/* <ModelUpdateBanner /> */}
+        {!isElectron() && webAuthenticated === false && (
+          <WebLoginModal
+            onSuccess={(me) => {
+              setMe(me);
+              setWebAuthenticated(true);
+            }}
+          />
+        )}
       </div>
     </div>
   );
