@@ -368,6 +368,7 @@ function MainLayout() {
             onSuccess={(me) => {
               setMe(me);
               setWebAuthenticated(true);
+              queryClient.invalidateQueries({ queryKey: ["recent-notes"] });
             }}
           />
         )}

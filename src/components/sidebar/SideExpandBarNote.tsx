@@ -17,17 +17,20 @@ import NoteIcon from "@/assets/icons/note.svg";
 import NoteActiveIcon from "@/assets/icons/note_active_primary.svg";
 import FolderPlusIconActive from "@/assets/icons/folderplus_active.svg";
 import { useTranslation } from "react-i18next";
+import SidebarSkeletonList from "./SidebarSkeletonList";
 
 export default function SideExpandBarNote({
   path,
   notes,
   folders,
   selectedId,
+  isLoading,
 }: {
   path: string;
   notes: Note[];
   folders: Folder[];
   selectedId: string;
+  isLoading?: boolean;
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -231,6 +234,20 @@ export default function SideExpandBarNote({
           {t("notes.newNote")}
         </p>
       </div>
+
+      {isLoading ? (
+        <>
+          {/* 워크스페이스 헤더 (실제) */}
+          <div className="flex items-center gap-1 px-[6px] py-[2px] mb-[6px] text-text-secondary">
+            <span className="text-[12px] font-medium font-noto-sans-kr">
+              {t("notes.workspace")}
+            </span>
+            <IoChevronDown className="text-[12px]" />
+          </div>
+          <SidebarSkeletonList />
+        </>
+      ) : (
+        <>
       {/* 루트 토글 헤더 */}
       {buildTree &&
         (buildTree.rootFolders.length > 0 ||
@@ -347,6 +364,8 @@ export default function SideExpandBarNote({
           </>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
