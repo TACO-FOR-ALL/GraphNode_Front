@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import { useState, useRef, useEffect } from "react";
+import { isElectron } from "@/utils/platform";
 import { useThemeStore } from "@/store/useThemeStore";
 import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { useCurrentHightlightStore } from "@/store/useCurrentHighlight";
@@ -546,8 +547,9 @@ export default function AppearancePanel() {
   const [pendingRestart, setPendingRestart] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
 
-  // 앱 시작 시 설정 로드
+  // 앱 시작 시 설정 로드 (Electron 전용)
   useEffect(() => {
+    if (!isElectron()) return;
     window.systemAPI.getSettings().then((settings) => {
       setIsGpuActive(settings.hardwareAcceleration);
     });
@@ -663,26 +665,30 @@ export default function AppearancePanel() {
         )}
       </div>
 
-      {/* Hardware Acceleration */}
-      <SettingCategoryTitle title={t("settings.appearance.advanced.title")} />
-      <ToggleSettingItem
-        title={t("settings.appearance.advanced.hardware")}
-        subtitle={t("settings.appearance.advanced.hardwareDescription")}
-        isActive={isGpuActive}
-        onChange={handleGpuToggle}
-      />
-      {pendingRestart && (
-        <div className="flex items-center justify-between p-3 bg-primary/10 rounded-md border border-primary/30">
-          <span className="text-[13px] text-text-secondary">
-            {t("settings.appearance.advanced.restartRequired")}
-          </span>
-          <button
-            onClick={handleRestart}
-            className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-md hover:bg-primary/80 transition-colors"
-          >
-            {t("settings.appearance.advanced.restartNow")}
-          </button>
-        </div>
+      {/* Hardware Acceleration (Electron 전용) */}
+      {isElectron() && (
+        <>
+          <SettingCategoryTitle title={t("settings.appearance.advanced.title")} />
+          <ToggleSettingItem
+            title={t("settings.appearance.advanced.hardware")}
+            subtitle={t("settings.appearance.advanced.hardwareDescription")}
+            isActive={isGpuActive}
+            onChange={handleGpuToggle}
+          />
+          {pendingRestart && (
+            <div className="flex items-center justify-between p-3 bg-primary/10 rounded-md border border-primary/30">
+              <span className="text-[13px] text-text-secondary">
+                {t("settings.appearance.advanced.restartRequired")}
+              </span>
+              <button
+                onClick={handleRestart}
+                className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-md hover:bg-primary/80 transition-colors"
+              >
+                {t("settings.appearance.advanced.restartNow")}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </SettingsPanelLayout>
   );

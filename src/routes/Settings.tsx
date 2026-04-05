@@ -9,7 +9,13 @@ import LanguageTimePanel from "@/components/settings/LanguageTimePanel";
 import MCPPanel from "@/components/settings/MCPPanel";
 import { Me } from "@/types/Me";
 
-export default function Settings({ userInfo }: { userInfo: Me }) {
+export default function Settings({
+  userInfo,
+  onLogout,
+}: {
+  userInfo: Me;
+  onLogout?: () => void;
+}) {
   const { selectedCategory, setSelectedCategory } = useSidebarSettingsStore();
 
   useEffect(() => {
@@ -20,7 +26,7 @@ export default function Settings({ userInfo }: { userInfo: Me }) {
 
   switch (selectedCategory.id) {
     case "my-account":
-      return <MyAccountPanel userInfo={userInfo} />;
+      return <MyAccountPanel userInfo={userInfo} onLogout={onLogout} />;
     case "data-privacy":
       return <DataPrivacyPanel />;
     case "appearance":
@@ -34,6 +40,6 @@ export default function Settings({ userInfo }: { userInfo: Me }) {
     case "mcp":
       return <MCPPanel />;
     default:
-      return <MyAccountPanel userInfo={userInfo} />;
+      return <MyAccountPanel userInfo={userInfo} onLogout={onLogout} />;
   }
 }

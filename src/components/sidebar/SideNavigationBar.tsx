@@ -62,10 +62,12 @@ const NAVIGATION_ITEMS: NavItem[] = [
 export default function SideNavigationBar({
   path,
   setOpenSearch,
+  firstLetter,
   avatarUrl,
 }: {
   path: string;
   setOpenSearch: (open: boolean) => void;
+  firstLetter: string;
   avatarUrl: string | null;
 }) {
   const navigate = useNavigate();
@@ -86,7 +88,7 @@ export default function SideNavigationBar({
           className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
           onClick={() => navigate(`/`)}
         >
-          <img src={LogoIcon} alt="logo" className="w-[16px] h-[16px]" />
+          <img src={LogoIcon} alt="logo" className="w-4 h-4" />
         </div>
         {NAVIGATION_ITEMS.map((item) => (
           <div
@@ -102,7 +104,7 @@ export default function SideNavigationBar({
           >
             {item.isReactIcon ? (
               <item.ReactIcon
-                className={`w-[16px] h-[16px] ${item.id === path || hoveredItem === item.id ? "text-white" : "text-text-secondary"}`}
+                className={`w-4 h-4 ${item.id === path || hoveredItem === item.id ? "text-white" : "text-text-secondary"}`}
               />
             ) : (
               <img
@@ -112,24 +114,31 @@ export default function SideNavigationBar({
                     : item.icon
                 }
                 alt={item.label}
-                className="w-[16px] h-[16px]"
+                className="w-4 h-4"
               />
             )}
           </div>
         ))}
       </div>
       <div className="flex flex-col items-center justify-center gap-2">
+        {/* TODO: Change Profile Image when Click */}
         <div key="profile" className="flex items-center justify-center p-[6px]">
-          <img
-            src={avatarUrl && avatarUrl.trim() ? avatarUrl : profile}
-            alt="profile"
-            className="w-[28px] h-[28px] rounded-full hover:bg-sidebar-tab-selected transition-colors duration-300"
-            crossOrigin="anonymous"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              e.currentTarget.src = profile;
-            }}
-          />
+          {avatarUrl && avatarUrl.trim() ? (
+            <img
+              src={avatarUrl}
+              alt="profile"
+              className="w-7 h-7 rounded-full hover:bg-sidebar-tab-selected transition-colors duration-300"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = profile;
+              }}
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-gray-300 text-center text-black hover:bg-sidebar-tab-selected transition-colors duration-300 text-sm">
+              {firstLetter}
+            </div>
+          )}
         </div>
         <div
           key="notification"

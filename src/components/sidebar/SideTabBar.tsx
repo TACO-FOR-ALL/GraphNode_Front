@@ -16,9 +16,11 @@ import SideExpandBarSettings from "./SideExpandBarSettings";
 
 export default function SideTabBar({
   setOpenSearch,
+  firstLetter,
   avatarUrl,
 }: {
   setOpenSearch: (open: boolean) => void;
+  firstLetter: string;
   avatarUrl: string | null;
 }) {
   const path = useLocation().pathname;
@@ -42,7 +44,9 @@ export default function SideTabBar({
 
   const { isExpanded, setIsExpanded } = useSidebarExpandStore();
 
-  const { data: chatThreads, isLoading: isLoadingChat } = useQuery<ChatThread[]>({
+  const { data: chatThreads, isLoading: isLoadingChat } = useQuery<
+    ChatThread[]
+  >({
     queryKey: ["chatThreads"],
     queryFn: () => threadRepo.getThreadList(),
     enabled: path.includes("/chat"),
@@ -63,6 +67,7 @@ export default function SideTabBar({
   return (
     <div className="flex h-full select-none">
       <SideNavigationBar
+        firstLetter={firstLetter}
         path={path.split("/")[1]}
         setOpenSearch={setOpenSearch}
         avatarUrl={avatarUrl}
