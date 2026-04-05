@@ -125,6 +125,7 @@ export default function ChatSendBox({
       let streamingText = "";
       let lastUpdateTime = 0;
       const THROTTLE_INTERVAL = 100; // 100ms마다 한 번만 DB 업데이트
+      let resultReceived = false; // 웹 SSE 타이밍 차이로 인한 안전망 false positive 방지
 
       // 스트리밍 시작 전 빈 어시스턴트 메시지 추가
       await threadRepo.addMessageToThreadById(targetThreadId, {
@@ -184,6 +185,7 @@ export default function ChatSendBox({
                 );
 
                 // 스트리밍 완료 - 타이핑 상태 해제
+                resultReceived = true;
                 setIsTyping(false);
                 setSending(false);
                 sendingRef.current = false;
@@ -346,7 +348,8 @@ export default function ChatSendBox({
 
       // 안전망: SDK가 콜백 없이 조용히 종료된 경우 (예: 403 응답)
       // result/error 이벤트 없이 await가 완료되면 sendingRef가 여전히 true임
-      if (sendingRef.current) {
+      // resultReceived로 정상 완료 여부를 구분해 웹 SSE 타이밍 차이로 인한 false positive 방지
+      if (sendingRef.current && !resultReceived) {
         addToast({
           message: t("toast.apiKeyRequired"),
           type: "error",

@@ -1,10 +1,7 @@
 import SettingsPanelLayout from "./SettingsPanelLayout";
 import ToggleSettingItem from "./ToggleSettingItem";
 import { FaCheck } from "react-icons/fa";
-import {
-  IoCamera,
-  IoMail,
-} from "react-icons/io5";
+import { IoCamera, IoMail, IoPerson } from "react-icons/io5";
 import { Me } from "@/types/Me";
 import SettingCategoryTitle from "./SettingCategoryTitle";
 import ApiKeyManager from "./ApiKeyManager";
@@ -14,6 +11,7 @@ import Claude from "@/assets/icons/claude.svg";
 import Gemini from "@/assets/icons/gemini.png";
 import { api } from "@/apiClient";
 import { useEffect, useState } from "react";
+import { isElectron } from "@/utils/platform";
 import { useTranslation } from "react-i18next";
 
 type PlanType = "standard" | "pro" | "max";
@@ -71,7 +69,13 @@ const plans: PlanInfo[] = [
   },
 ];
 
-export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
+export default function MyAccountPanel({
+  userInfo,
+  onLogout,
+}: {
+  userInfo: Me;
+  onLogout?: () => void;
+}) {
   const { t } = useTranslation();
 
   const [openaiApiKey, setOpenaiApiKey] = useState<boolean>(false);
@@ -111,11 +115,22 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
 
   const handleLogout = async () => {
     const result = await api.me.logout();
-    console.log;
     if (!result.isSuccess) {
       // TODO: 로그인 실패 로직
     }
-    window.electron?.send("auth-logout");
+    if (isElectron()) {
+      window.electron?.send("auth-logout");
+    } else {
+      onLogout?.();
+    }
+  };
+
+  const openExternal = (url: string) => {
+    if (isElectron()) {
+      window.systemAPI?.openExternal(url);
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
@@ -124,15 +139,29 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
       <div className="w-full p-6 bg-bg-secondary rounded-2xl">
         <div className="flex items-center gap-5">
           {/* Avatar */}
+          {/* TODO: Change Profile Image when Click */}
           <div className="relative group">
             <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-bg-tertiary">
-              <img
-                src={userInfo.profile.avatarUrl}
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
-                alt="avatar"
-                className="w-full h-full object-cover"
-              />
+              {userInfo.profile.avatarUrl ? (
+                <img
+                  src={userInfo.profile.avatarUrl}
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.classList.remove(
+                      "hidden",
+                    );
+                  }}
+                />
+              ) : null}
+              <div
+                className={`w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center ${userInfo.profile.avatarUrl ? "hidden" : ""}`}
+              >
+                <IoPerson className="text-gray-400 dark:text-gray-500 text-4xl" />
+              </div>
             </div>
             <button className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-200 cursor-pointer">
               <IoCamera className="text-white text-xl" />
@@ -336,19 +365,19 @@ export default function MyAccountPanel({ userInfo }: { userInfo: Me }) {
       {/* Feedback, Links & Logout Section */}
       <div className="flex items-center gap-4 flex-wrap">
         <button
-          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/feedback")}
+          onClick={() => openExternal("https://www.graphnode.site/feedback")}
           className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
         >
           {t("settings.feedback")}
         </button>
         <button
-          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/privacy")}
+          onClick={() => openExternal("https://www.graphnode.site/privacy")}
           className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
         >
           {t("settings.privacy")}
         </button>
         <button
-          onClick={() => window.systemAPI?.openExternal("https://www.graphnode.site/terms")}
+          onClick={() => openExternal("https://www.graphnode.site/terms")}
           className="text-sm text-text-secondary hover:text-text-primary underline transition-colors cursor-pointer"
         >
           {t("settings.terms")}

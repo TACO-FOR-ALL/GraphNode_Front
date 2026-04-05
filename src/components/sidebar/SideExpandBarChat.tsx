@@ -5,13 +5,16 @@ import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import SidebarSkeletonList from "./SidebarSkeletonList";
 
 export default function SideExpandBarChat({
   data,
   selectedId,
+  isLoading,
 }: {
   data: ChatThread[];
   selectedId: string;
+  isLoading?: boolean;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -34,29 +37,34 @@ export default function SideExpandBarChat({
           {t("chat.newChat")}
         </p>
       </div>
-      <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-20">
-        {data &&
-          data.map((item) => {
-            const isSelected = selectedId === item.id;
-            return (
-              <div
-                className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 group ${
-                  isSelected
-                    ? "bg-sidebar-button-hover text-chatbox-active"
-                    : " hover:bg-sidebar-button-hover text-text-secondary hover:text-chatbox-active"
-                }`}
-                key={item.id}
-                onClick={() => navigate(`/chat/${item.id}`)}
-              >
-                <div className="w-[195px] truncate">{item.title}</div>
-                <FaTrash
-                  className="text-[10px] cursor-pointer hidden group-hover:block"
-                  onClick={() => handleDeleteThread(item.id)}
-                />
-              </div>
-            );
-          })}
-      </div>
+
+      {isLoading ? (
+        <SidebarSkeletonList />
+      ) : (
+        <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-20">
+          {data &&
+            data.map((item) => {
+              const isSelected = selectedId === item.id;
+              return (
+                <div
+                  className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 group ${
+                    isSelected
+                      ? "bg-sidebar-button-hover text-chatbox-active"
+                      : " hover:bg-sidebar-button-hover text-text-secondary hover:text-chatbox-active"
+                  }`}
+                  key={item.id}
+                  onClick={() => navigate(`/chat/${item.id}`)}
+                >
+                  <div className="w-[195px] truncate">{item.title}</div>
+                  <FaTrash
+                    className="text-[10px] cursor-pointer hidden group-hover:block"
+                    onClick={() => handleDeleteThread(item.id)}
+                  />
+                </div>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }

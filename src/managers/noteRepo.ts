@@ -3,6 +3,7 @@ import extractTitleFromMarkdown from "@/utils/extractTitleFromMarkdown";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
 import { trashRepo } from "./trashRepo";
+import { isElectron } from "@/utils/platform";
 import {
   getPreferredNoteReadStorage,
   getPreferredNoteWriteStorage,
@@ -23,12 +24,14 @@ export const noteRepo = {
 
     await primaryWriteStorage.runNoteWriteTransaction(async () => {
       await primaryWriteStorage.createNoteRecord(newNote);
-      await outboxRepo.enqueueNoteCreate(newNote.id, {
-        id: newNote.id,
-        title: newNote.title,
-        content: newNote.content,
-        folderId: newNote.folderId,
-      });
+      if (isElectron()) {
+        await outboxRepo.enqueueNoteCreate(newNote.id, {
+          id: newNote.id,
+          title: newNote.title,
+          content: newNote.content,
+          folderId: newNote.folderId,
+        });
+      }
     });
 
     return newNote;
@@ -60,11 +63,9 @@ export const noteRepo = {
         content,
         updatedAt,
       });
-
-      await outboxRepo.enqueueNoteUpdate(id, {
-        title,
-        content,
-      });
+      if (isElectron()) {
+        await outboxRepo.enqueueNoteUpdate(id, { title, content });
+      }
     });
 
     return await this.getNoteById(id);
@@ -83,10 +84,9 @@ export const noteRepo = {
         folderId,
         updatedAt: Date.now(),
       });
-
-      await outboxRepo.enqueueNoteMove(noteId, {
-        folderId: folderId,
-      });
+      if (isElectron()) {
+        await outboxRepo.enqueueNoteMove(noteId, { folderId });
+      }
     });
 
     return await this.getNoteById(noteId);
@@ -96,9 +96,14 @@ export const noteRepo = {
     const note = await this.getNoteById(id);
     if (!note) return null;
 
-    // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
-    const trashedNote = await trashRepo.moveNoteToTrash(id);
-    if (!trashedNote) return null;
+    if (isElectron()) {
+      // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
+      const trashedNote = await trashRepo.moveNoteToTrash(id);
+      if (!trashedNote) return null;
+    } else {
+      const writeStorage = await getPreferredNoteWriteStorage();
+      await writeStorage.bulkDeleteNotes([id]);
+    }
 
     return id;
   },

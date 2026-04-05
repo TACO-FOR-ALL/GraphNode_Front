@@ -2,6 +2,7 @@ import { Folder } from "@/types/Folder";
 import uuid from "@/utils/uuid";
 import { outboxRepo } from "./outboxRepo";
 import { trashRepo } from "./trashRepo";
+import { isElectron } from "@/utils/platform";
 import {
   getPreferredFolderReadStorage,
   getPreferredFolderWriteStorage,
@@ -20,7 +21,9 @@ export const folderRepo = {
     const writeStorage = await getPreferredFolderWriteStorage();
     await writeStorage.runFolderWriteTransaction(async () => {
       await writeStorage.createFolderRecord(newFolder);
-      await outboxRepo.enqueueFolderCreate(newFolder.id, { name, parentId });
+      if (isElectron()) {
+        await outboxRepo.enqueueFolderCreate(newFolder.id, { name, parentId });
+      }
     });
 
     return newFolder;
@@ -53,7 +56,9 @@ export const folderRepo = {
     const writeStorage = await getPreferredFolderWriteStorage();
     await writeStorage.runFolderWriteTransaction(async () => {
       await writeStorage.updateFolderRecord(id, { ...updates, updatedAt });
-      await outboxRepo.enqueueFolderUpdate(id, updates);
+      if (isElectron()) {
+        await outboxRepo.enqueueFolderUpdate(id, updates);
+      }
     });
 
     return await this.getFolderById(id);
@@ -69,9 +74,14 @@ export const folderRepo = {
       await this.deleteFolderById(childFolder.id);
     }
 
-    // 휴지통으로 이동 (노트 루트 이동 + 서버 소프트 삭제 포함)
-    const trashed = await trashRepo.moveFolderToTrash(id);
-    if (!trashed) return null;
+    if (isElectron()) {
+      // 휴지통으로 이동 (노트 루트 이동 + 서버 소프트 삭제 포함)
+      const trashed = await trashRepo.moveFolderToTrash(id);
+      if (!trashed) return null;
+    } else {
+      const writeStorage = await getPreferredFolderWriteStorage();
+      await writeStorage.bulkDeleteFolders([id]);
+    }
 
     return id;
   },

@@ -1,13 +1,15 @@
+import { isElectron } from "@/utils/platform";
 import { sqliteRendererNoteStorage } from "../adapters/sqlite/sqliteRendererNoteStorage";
+import { apiNoteStorage } from "../adapters/api/apiNoteStorage";
 
 export function resetNoteStorageSelection() {
   return;
 }
 
 export async function getPreferredNoteReadStorage() {
-  return sqliteRendererNoteStorage;
+  return isElectron() ? sqliteRendererNoteStorage : apiNoteStorage;
 }
 
 export async function getPreferredNoteWriteStorage() {
-  return sqliteRendererNoteStorage;
+  return isElectron() ? sqliteRendererNoteStorage : apiNoteStorage;
 }

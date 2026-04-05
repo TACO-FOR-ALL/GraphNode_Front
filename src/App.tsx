@@ -326,6 +326,11 @@ function MainLayout() {
       >
         <SideTabBar
           setOpenSearch={setOpenSearch}
+          firstLetter={
+            me?.profile?.displayName?.slice(0, 1) ||
+            me?.profile?.email?.slice(0, 1) ||
+            "g"
+          }
           avatarUrl={me?.profile?.avatarUrl ?? null}
         />
         <div
@@ -350,7 +355,15 @@ function MainLayout() {
             <Route path="/microscope/:nodeId" element={<MicroscopePage />} />
             <Route
               path="/settings"
-              element={<Settings userInfo={me as Me} />}
+              element={
+                <Settings
+                  userInfo={me as Me}
+                  onLogout={() => {
+                    setWebAuthenticated(false);
+                    navigate("/");
+                  }}
+                />
+              }
             />
             <Route path="/note/:noteId?" element={<Note />} />
             <Route path="/graph-lab" element={<GraphTestPage />} />
@@ -368,6 +381,7 @@ function MainLayout() {
             onSuccess={(me) => {
               setMe(me);
               setWebAuthenticated(true);
+              queryClient.invalidateQueries({ queryKey: ["recent-notes"] });
             }}
           />
         )}

@@ -16,9 +16,11 @@ import SideExpandBarSettings from "./SideExpandBarSettings";
 
 export default function SideTabBar({
   setOpenSearch,
+  firstLetter,
   avatarUrl,
 }: {
   setOpenSearch: (open: boolean) => void;
+  firstLetter: string;
   avatarUrl: string | null;
 }) {
   const path = useLocation().pathname;
@@ -42,19 +44,21 @@ export default function SideTabBar({
 
   const { isExpanded, setIsExpanded } = useSidebarExpandStore();
 
-  const { data: chatThreads } = useQuery<ChatThread[]>({
+  const { data: chatThreads, isLoading: isLoadingChat } = useQuery<
+    ChatThread[]
+  >({
     queryKey: ["chatThreads"],
     queryFn: () => threadRepo.getThreadList(),
     enabled: path.includes("/chat"),
   });
 
-  const { data: notes } = useQuery<Note[]>({
+  const { data: notes, isLoading: isLoadingNotes } = useQuery<Note[]>({
     queryKey: ["notes"],
     queryFn: () => noteRepo.getAllNotes(),
     enabled: path.includes("/note"),
   });
 
-  const { data: folders } = useQuery<Folder[]>({
+  const { data: folders, isLoading: isLoadingFolders } = useQuery<Folder[]>({
     queryKey: ["folders"],
     queryFn: () => folderRepo.getFolderList(),
     enabled: path.includes("/note"),
@@ -63,6 +67,7 @@ export default function SideTabBar({
   return (
     <div className="flex h-full select-none">
       <SideNavigationBar
+        firstLetter={firstLetter}
         path={path.split("/")[1]}
         setOpenSearch={setOpenSearch}
         avatarUrl={avatarUrl}
@@ -83,12 +88,14 @@ export default function SideTabBar({
                   notes={notes ?? []}
                   folders={folders ?? []}
                   selectedId={selectedId ?? ""}
+                  isLoading={isLoadingNotes || isLoadingFolders}
                 />
               )}
               {path.includes("/chat") && (
                 <SideExpandBarChat
                   data={chatThreads ?? []}
                   selectedId={selectedId ?? ""}
+                  isLoading={isLoadingChat}
                 />
               )}
               {path.includes("/settings") && <SideExpandBarSettings />}
