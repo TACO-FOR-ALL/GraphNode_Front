@@ -58,7 +58,7 @@ export default function DropJsonZone() {
       const data = JSON.parse(text);
 
       // 4) 변환
-      const threads = await parseConversations(data);
+      const threads = parseConversations(data);
       if (!threads?.length) {
         // 비정상/빈 데이터 경고이지만 실패로 보진 않음
         console.warn("parsed threads = 0, JSON shape might differ");
@@ -86,7 +86,12 @@ export default function DropJsonZone() {
               conversations: normalized.map((n) => ({
                 id: n.id,
                 title: n.title,
-                messages: n.messages,
+                messages: n.messages.map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                  createdAt: new Date(m.ts).toISOString(),
+                })),
               })),
             }),
           );

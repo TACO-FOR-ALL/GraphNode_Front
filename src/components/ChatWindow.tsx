@@ -277,7 +277,6 @@ export default function ChatWindow({
   const hasActiveTurn =
     !!lastMessage &&
     (isTyping ||
-      lastMessage.role === "user" ||
       (lastMessage.role === "assistant" && lastMessage.content === ""));
   const startIndex = hasActiveTurn ? 0 : pagedStartIndex;
   const visible = useMemo(
@@ -478,31 +477,26 @@ export default function ChatWindow({
   // 상단 sentinel로 이전 메시지 로드
   useEffect(() => {
     const el = wrapRef.current;
-    const sentinel = topSentinelRef.current;
-    if (!el || !sentinel) return;
-    if (shouldUseTopAnchoredTurn) return;
+    if (!el || shouldUseTopAnchoredTurn || startIndex === 0) return;
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        const topVisible = entries.some((e) => e.isIntersecting);
-        if (!topVisible) return;
-        if (startIndex === 0) return;
+    const tryLoadMore = () => {
+      if (el.scrollTop > 120) return;
 
-        const prevHeight = el.scrollHeight;
-        const add = Math.min(PAGE, startIndex);
-        setVisibleCount((c) => c + add);
+      const prevHeight = el.scrollHeight;
+      const add = Math.min(PAGE, startIndex);
+      setVisibleCount((c) => c + add);
 
-        requestAnimationFrame(() => {
-          const newHeight = el.scrollHeight;
-          el.scrollTop += newHeight - prevHeight;
-        });
-      },
-      { root: el, threshold: 0.01 },
-    );
+      requestAnimationFrame(() => {
+        const newHeight = el.scrollHeight;
+        el.scrollTop += newHeight - prevHeight;
+      });
+    };
 
-    io.observe(sentinel);
-    return () => io.disconnect();
-  }, [startIndex, threadId, shouldUseTopAnchoredTurn]);
+    requestAnimationFrame(tryLoadMore);
+
+    el.addEventListener("scroll", tryLoadMore, { passive: true });
+    return () => el.removeEventListener("scroll", tryLoadMore);
+  }, [startIndex, threadId, shouldUseTopAnchoredTurn, isLoading]);
 
   const lastMessageId =
     visible.length > 0 ? visible[visible.length - 1]?.id : null;
@@ -587,7 +581,7 @@ export default function ChatWindow({
         }
       `}</style>
       <div className="p-4">
-        <div ref={topSentinelRef} />
+        <div ref={topSentinelRef} className="h-px" />
 
         {/* 이전 메시지들 (history) */}
         <div>{history.map((msg) => renderMessage(msg))}</div>

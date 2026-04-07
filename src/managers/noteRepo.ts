@@ -109,6 +109,7 @@ export const noteRepo = {
   },
 
   async upsertMany(newOnes: Note[]): Promise<void> {
+    if (!isElectron()) return;
     await (await getPreferredNoteWriteStorage()).bulkPutNotes(newOnes);
   },
 

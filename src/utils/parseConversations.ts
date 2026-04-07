@@ -1,7 +1,6 @@
 import { toMarkdownFromUnknown } from "./toMarkdown";
 import { ChatMessage, ChatThread } from "../types/Chat";
 import uuid from "./uuid";
-import threadRepo from "../managers/threadRepo";
 
 const mapRole = (raw: any): "user" | "assistant" | "system" => {
   const r = String(raw ?? "").toLowerCase();
@@ -60,7 +59,7 @@ function getOpenAIConversationPath(conv: any): any[] {
   return path.reverse().filter((node: any) => node && node.message);
 }
 
-export async function parseConversations(json: any): Promise<ChatThread[]> {
+export function parseConversations(json: any): ChatThread[] {
   const threads: ChatThread[] = [];
   const isMsg = (x: ChatMessage | null): x is ChatMessage => x != null;
 
@@ -70,7 +69,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
         .map(toMsg)
         .filter(isMsg);
       if (!msgs.length) continue;
-      threads.push(await threadRepo.create(String(th?.title), msgs));
+      threads.push({ id: uuid(), title: String(th?.title), messages: msgs, updatedAt: Date.now() });
     }
     return threads;
   }
@@ -78,7 +77,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
   if (Array.isArray(json?.messages)) {
     const msgs = json.messages.map(toMsg).filter(isMsg);
     if (msgs.length)
-      threads.push(await threadRepo.create(String(json?.title), msgs));
+      threads.push({ id: uuid(), title: String(json?.title), messages: msgs, updatedAt: Date.now() });
     return threads;
   }
 
@@ -128,9 +127,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
             toMs(conv?.create_time) ||
             Date.now();
 
-          const th = await threadRepo.create(title, msgs);
-          (th as any).updatedAt = updatedAt;
-          threads.push(th);
+          threads.push({ id: uuid(), title, messages: msgs, updatedAt });
         }
       }
       return threads;
@@ -138,7 +135,7 @@ export async function parseConversations(json: any): Promise<ChatThread[]> {
 
     const maybeMsgs = json.map(toMsg).filter(isMsg);
     if (maybeMsgs.length)
-      threads.push(await threadRepo.create(String(json[0]?.title), maybeMsgs));
+      threads.push({ id: uuid(), title: String(json[0]?.title), messages: maybeMsgs, updatedAt: Date.now() });
     return threads;
   }
 
