@@ -4,10 +4,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { NEW_CONVERSATION_PLACEHOLDER } from "@/constants/chat";
 import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
-import { FaTrash } from "react-icons/fa";
-import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { useTranslation } from "react-i18next";
 import SidebarSkeletonList from "./SidebarSkeletonList";
+import { useState, useRef, useEffect } from "react";
+import SideExpandBarChatItem from "./SideExpandBarChatItem";
+
+type RenameState = {
+  id: string | null;
+  title: string;
+  savingId: string | null;
+};
 
 export default function SideExpandBarChat({
   data,
@@ -21,8 +27,41 @@ export default function SideExpandBarChat({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [renameState, setRenameState] = useState<RenameState>({
+    id: null,
+    title: "",
+    savingId: null,
+  });
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const clickTimeoutRef = useRef<number | null>(null);
+  const savingIdRef = useRef<string | null>(null);
+  const skipBlurSaveRef = useRef(false);
+  const { id: editingId, title: editingTitle, savingId } = renameState;
+
+  useEffect(() => {
+    if (!editingId) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editingId]);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        window.clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 페이지 이동 방지 (클릭 한번 채팅방 이동, 더블 클릭 채팅 수정)
+  const clearPendingNavigation = () => {
+    if (clickTimeoutRef.current) {
+      window.clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+  };
 
   const handleDeleteThread = async (chatId: string) => {
+    clearPendingNavigation();
     navigate("/chat");
     await threadRepo.deleteThreadById(chatId);
     // 캐시 값을 직접 수정하여 낙관적 업데이트
@@ -37,6 +76,85 @@ export default function SideExpandBarChat({
     });
     // 기존 케시를 만료시키고 서버 호출
     await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+  };
+
+  const startEditing = (thread: ChatThread) => {
+    if (
+      thread.title === NEW_CONVERSATION_PLACEHOLDER ||
+      savingId === thread.id
+    ) {
+      return;
+    }
+    clearPendingNavigation();
+    setRenameState({
+      id: thread.id,
+      title: thread.title,
+      savingId: null,
+    });
+  };
+
+  const cancelEditing = () => {
+    setRenameState((prev) => ({
+      ...prev,
+      id: null,
+      title: "",
+    }));
+  };
+
+  const finishSaving = async () => {
+    savingIdRef.current = null;
+    setRenameState({
+      id: null,
+      title: "",
+      savingId: null,
+    });
+    await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+  };
+
+  const updateListTitle = (threadId: string, title: string) => {
+    queryClient.setQueryData<ChatThread[]>(["chatThreads"], (old) =>
+      (old ?? []).map((item) =>
+        item.id === threadId ? { ...item, title, updatedAt: Date.now() } : item,
+      ),
+    );
+  };
+
+  const saveTitle = async (thread: ChatThread) => {
+    if (savingIdRef.current === thread.id || editingId !== thread.id) {
+      return;
+    }
+
+    const nextTitle = editingTitle.trim();
+
+    if (!nextTitle || nextTitle === thread.title) {
+      cancelEditing();
+      return;
+    }
+
+    savingIdRef.current = thread.id;
+    setRenameState((prev) => ({
+      ...prev,
+      savingId: thread.id,
+    }));
+    updateListTitle(thread.id, nextTitle);
+
+    try {
+      await threadRepo.updateThreadTitleById(thread.id, nextTitle);
+    } catch (error) {
+      console.error("[SideExpandBarChat] Failed to rename chat:", error);
+      await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+    } finally {
+      await finishSaving();
+    }
+  };
+
+  const handleItemClick = (threadId: string) => {
+    if (editingId === threadId) return;
+    clearPendingNavigation();
+    clickTimeoutRef.current = window.setTimeout(() => {
+      navigate(`/chat/${threadId}`);
+      clickTimeoutRef.current = null;
+    }, 200);
   };
 
   return (
@@ -58,31 +176,39 @@ export default function SideExpandBarChat({
           {data &&
             data.map((item) => {
               const isSelected = selectedId === item.id;
+              const isEditing = editingId === item.id;
+              const isSaving = savingId === item.id;
               return (
-                <div
-                  className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 group ${
-                    isSelected
-                      ? "bg-sidebar-button-hover text-chatbox-active"
-                      : " hover:bg-sidebar-button-hover text-text-secondary hover:text-chatbox-active"
-                  }`}
+                <SideExpandBarChatItem
                   key={item.id}
-                  onClick={() => navigate(`/chat/${item.id}`)}
-                >
-                  <div className="w-[195px] h-[20px] flex items-center gap-1.5 overflow-hidden">
-                    {item.title === NEW_CONVERSATION_PLACEHOLDER ? (
-                      <AiOutlineLoading3Quarters className="animate-spin text-[14px] flex-shrink-0" />
-                    ) : (
-                      <span className="truncate">{item.title}</span>
-                    )}
-                  </div>
-                  <FaTrash
-                    className="text-[10px] cursor-pointer hidden group-hover:block"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteThread(item.id);
-                    }}
-                  />
-                </div>
+                  item={item}
+                  isSelected={isSelected}
+                  isEditing={isEditing}
+                  isSaving={isSaving}
+                  editingTitle={editingTitle}
+                  inputRef={inputRef}
+                  onClick={() => handleItemClick(item.id)}
+                  onDoubleClick={() => startEditing(item)}
+                  onTitleChange={(title) =>
+                    setRenameState((prev) => ({
+                      ...prev,
+                      title,
+                    }))
+                  }
+                  onBlur={() => {
+                    if (skipBlurSaveRef.current) {
+                      skipBlurSaveRef.current = false;
+                      return;
+                    }
+                    void saveTitle(item);
+                  }}
+                  onEnter={() => void saveTitle(item)}
+                  onEscape={() => {
+                    skipBlurSaveRef.current = true;
+                    cancelEditing();
+                  }}
+                  onDelete={() => void handleDeleteThread(item.id)}
+                />
               );
             })}
         </div>
