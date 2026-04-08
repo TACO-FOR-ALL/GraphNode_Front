@@ -1,5 +1,6 @@
 import { api } from "@/apiClient";
 import type { ChatThread, ChatMessage } from "@/types/Chat";
+import { unwrapResponse } from "@/utils/httpResponse";
 import type {
   ThreadStorageAdapter,
   CreateThreadRecordInput,
@@ -45,7 +46,9 @@ export const apiThreadStorage: ThreadStorageAdapter = {
       .map(toThread);
   },
 
-  async createThreadRecord(input: CreateThreadRecordInput): Promise<ChatThread> {
+  async createThreadRecord(
+    input: CreateThreadRecordInput,
+  ): Promise<ChatThread> {
     const result = await api.conversations.create({
       id: input.id,
       title: input.title,
@@ -55,7 +58,15 @@ export const apiThreadStorage: ThreadStorageAdapter = {
   },
 
   async putThread(thread: ChatThread): Promise<void> {
-    await api.conversations.update(thread.id, { title: thread.title });
+    const result = await api.conversations.update(thread.id, {
+      title: thread.title,
+    });
+    if (!result.isSuccess) {
+      console.error("[apiThreadStorage] putThread failed:", result);
+      throw new Error(
+        `Failed to update thread title: ${result.error?.message ?? "unknown"}`,
+      );
+    }
   },
 
   async bulkPutThreads(_threads: ChatThread[]): Promise<void> {
@@ -63,7 +74,9 @@ export const apiThreadStorage: ThreadStorageAdapter = {
   },
 
   async bulkDeleteThreads(ids: string[]): Promise<void> {
-    await Promise.all(ids.map((id) => api.conversations.softDelete(id)));
+    await Promise.all(
+      ids.map((id) => api.conversations.softDelete(id).then(unwrapResponse)),
+    );
   },
 
   async clearThreads(): Promise<void> {

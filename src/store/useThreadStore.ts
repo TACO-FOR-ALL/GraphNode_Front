@@ -14,7 +14,14 @@ export const useThreadsStore = create<ThreadState>((set) => ({
 
   refreshThread: async (id) => {
     const th = await threadRepo.getThreadById(id);
-    if (th) set((s) => ({ threads: { ...s.threads, [id]: th } }));
+    if (!th) return;
+    set((s) => {
+      const existing = s.threads[id];
+      // 스트리밍 중에는 서버 데이터가 더 오래된 상태일 수 있으므로,
+      // 로컬 메시지가 더 많다면 서버 응답으로 덮어쓰지 않는다.
+      if (existing && existing.messages.length > th.messages.length) return s;
+      return { threads: { ...s.threads, [id]: th } };
+    });
   },
 
   updateThreadInStore: (thread) => {

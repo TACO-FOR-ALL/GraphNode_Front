@@ -1,4 +1,3 @@
-import sortItemByDate from "@/utils/sortItemByDate";
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
 import { useThreadsStore } from "@/store/useThreadStore";
@@ -23,6 +22,8 @@ export const threadRepo = {
     };
     const writeStorage = await getPreferredThreadWriteStorage();
     await writeStorage.createThreadRecord(newThread);
+    // ChatWindow가 refreshThread로 다시 읽기 전에 새 스레드를 Zustand에 미리 넣어 경쟁 상태를 막는다.
+    useThreadsStore.getState().updateThreadInStore(newThread);
     return newThread;
   },
 
@@ -40,7 +41,10 @@ export const threadRepo = {
   },
 
   async updateThreadTitleById(id: string, title: string) {
-    const thread = await this.getThreadById(id);
+    // 서버의 오래된 응답으로 로컬 메시지 상태가 덮어쓰이지 않도록
+    // Zustand 캐시를 우선 사용하고, 없을 때만 저장소에서 조회한다.
+    const thread =
+      useThreadsStore.getState().threads[id] ?? (await this.getThreadById(id));
     if (!thread) return null;
 
     const updated = { ...thread, title, updatedAt: Date.now() };

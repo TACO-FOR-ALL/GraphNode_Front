@@ -1,9 +1,11 @@
 import threadRepo from "@/managers/threadRepo";
 import { ChatThread } from "@/types/Chat";
 import { useQueryClient } from "@tanstack/react-query";
+import { NEW_CONVERSATION_PLACEHOLDER } from "@/constants/chat";
 import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { useTranslation } from "react-i18next";
 import SidebarSkeletonList from "./SidebarSkeletonList";
 
@@ -21,9 +23,20 @@ export default function SideExpandBarChat({
   const queryClient = useQueryClient();
 
   const handleDeleteThread = async (chatId: string) => {
-    await threadRepo.deleteThreadById(chatId);
-    queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
     navigate("/chat");
+    await threadRepo.deleteThreadById(chatId);
+    // 캐시 값을 직접 수정하여 낙관적 업데이트
+    queryClient.setQueryData<ChatThread[]>(["chatThreads"], (old) =>
+      (old ?? []).filter((thread) => thread.id !== chatId),
+    );
+    // 조건에 맞는 캐시 삭제
+    queryClient.removeQueries({
+      queryKey: ["chatThreads"],
+      exact: false,
+      predicate: (query) => query.queryKey.length > 1,
+    });
+    // 기존 케시를 만료시키고 서버 호출
+    await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
   };
 
   return (
@@ -55,10 +68,19 @@ export default function SideExpandBarChat({
                   key={item.id}
                   onClick={() => navigate(`/chat/${item.id}`)}
                 >
-                  <div className="w-[195px] truncate">{item.title}</div>
+                  <div className="w-[195px] h-[20px] flex items-center gap-1.5 overflow-hidden">
+                    {item.title === NEW_CONVERSATION_PLACEHOLDER ? (
+                      <AiOutlineLoading3Quarters className="animate-spin text-[14px] flex-shrink-0" />
+                    ) : (
+                      <span className="truncate">{item.title}</span>
+                    )}
+                  </div>
                   <FaTrash
                     className="text-[10px] cursor-pointer hidden group-hover:block"
-                    onClick={() => handleDeleteThread(item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteThread(item.id);
+                    }}
                   />
                 </div>
               );

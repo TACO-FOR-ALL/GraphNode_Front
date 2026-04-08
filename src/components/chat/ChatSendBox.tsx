@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FaArrowRight } from "react-icons/fa6";
 import uuid from "../../utils/uuid";
 import threadRepo from "../../managers/threadRepo";
+import type { ChatThread } from "../../types/Chat";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import AutoResizeTextarea from "../AutoResizeTextArea";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import useFileAttachment from "@/hooks/useFileAttachment";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import { useToastStore } from "@/store/useToastStore";
+import { NEW_CONVERSATION_PLACEHOLDER } from "@/constants/chat";
 import {
   LLM_MODEL_DEFAULT,
   getProvider,
@@ -147,7 +149,10 @@ export default function ChatSendBox({
           });
           const cleaned = await cleanupNewThreadOnError();
           if (!cleaned) {
-            await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+            await threadRepo.deleteMessageFromThreadById(
+              targetThreadId,
+              assistantMessageId,
+            );
           }
           setIsTyping(false);
           setSending(false);
@@ -203,26 +208,54 @@ export default function ChatSendBox({
                 sendingRef.current = false;
 
                 // 최종 응답 처리
-                const messages = event.data.messages;
-                const title = event.data.title ?? null;
-                const assistantText =
-                  messages[1]?.content ?? "⚠️ 응답을 파싱할 수 없어요.";
+                {
+                  const messages: { role: string; content: string }[] =
+                    event.data.messages ?? [];
+                  const title: string | null = event.data.title ?? null;
+                  // role로 assistant 메시지 찾기 (messages[1] 인덱스 의존 제거)
+                  const assistantMsg = messages.find(
+                    (m) => m.role === "assistant",
+                  );
+                  const assistantText =
+                    assistantMsg?.content ?? "⚠️ 응답을 파싱할 수 없어요.";
 
-                // 타이틀 업데이트
-                if (title) {
-                  await threadRepo.updateThreadTitleById(targetThreadId, title);
-                  queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+                  // 타이틀 업데이트
+                  if (title) {
+                    // 사이드바 즉시 반영 (서버 PATCH 완료 전에도 표시)
+                    queryClient.setQueryData<ChatThread[]>(
+                      ["chatThreads"],
+                      (old) =>
+                        old?.map((t) =>
+                          t.id === targetThreadId ? { ...t, title } : t,
+                        ) ?? [],
+                    );
+                    let titlePersisted = false;
+                    try {
+                      await threadRepo.updateThreadTitleById(
+                        targetThreadId,
+                        title,
+                      );
+                      titlePersisted = true;
+                    } catch (e) {
+                      console.error("[ChatSendBox] title update failed:", e);
+                    }
+                    if (titlePersisted) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["chatThreads"],
+                      });
+                    }
+                  }
+
+                  // 최종 메시지로 업데이트
+                  await threadRepo.updateMessageInThreadById(
+                    targetThreadId,
+                    assistantMessageId,
+                    assistantText,
+                  );
+
+                  // 메시지 수신 완료 사운드
+                  playSound("message");
                 }
-
-                // 최종 메시지로 업데이트
-                await threadRepo.updateMessageInThreadById(
-                  targetThreadId,
-                  assistantMessageId,
-                  assistantText,
-                );
-
-                // 메시지 수신 완료 사운드
-                playSound("message");
                 break;
 
               case "error":
@@ -493,8 +526,13 @@ export default function ChatSendBox({
     let tid = threadId;
     const isNewThread = !tid; // 새 채팅방 여부를 스레드 생성 전에 판단
     if (!tid) {
-      const created = await threadRepo.create("loading…", []);
+      const created = await threadRepo.create(NEW_CONVERSATION_PLACEHOLDER, []);
       tid = created.id;
+      // Immediately add to sidebar without waiting for invalidateQueries
+      queryClient.setQueryData<ChatThread[]>(["chatThreads"], (old) => [
+        created,
+        ...(old ?? []),
+      ]);
       navigate(`/chat/${tid}`, { replace: true });
     }
 
