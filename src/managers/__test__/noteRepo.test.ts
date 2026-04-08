@@ -11,6 +11,10 @@ jest.mock("@/utils/uuid", () => ({
   default: jest.fn(() => "note-1"),
 }));
 
+jest.mock("@/utils/platform", () => ({
+  isElectron: jest.fn(() => true),
+}));
+
 jest.mock("../outboxRepo", () => ({
   outboxRepo: {
     enqueueNoteCreate: (...args: unknown[]) => mockEnqueueNoteCreate(...args),

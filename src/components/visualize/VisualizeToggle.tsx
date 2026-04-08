@@ -18,6 +18,9 @@ type DisplayNode = {
   clusterName?: string;
 };
 
+const VISUALIZE_WORKSPACE_MIN_WIDTH = 1024;
+const VISUALIZE_WORKSPACE_MIN_HEIGHT = 720;
+
 export default function VisualizeToggle({
   graphData,
   avatarUrl,
@@ -75,7 +78,14 @@ export default function VisualizeToggle({
   return (
     <div
       ref={containerRef}
-      style={{ position: "relative", width: "100%", height: "100%" }}
+      data-testid="visualize-workspace"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minWidth: `${VISUALIZE_WORKSPACE_MIN_WIDTH}px`,
+        minHeight: `${VISUALIZE_WORKSPACE_MIN_HEIGHT}px`,
+      }}
     >
       {/* 2D 모드 클러스터 토글 패널 */}
       {mode === "2d" && (
@@ -214,6 +224,7 @@ export default function VisualizeToggle({
         <div className="flex gap-1 w-[170px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
           <div
             onClick={() => setMode("2d")}
+            data-testid="visualize-mode-2d"
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
               mode === "2d" ? "text-primary" : "text-text-secondary"
             }`}
@@ -222,6 +233,7 @@ export default function VisualizeToggle({
           </div>
           <div
             onClick={() => setMode("3d")}
+            data-testid="visualize-mode-3d"
             className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
               mode === "3d" ? "text-primary" : "text-text-secondary"
             }`}
@@ -251,7 +263,12 @@ export default function VisualizeToggle({
             zoomToClusterId={zoomToClusterId}
           />
         ) : (
-          <Graph3D data={graphData} avatarUrl={avatarUrl} />
+          <Graph3D
+            data={graphData}
+            avatarUrl={avatarUrl}
+            width={dimensions.width}
+            height={dimensions.height}
+          />
         ))}
     </div>
   );

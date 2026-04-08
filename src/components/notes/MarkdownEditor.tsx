@@ -460,6 +460,7 @@ export default ({ noteId }: { noteId: string | null }) => {
 
   return (
     <div
+      data-testid="note-editor"
       className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative ${isOver ? "ring-2 ring-primary ring-opacity-50" : ""}`}
       {...dragProps}
     >

@@ -136,12 +136,16 @@ export default function Graph3D({
   onClusterClick,
   theme = "dark",
   avatarUrl,
+  width,
+  height,
 }: {
   data: GraphSnapshot;
   zoomToClusterId?: string | null;
   onClusterClick?: (clusterId: string) => void;
   theme?: "dark" | "light";
   avatarUrl?: string | null;
+  width: number;
+  height: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -405,6 +409,7 @@ export default function Graph3D({
 
   useEffect(() => {
     if (!canvasRef.current) return;
+    if (width <= 0 || height <= 0) return;
 
     // 1) 씬/렌더러/카메라 초기화
     const scene = new THREE.Scene();
@@ -412,7 +417,7 @@ export default function Graph3D({
     scene.background = new THREE.Color(activeTheme.background);
     const camera = new THREE.PerspectiveCamera(
       75,
-      window.innerWidth / window.innerHeight,
+      width / height,
       0.1,
       5000,
     );
@@ -422,7 +427,7 @@ export default function Graph3D({
       antialias: true,
       canvas: canvasRef.current,
     });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
     // 조명 추가 (입체감을 위해)
@@ -1369,13 +1374,6 @@ export default function Graph3D({
     };
     window.addEventListener("keydown", onKeyDown);
 
-    const onResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-    window.addEventListener("resize", onResize);
-
     let raf = 0;
     const animate = () => {
       raf = requestAnimationFrame(animate);
@@ -1386,7 +1384,6 @@ export default function Graph3D({
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("mousemove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKeyDown);
@@ -1423,7 +1420,7 @@ export default function Graph3D({
       renderer.dispose();
       scene.clear();
     };
-  }, [data, theme]);
+  }, [data, theme, width, height]);
 
   useEffect(() => {
     if (!zoomToClusterId) return;
@@ -1431,8 +1428,11 @@ export default function Graph3D({
   }, [zoomToClusterId, zoomToCluster]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <canvas ref={canvasRef} />
+    <div
+      data-testid="visualize-3d"
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
+      <canvas ref={canvasRef} data-testid="visualize-3d-canvas" />
       <div
         ref={tooltipRef}
         style={{

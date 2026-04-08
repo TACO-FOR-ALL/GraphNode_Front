@@ -37,10 +37,6 @@ export default function NodeChatPreview({
   const [microDataStatus, setMicroDataStatus] = useState<
     "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
   >("PENDING");
-  const [graphData, setGraphData] = useState<{
-    nodes: object[];
-    edges: object[];
-  } | null>(null);
 
   // 드래그 관련 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -225,7 +221,7 @@ export default function NodeChatPreview({
 
   const handleViewDetail = () => {
     navigate(`/microscope/${threadId}`, {
-      state: { graphData, nodeTitle: thread?.title ?? undefined },
+      state: { nodeTitle: thread?.title ?? undefined },
     });
     onClose();
   };

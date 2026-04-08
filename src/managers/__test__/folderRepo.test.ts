@@ -10,6 +10,10 @@ jest.mock("@/utils/uuid", () => ({
   default: jest.fn(() => "folder-1"),
 }));
 
+jest.mock("@/utils/platform", () => ({
+  isElectron: jest.fn(() => true),
+}));
+
 jest.mock("../outboxRepo", () => ({
   outboxRepo: {
     enqueueFolderCreate: (...args: unknown[]) => mockEnqueueFolderCreate(...args),

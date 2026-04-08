@@ -17,6 +17,9 @@ interface GraphData {
   graphSummary: GraphSummary;
 }
 
+const VISUALIZE_MIN_WIDTH = 1280;
+const VISUALIZE_MIN_HEIGHT = 800;
+
 export default function Visualize() {
   const [me, setMe] = useState<Me | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -82,7 +85,14 @@ export default function Visualize() {
   if (graphData.nodeEdgeData.nodes.length === 0) return <EmptyGraph />;
 
   return (
-    <div className="flex w-full h-full overflow-hidden select-none">
+    <div
+      className="flex w-full h-full overflow-hidden select-none"
+      data-testid="visualize-root"
+      style={{
+        minWidth: `${VISUALIZE_MIN_WIDTH}px`,
+        minHeight: `${VISUALIZE_MIN_HEIGHT}px`,
+      }}
+    >
       {/* 그래프 구조 사이드바 */}
       <VisualizeSidebar
         graphData={graphData.nodeEdgeData}
@@ -97,7 +107,7 @@ export default function Visualize() {
       />
 
       {/* 메인 시각화 영역 */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" data-testid="visualize-main">
         <VisualizeToggle
           graphData={graphData.nodeEdgeData}
           avatarUrl={me?.profile?.avatarUrl ?? null}
