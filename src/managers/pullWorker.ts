@@ -43,26 +43,8 @@ export async function pullOnce() {
     serverTime,
   };
 
-  // ── Notes ──────────────────────────────────────────────────────────────
-  if (notes.length > 0) {
-    const deletedIds = notes.filter((n) => n.deletedAt).map((n) => n.id);
-    const active = notes.filter((n) => !n.deletedAt);
-    const ids = notes.map((n) => n.id);
-    const ops = await outboxRepo.listOpsByEntityIds(ids);
-    const locked = new Set(
-      ops
-        .filter((op) => op.status === "pending" || op.status === "processing")
-        .map((op) => op.entityId),
-    );
-
-    const toUpsert = active.filter((n) => !locked.has(n.id)).map(mapNote);
-    if (toUpsert.length > 0) await noteRepo.upsertMany(toUpsert);
-
-    const toDelete = deletedIds.filter((id) => !locked.has(id));
-    if (toDelete.length > 0) await noteRepo.deleteMany(toDelete);
-  }
-
   // ── Folders ────────────────────────────────────────────────────────────
+  // 노트보다 먼저 처리해야 FOREIGN KEY constraint 오류 방지
   if (folders.length > 0) {
     const deletedIds = folders.filter((f) => f.deletedAt).map((f) => f.id);
     const active = folders.filter((f) => !f.deletedAt);
@@ -79,6 +61,50 @@ export async function pullOnce() {
 
     const toDelete = deletedIds.filter((id) => !locked.has(id));
     if (toDelete.length > 0) await folderRepo.deleteMany(toDelete);
+  }
+
+  // ── 유효한 폴더 ID 목록 조회 (FOREIGN KEY constraint 방지용) ───────────
+  // 폴더 sync 이후에 실행하여 삭제된 폴더가 반영된 최신 목록을 가져옴
+  let validFolderIds = new Set<string>();
+  if (window.graphnodeAPI) {
+    const sqliteFolders = await window.graphnodeAPI.listSQLiteFolders();
+    validFolderIds = new Set(sqliteFolders.map((f: { id: string }) => f.id));
+  }
+
+  // applyStartupSync 페이로드의 노트도 동일하게 sanitize
+  // Electron 메인 프로세스도 같은 FK constraint를 가지므로 SQLite에 없는 folderId 제거
+  if (window.graphnodeAPI) {
+    sqliteSyncPayload.notes.upserts = sqliteSyncPayload.notes.upserts.map((n) => ({
+      ...n,
+      folderId: n.folderId && validFolderIds.has(n.folderId) ? n.folderId : null,
+    }));
+  }
+
+  // ── Notes ──────────────────────────────────────────────────────────────
+  if (notes.length > 0) {
+    const deletedIds = notes.filter((n) => n.deletedAt).map((n) => n.id);
+    const active = notes.filter((n) => !n.deletedAt);
+    const ids = notes.map((n) => n.id);
+    const ops = await outboxRepo.listOpsByEntityIds(ids);
+    const locked = new Set(
+      ops
+        .filter((op) => op.status === "pending" || op.status === "processing")
+        .map((op) => op.entityId),
+    );
+
+    // sqliteSyncPayload.notes.upserts와 동일한 sanitize 적용
+    const toUpsert = active
+      .filter((n) => !locked.has(n.id))
+      .map(mapNote)
+      .map((n) => ({
+        ...n,
+        folderId: n.folderId && validFolderIds.has(n.folderId) ? n.folderId : null,
+      }));
+
+    if (toUpsert.length > 0) await noteRepo.upsertMany(toUpsert);
+
+    const toDelete = deletedIds.filter((id) => !locked.has(id));
+    if (toDelete.length > 0) await noteRepo.deleteMany(toDelete);
   }
 
   // ── Conversations / Threads ────────────────────────────────────────────
