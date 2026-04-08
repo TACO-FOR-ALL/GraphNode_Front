@@ -12,9 +12,9 @@ export default function Login() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
-  const handleCloseWindow = () => window.windowAPI.close();
-  const handleMinimizeWindow = () => window.windowAPI.minimize();
-  const handleToggleMaximize = () => window.windowAPI.maximize();
+  const handleCloseWindow = () => window.windowAPI?.close();
+  const handleMinimizeWindow = () => window.windowAPI?.minimize();
+  const handleToggleMaximize = () => window.windowAPI?.maximize();
 
   // 세션 확인
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function Login() {
 
       if (result.isSuccess) {
         setHasSession(true);
-        await window.keytarAPI.setMe(result.data as Me);
+        await window.keytarAPI?.setMe(result.data as Me);
         window.electron?.send("auth-success");
         return;
       }
@@ -44,7 +44,7 @@ export default function Login() {
   // OAuth 팝업 로그인
   const { isLoggingIn, error: oauthError, login } = useOAuthPopup(async (me: Me) => {
     setHasSession(true);
-    await window.keytarAPI.setMe(me);
+    await window.keytarAPI?.setMe(me);
     window.electron?.send("auth-success");
   });
 
@@ -107,22 +107,22 @@ export default function Login() {
             {t("login.agreePrefix")}{" "}
             <div className="flex gap-x-1">
               <div
-                onClick={() =>
-                  window.systemAPI?.openExternal(
-                    "https://www.graphnode.site/terms",
-                  )
-                }
+                onClick={() => {
+                  const url = "https://www.graphnode.site/terms";
+                  if (window.systemAPI) window.systemAPI.openExternal(url);
+                  else window.open(url, "_blank");
+                }}
                 className="underline hover:text-text-primary transition-colors cursor-pointer"
               >
                 {t("login.terms")}
               </div>
               {t("login.agreeMiddle")}{" "}
               <div
-                onClick={() =>
-                  window.systemAPI?.openExternal(
-                    "https://www.graphnode.site/privacy",
-                  )
-                }
+                onClick={() => {
+                  const url = "https://www.graphnode.site/privacy";
+                  if (window.systemAPI) window.systemAPI.openExternal(url);
+                  else window.open(url, "_blank");
+                }}
                 className="underline hover:text-text-primary transition-colors cursor-pointer"
               >
                 {t("login.privacy")}

@@ -10,6 +10,7 @@ import { unwrapAndMap } from "@/utils/httpResponse";
 import { mapGraphSnapshot, mapGraphSummary } from "@/utils/dtoMappers";
 import ErrorScreen from "@/components/visualize/Error";
 import EmptyGraph from "@/components/visualize/EmptyGraph";
+import { isElectron } from "@/utils/platform";
 
 interface GraphData {
   nodeEdgeData: GraphSnapshot;
@@ -26,8 +27,13 @@ export default function Visualize() {
 
   useEffect(() => {
     (async () => {
-      const meData = await window.keytarAPI.getMe();
-      setMe(meData as Me);
+      if (isElectron()) {
+        const meData = await window.keytarAPI.getMe();
+        setMe(meData as Me);
+      } else {
+        const result = await api.me.get();
+        if (result.isSuccess) setMe(result.data as Me);
+      }
     })();
   }, []);
 

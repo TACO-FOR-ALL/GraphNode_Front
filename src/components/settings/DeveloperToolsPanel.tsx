@@ -247,7 +247,7 @@ export default function DeveloperToolsPanel() {
             </button>
             <button
               onClick={async () => {
-                const result = await api.conversations.list();
+                const result = await api.conversations.listTest();
                 console.log(result);
               }}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"

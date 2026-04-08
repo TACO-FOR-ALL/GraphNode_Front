@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastStore } from "@/store/useToastStore";
 import type { Status } from "../../types/FileUploadStatus";
@@ -13,6 +13,7 @@ import {
   IoCloudUpload,
   IoCheckmarkCircle,
   IoAlertCircle,
+  IoFolderOpen,
 } from "react-icons/io5";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
@@ -21,6 +22,7 @@ export default function DropMdZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { addToast } = useToastStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
@@ -107,31 +109,32 @@ export default function DropMdZone() {
         ? "error"
         : "idle";
 
-  const { dragProps, isOver } = useDragDrop({
-    onFileDrop: (rawFiles) => {
-      setProgress(0);
-      reset();
+  const handleFiles = (rawFiles: File[]) => {
+    setProgress(0);
+    reset();
 
-      const validFiles = rawFiles.filter((file) =>
-        file.name.toLowerCase().endsWith(".md"),
-      );
+    const validFiles = rawFiles.filter((file) =>
+      file.name.toLowerCase().endsWith(".md"),
+    );
 
-      if (validFiles.length === 0) {
-        alert(t("settings.dropMdZone.errorMessage.notMd"));
-        return;
-      }
+    if (validFiles.length === 0) {
+      alert(t("settings.dropMdZone.errorMessage.notMd"));
+      return;
+    }
 
-      if (validFiles.length < rawFiles.length) {
-        alert(t("settings.dropMdZone.errorMessage.exceptOther"));
-      }
+    if (validFiles.length < rawFiles.length) {
+      alert(t("settings.dropMdZone.errorMessage.exceptOther"));
+    }
 
-      importMds(validFiles);
-    },
-  });
+    importMds(validFiles);
+  };
+
+  const { dragProps, isOver } = useDragDrop({ onFileDrop: handleFiles });
 
   return (
     <div
       {...dragProps}
+      onClick={() => fileInputRef.current?.click()}
       className={`
         relative w-full rounded-xl border-2 border-dashed p-6
         transition-all duration-200 cursor-pointer flex-1
@@ -144,6 +147,18 @@ export default function DropMdZone() {
         ${status === "error" ? "border-red-500 bg-red-50 dark:bg-red-900/20" : ""}
       `}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length > 0) handleFiles(files);
+          e.target.value = "";
+        }}
+      />
       <div className="flex flex-col items-center gap-3">
         {/* Icon */}
         <div
