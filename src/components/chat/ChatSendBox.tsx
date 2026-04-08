@@ -176,6 +176,7 @@ export default function ChatSendBox({
             id: id,
             chatContent: messageText,
             modelName: modelToUse,
+            title: isNewThread ? NEW_CONVERSATION_PLACEHOLDER : undefined,
           },
           filesToSend,
           async (event) => {
@@ -209,6 +210,7 @@ export default function ChatSendBox({
 
                 // 최종 응답 처리
                 {
+                  console.log(event.data);
                   const messages: { role: string; content: string }[] =
                     event.data.messages ?? [];
                   const title: string | null = event.data.title ?? null;
@@ -451,6 +453,7 @@ export default function ChatSendBox({
       attachedFiles?: File[]; // [Check] 여기서 받은 File[]을 그대로 chat()에 넘기면 됨
       id?: string;
       selectedModel?: LLMModel;
+      isNewThread?: boolean;
     } | null;
 
     // state가 없거나 autoSend가 아니면 리턴
@@ -489,6 +492,7 @@ export default function ChatSendBox({
       id,
       state.attachedFiles,
       state.selectedModel,
+      state.isNewThread ?? false,
     ).catch((err) => {
       console.error("Auto send failed:", err);
       // 에러 발생 시 ref 리셋하여 재시도 가능하게

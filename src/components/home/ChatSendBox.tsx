@@ -63,6 +63,7 @@ export default function ChatSendBox() {
           id: id,
           attachedFiles: attachedFiles,
           selectedModel: selectedModel,
+          isNewThread: true,
         },
       });
     } catch (error) {
