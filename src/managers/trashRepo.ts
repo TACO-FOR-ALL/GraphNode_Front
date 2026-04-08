@@ -1,6 +1,13 @@
 import { api } from "@/apiClient";
 import type { TrashedFolder, TrashedNote, TrashedThread } from "@/types/Trash";
 import { unwrapResponse } from "@/utils/httpResponse";
+import { isElectron } from "@/utils/platform";
+import { mapNote, mapFolder, mapConversation } from "@/utils/dtoMappers";
+import type {
+  NoteDto,
+  FolderDto,
+  ConversationDto,
+} from "@taco_tsinghua/graphnode-sdk";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -12,8 +19,52 @@ function requireGraphNodeAPI() {
   return window.graphnodeAPI;
 }
 
+// ── API response → Trash 래퍼 변환 (내부 객체 매핑은 dtoMappers 위임) ────────
+
+function toTrashedThread(dto: ConversationDto & { deletedAt?: string | null }): TrashedThread {
+  const deletedAt = dto.deletedAt ? new Date(dto.deletedAt).getTime() : Date.now();
+  return {
+    id: dto.id,
+    originalThread: mapConversation(dto),
+    deletedAt,
+    expiresAt: deletedAt + THIRTY_DAYS_MS,
+  };
+}
+
+function toTrashedNote(dto: NoteDto & { deletedAt?: string | null }): TrashedNote {
+  const deletedAt = dto.deletedAt ? new Date(dto.deletedAt).getTime() : Date.now();
+  return {
+    id: dto.id,
+    originalNote: mapNote(dto),
+    deletedAt,
+    expiresAt: deletedAt + THIRTY_DAYS_MS,
+  };
+}
+
+function toTrashedFolder(dto: FolderDto & { deletedAt?: string | null }): TrashedFolder {
+  const deletedAt = dto.deletedAt ? new Date(dto.deletedAt).getTime() : Date.now();
+  return {
+    id: dto.id,
+    originalFolder: mapFolder(dto),
+    noteIds: [],
+    deletedAt,
+    expiresAt: deletedAt + THIRTY_DAYS_MS,
+  };
+}
+
+// ── Repo ──────────────────────────────────────────────────────────────────────
+
 export const trashRepo = {
   async moveNoteToTrash(noteId: string): Promise<TrashedNote | null> {
+    if (!isElectron()) {
+      const result = await api.note.getNote(noteId);
+      if (!result.isSuccess) return null;
+
+      const trashedNote = toTrashedNote(result.data);
+      unwrapResponse(await api.note.softDeleteNote(noteId));
+      return trashedNote;
+    }
+
     const note = await requireGraphNodeAPI().getSQLiteNoteById(noteId);
     if (!note) return null;
 
@@ -40,6 +91,15 @@ export const trashRepo = {
   },
 
   async moveThreadToTrash(threadId: string): Promise<TrashedThread | null> {
+    if (!isElectron()) {
+      const result = await api.conversations.get(threadId);
+      if (!result.isSuccess) return null;
+
+      const trashedThread = toTrashedThread(result.data);
+      unwrapResponse(await api.conversations.softDelete(threadId));
+      return trashedThread;
+    }
+
     const thread = await requireGraphNodeAPI().getSQLiteThreadById(threadId);
     if (!thread) return null;
 
@@ -66,46 +126,88 @@ export const trashRepo = {
   },
 
   async restoreNote(trashedNoteId: string): Promise<boolean> {
-    const trashedNote =
-      await requireGraphNodeAPI().getSQLiteTrashedNoteById(trashedNoteId);
-    if (!trashedNote) return false;
+    if (isElectron()) {
+      const trashedNote =
+        await requireGraphNodeAPI().getSQLiteTrashedNoteById(trashedNoteId);
+      if (!trashedNote) return false;
 
-    await requireGraphNodeAPI().upsertSQLiteNote(trashedNote.originalNote);
-    await requireGraphNodeAPI().deleteSQLiteTrashedNote(trashedNoteId);
-    return true;
+      await requireGraphNodeAPI().upsertSQLiteNote(trashedNote.originalNote);
+      await requireGraphNodeAPI().deleteSQLiteTrashedNote(trashedNoteId);
+      return true;
+    }
+
+    const result = await api.note.restoreNote(trashedNoteId);
+    return result.isSuccess;
   },
 
   async restoreThread(trashedThreadId: string): Promise<boolean> {
-    const trashedThread =
-      await requireGraphNodeAPI().getSQLiteTrashedThreadById(trashedThreadId);
-    if (!trashedThread) return false;
+    if (isElectron()) {
+      const trashedThread =
+        await requireGraphNodeAPI().getSQLiteTrashedThreadById(trashedThreadId);
+      if (!trashedThread) return false;
 
-    await requireGraphNodeAPI().upsertSQLiteThread(trashedThread.originalThread);
-    await requireGraphNodeAPI().deleteSQLiteTrashedThread(trashedThreadId);
-    return true;
+      await requireGraphNodeAPI().upsertSQLiteThread(
+        trashedThread.originalThread,
+      );
+      await requireGraphNodeAPI().deleteSQLiteTrashedThread(trashedThreadId);
+      return true;
+    }
+
+    const result = await api.conversations.restore(trashedThreadId);
+    return result.isSuccess;
   },
 
   async permanentlyDeleteNote(trashedNoteId: string): Promise<boolean> {
-    const trashedNote =
-      await requireGraphNodeAPI().getSQLiteTrashedNoteById(trashedNoteId);
-    if (!trashedNote) return false;
+    if (isElectron()) {
+      const trashedNote =
+        await requireGraphNodeAPI().getSQLiteTrashedNoteById(trashedNoteId);
+      if (!trashedNote) return false;
 
-    unwrapResponse(await api.note.hardDeleteNote(trashedNoteId));
-    await requireGraphNodeAPI().deleteSQLiteTrashedNote(trashedNoteId);
-    return true;
+      unwrapResponse(await api.note.hardDeleteNote(trashedNoteId));
+      await requireGraphNodeAPI().deleteSQLiteTrashedNote(trashedNoteId);
+      return true;
+    }
+
+    const result = await api.note.hardDeleteNote(trashedNoteId);
+    return result.isSuccess;
   },
 
   async permanentlyDeleteThread(trashedThreadId: string): Promise<boolean> {
-    const trashedThread =
-      await requireGraphNodeAPI().getSQLiteTrashedThreadById(trashedThreadId);
-    if (!trashedThread) return false;
+    if (isElectron()) {
+      const trashedThread =
+        await requireGraphNodeAPI().getSQLiteTrashedThreadById(trashedThreadId);
+      if (!trashedThread) return false;
 
-    unwrapResponse(await api.conversations.hardDelete(trashedThreadId));
-    await requireGraphNodeAPI().deleteSQLiteTrashedThread(trashedThreadId);
-    return true;
+      unwrapResponse(await api.conversations.hardDelete(trashedThreadId));
+      await requireGraphNodeAPI().deleteSQLiteTrashedThread(trashedThreadId);
+      return true;
+    }
+
+    const result = await api.conversations.hardDelete(trashedThreadId);
+    return result.isSuccess;
   },
 
   async moveFolderToTrash(folderId: string): Promise<TrashedFolder | null> {
+    if (!isElectron()) {
+      const [folderResult, notesResult] = await Promise.all([
+        api.note.getFolder(folderId),
+        api.note.listNotes(),
+      ]);
+      if (!folderResult.isSuccess) return null;
+
+      const trashedFolder = {
+        ...toTrashedFolder(folderResult.data),
+        noteIds: notesResult.isSuccess
+          ? notesResult.data
+              .filter((note) => note.folderId === folderId)
+              .map((note) => note.id)
+          : [],
+      };
+
+      unwrapResponse(await api.note.softDeleteFolder(folderId));
+      return trashedFolder;
+    }
+
     const folder = await requireGraphNodeAPI().getSQLiteFolderById(folderId);
     if (!folder) return null;
 
@@ -153,74 +255,134 @@ export const trashRepo = {
   },
 
   async restoreFolder(trashedFolderId: string): Promise<boolean> {
-    const trashedFolder =
-      await requireGraphNodeAPI().getSQLiteTrashedFolderById(trashedFolderId);
-    if (!trashedFolder) return false;
+    if (isElectron()) {
+      const trashedFolder =
+        await requireGraphNodeAPI().getSQLiteTrashedFolderById(trashedFolderId);
+      if (!trashedFolder) return false;
 
-    await requireGraphNodeAPI().upsertSQLiteFolder(trashedFolder.originalFolder);
-
-    const notes = await requireGraphNodeAPI().listSQLiteNotes();
-    const notesToRestore = notes.filter((note) =>
-      trashedFolder.noteIds.includes(note.id),
-    );
-    if (notesToRestore.length > 0) {
-      await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
-        notesToRestore.map((note) => ({
-          ...note,
-          folderId: trashedFolderId,
-        })),
+      await requireGraphNodeAPI().upsertSQLiteFolder(
+        trashedFolder.originalFolder,
       );
+
+      const notes = await requireGraphNodeAPI().listSQLiteNotes();
+      const notesToRestore = notes.filter((note) =>
+        trashedFolder.noteIds.includes(note.id),
+      );
+      if (notesToRestore.length > 0) {
+        await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
+          notesToRestore.map((note) => ({
+            ...note,
+            folderId: trashedFolderId,
+          })),
+        );
+      }
+
+      await requireGraphNodeAPI().deleteSQLiteTrashedFolder(trashedFolderId);
+      return true;
     }
 
-    await requireGraphNodeAPI().deleteSQLiteTrashedFolder(trashedFolderId);
-    return true;
+    const result = await api.note.restoreFolder(trashedFolderId);
+    return result.isSuccess;
   },
 
   async permanentlyDeleteFolder(trashedFolderId: string): Promise<boolean> {
-    const trashedFolder =
-      await requireGraphNodeAPI().getSQLiteTrashedFolderById(trashedFolderId);
-    if (!trashedFolder) return false;
+    if (isElectron()) {
+      const trashedFolder =
+        await requireGraphNodeAPI().getSQLiteTrashedFolderById(trashedFolderId);
+      if (!trashedFolder) return false;
 
-    unwrapResponse(await api.note.hardDeleteFolder(trashedFolderId));
-    await requireGraphNodeAPI().deleteSQLiteTrashedFolder(trashedFolderId);
-    return true;
+      unwrapResponse(await api.note.hardDeleteFolder(trashedFolderId));
+      await requireGraphNodeAPI().deleteSQLiteTrashedFolder(trashedFolderId);
+      return true;
+    }
+
+    const result = await api.note.hardDeleteFolder(trashedFolderId);
+    return result.isSuccess;
   },
 
   async getTrashedFolders(): Promise<TrashedFolder[]> {
-    return requireGraphNodeAPI().listSQLiteTrashedFolders();
+    if (isElectron()) {
+      return requireGraphNodeAPI().listSQLiteTrashedFolders();
+    }
+
+    const result = await api.note.listTrash();
+    if (!result.isSuccess) return [];
+    return result.data.folders.map(toTrashedFolder);
   },
 
   async getTrashedNotes(): Promise<TrashedNote[]> {
-    return requireGraphNodeAPI().listSQLiteTrashedNotes();
+    if (isElectron()) {
+      return requireGraphNodeAPI().listSQLiteTrashedNotes();
+    }
+
+    const result = await api.note.listTrash();
+    if (!result.isSuccess) return [];
+    return result.data.notes.map(toTrashedNote);
   },
 
   async getTrashedThreads(): Promise<TrashedThread[]> {
-    return requireGraphNodeAPI().listSQLiteTrashedThreads();
+    if (isElectron()) {
+      return requireGraphNodeAPI().listSQLiteTrashedThreads();
+    }
+
+    const result = await api.conversations.listTrash();
+    if (!result.isSuccess) return [];
+    return result.data.map(toTrashedThread);
   },
 
   async emptyTrash(): Promise<void> {
-    const [trashedNotes, trashedThreads, trashedFolders] = await Promise.all([
-      requireGraphNodeAPI().listSQLiteTrashedNotes(),
-      requireGraphNodeAPI().listSQLiteTrashedThreads(),
-      requireGraphNodeAPI().listSQLiteTrashedFolders(),
+    if (isElectron()) {
+      const [trashedNotes, trashedThreads, trashedFolders] = await Promise.all([
+        requireGraphNodeAPI().listSQLiteTrashedNotes(),
+        requireGraphNodeAPI().listSQLiteTrashedThreads(),
+        requireGraphNodeAPI().listSQLiteTrashedFolders(),
+      ]);
+
+      await Promise.all([
+        ...trashedNotes.map((note) =>
+          api.note.hardDeleteNote(note.id).then(unwrapResponse),
+        ),
+        ...trashedThreads.map((thread) =>
+          api.conversations.hardDelete(thread.id).then(unwrapResponse),
+        ),
+        ...trashedFolders.map((folder) =>
+          api.note.hardDeleteFolder(folder.id).then(unwrapResponse),
+        ),
+      ]);
+
+      await requireGraphNodeAPI().clearSQLiteTrash();
+      return;
+    }
+
+    // Web: fetch all trash items, then hard delete each
+    const [noteTrash, threadTrash] = await Promise.all([
+      api.note.listTrash(),
+      api.conversations.listTrash(),
     ]);
 
-    await Promise.all([
-      ...trashedNotes.map((note) =>
-        api.note.hardDeleteNote(note.id).then(unwrapResponse),
-      ),
-      ...trashedThreads.map((thread) =>
-        api.conversations.hardDelete(thread.id).then(unwrapResponse),
-      ),
-      ...trashedFolders.map((folder) =>
-        api.note.hardDeleteFolder(folder.id).then(unwrapResponse),
-      ),
-    ]);
+    const deleteOps: Promise<unknown>[] = [];
 
-    await requireGraphNodeAPI().clearSQLiteTrash();
+    if (noteTrash.isSuccess) {
+      for (const note of noteTrash.data.notes) {
+        deleteOps.push(api.note.hardDeleteNote(note.id));
+      }
+      for (const folder of noteTrash.data.folders) {
+        deleteOps.push(api.note.hardDeleteFolder(folder.id));
+      }
+    }
+
+    if (threadTrash.isSuccess) {
+      for (const thread of threadTrash.data) {
+        deleteOps.push(api.conversations.hardDelete(thread.id));
+      }
+    }
+
+    await Promise.all(deleteOps);
   },
 
   async clearNotesAndFoldersTrash(): Promise<void> {
+    if (!isElectron()) return;
+
     const [trashedNotes, trashedFolders] = await Promise.all([
       requireGraphNodeAPI().listSQLiteTrashedNotes(),
       requireGraphNodeAPI().listSQLiteTrashedFolders(),
@@ -237,7 +399,10 @@ export const trashRepo = {
   },
 
   async clearThreadsTrash(): Promise<void> {
-    const trashedThreads = await requireGraphNodeAPI().listSQLiteTrashedThreads();
+    if (!isElectron()) return;
+
+    const trashedThreads =
+      await requireGraphNodeAPI().listSQLiteTrashedThreads();
 
     await Promise.all(
       trashedThreads.map((thread) =>
@@ -247,6 +412,7 @@ export const trashRepo = {
   },
 
   async cleanupExpiredItems(): Promise<void> {
+    if (!isElectron()) return;
     await requireGraphNodeAPI().bulkDeleteExpiredSQLiteTrash(Date.now());
   },
 };

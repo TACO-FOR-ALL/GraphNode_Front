@@ -1,41 +1,23 @@
 import { api } from "@/apiClient";
-import type { ChatThread, ChatMessage } from "@/types/Chat";
+import type { ChatThread } from "@/types/Chat";
 import { unwrapResponse } from "@/utils/httpResponse";
 import type {
   ThreadStorageAdapter,
   CreateThreadRecordInput,
 } from "../../contracts/threadStorage";
-
-function toThread(dto: {
-  id: string;
-  title: string;
-  updatedAt?: string;
-  messages: { id: string; role: string; content: string; createdAt?: string }[];
-}): ChatThread {
-  return {
-    id: dto.id,
-    title: dto.title,
-    updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
-    messages: dto.messages.map((msg) => ({
-      id: msg.id,
-      role: msg.role as ChatMessage["role"],
-      content: msg.content,
-      ts: msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now(),
-    })),
-  };
-}
+import { mapConversation } from "@/utils/dtoMappers";
 
 export const apiThreadStorage: ThreadStorageAdapter = {
   async listThreads(): Promise<ChatThread[]> {
     const result = await api.conversations.list();
     if (!result.isSuccess) return [];
-    return result.data.map(toThread);
+    return result.data.map(mapConversation);
   },
 
   async getThread(id: string): Promise<ChatThread | null> {
     const result = await api.conversations.get(id);
     if (!result.isSuccess) return null;
-    return toThread(result.data);
+    return mapConversation(result.data);
   },
 
   async searchThreads(query: string): Promise<ChatThread[]> {
@@ -43,7 +25,7 @@ export const apiThreadStorage: ThreadStorageAdapter = {
     if (!result.isSuccess) return [];
     return result.data
       .filter((dto) => dto.title.toLowerCase().includes(query.toLowerCase()))
-      .map(toThread);
+      .map(mapConversation);
   },
 
   async createThreadRecord(
@@ -54,7 +36,7 @@ export const apiThreadStorage: ThreadStorageAdapter = {
       title: input.title,
     });
     if (!result.isSuccess) throw new Error("Failed to create thread");
-    return toThread(result.data);
+    return mapConversation(result.data);
   },
 
   async putThread(thread: ChatThread): Promise<void> {
