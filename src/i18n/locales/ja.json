@@ -373,7 +373,8 @@
   "microscope": {
     "sidebarEmpty": "ノードを選択すると\n分析情報が表示されます",
     "noWorkspaces": "まだ分析した項目はありません",
-    "selectToView": "左側からアイテムを選択してください"
+    "selectToView": "左側からアイテムを選択してください",
+    "noDataToAnalyze": "分析するノートや会話がありません"
   },
   "settings": {
     "title": "設定",
