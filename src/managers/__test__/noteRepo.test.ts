@@ -5,6 +5,9 @@ const mockEnqueueNoteCreate = jest.fn();
 const mockEnqueueNoteUpdate = jest.fn();
 const mockEnqueueNoteMove = jest.fn();
 const mockMoveNoteToTrash = jest.fn();
+const mockGetFolder = jest.fn();
+const mockGetSQLiteFolderById = jest.fn();
+const mockUpsertSQLiteFolder = jest.fn();
 
 jest.mock("@/utils/uuid", () => ({
   __esModule: true,
@@ -13,6 +16,14 @@ jest.mock("@/utils/uuid", () => ({
 
 jest.mock("@/utils/platform", () => ({
   isElectron: jest.fn(() => true),
+}));
+
+jest.mock("@/apiClient", () => ({
+  api: {
+    note: {
+      getFolder: (...args: unknown[]) => mockGetFolder(...args),
+    },
+  },
 }));
 
 jest.mock("../outboxRepo", () => ({
@@ -96,12 +107,28 @@ import { noteRepo } from "../noteRepo";
 
 describe("noteRepo", () => {
   beforeEach(() => {
+    Object.defineProperty(window, "graphnodeAPI", {
+      configurable: true,
+      value: {
+        getSQLiteFolderById: (...args: unknown[]) =>
+          mockGetSQLiteFolderById(...args),
+        upsertSQLiteFolder: (...args: unknown[]) =>
+          mockUpsertSQLiteFolder(...args),
+      },
+    });
+
     noteStore.clear();
     mockEnqueueNoteCreate.mockReset();
     mockEnqueueNoteUpdate.mockReset();
     mockEnqueueNoteMove.mockReset();
     mockMoveNoteToTrash.mockReset();
+    mockGetFolder.mockReset();
+    mockGetSQLiteFolderById.mockReset();
+    mockUpsertSQLiteFolder.mockReset();
     mockMoveNoteToTrash.mockResolvedValue({ id: "note-1" });
+    mockGetSQLiteFolderById.mockResolvedValue({ id: "folder-1" });
+    mockUpsertSQLiteFolder.mockResolvedValue({ ok: true });
+    mockGetFolder.mockResolvedValue({ isSuccess: false, data: undefined });
   });
 
   test("새 노트를 생성하고 outbox create를 적재한다", async () => {

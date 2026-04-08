@@ -24,6 +24,10 @@ type ExportThread = {
   updatedAt: number;
 };
 
+function toPosixPath(targetPath: string) {
+  return targetPath.replace(/\\/g, "/");
+}
+
 // 추출하는 파일의 이름을 지정합니다 (fallback으로 id를 사용합니다)
 function slugifyFileName(input: string, fallback: string) {
   const normalized = input
@@ -47,7 +51,7 @@ async function chooseDirectory(title: string) {
     return null;
   }
 
-  return result.filePaths[0];
+  return toPosixPath(result.filePaths[0]);
 }
 
 export async function exportSQLiteNotesToDirectory(notes: ExportNote[]) {
@@ -62,7 +66,7 @@ export async function exportSQLiteNotesToDirectory(notes: ExportNote[]) {
   for (const note of notes) {
     const baseName = slugifyFileName(note.title, note.id);
     const fileName = `${baseName}-${note.id.slice(0, 8)}.md`;
-    await fs.writeFile(path.join(directory, fileName), note.content, "utf-8");
+    await fs.writeFile(path.posix.join(directory, fileName), note.content, "utf-8");
     count += 1;
   }
 
@@ -81,7 +85,7 @@ export async function exportSQLiteThreadsToDirectory(threads: ExportThread[]) {
 
   await fs.mkdir(directory, { recursive: true });
 
-  const exportPath = path.join(directory, "conversations.json");
+  const exportPath = path.posix.join(directory, "conversations.json");
   const payload = {
     exportedAt: new Date().toISOString(),
     threads,

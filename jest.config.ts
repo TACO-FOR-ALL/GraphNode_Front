@@ -7,6 +7,7 @@ const config: Config = {
   testPathIgnorePatterns: ["<rootDir>/e2e/", "<rootDir>/test-results/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1", // 경로 별칭 쓰면 매핑
+    "^@taco_tsinghua/graphnode-sdk$": "<rootDir>/test/graphnodeSdkMock.ts",
     "^.+\\.(mp3|wav|ogg|m4a|aac|flac|png|jpe?g|gif|svg)$":
       "<rootDir>/test/fileMock.ts",
   },

@@ -27,12 +27,16 @@ export type CliInstallResult = {
   shellConfigPath?: string | null;
 };
 
+function toPosixPath(targetPath: string) {
+  return targetPath.replace(/\\/g, "/");
+}
+
 function getMacInstallDir() {
-  return path.join(os.homedir(), ".local", "bin");
+  return path.posix.join(toPosixPath(os.homedir()), ".local", "bin");
 }
 
 function getWindowsInstallDir() {
-  return path.join(
+  return path.win32.join(
     process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"),
     "Programs",
     "GraphNode",
@@ -50,11 +54,13 @@ function getInstallDir(platform = process.platform) {
 
 function getCommandPath(platform = process.platform) {
   const installDir = getInstallDir(platform);
-  return path.join(installDir, platform === "win32" ? "graphnode.cmd" : "graphnode");
+  return platform === "win32"
+    ? path.win32.join(installDir, "graphnode.cmd")
+    : path.posix.join(installDir, "graphnode");
 }
 
 function getShellConfigPath() {
-  return path.join(os.homedir(), ".zprofile");
+  return path.posix.join(toPosixPath(os.homedir()), ".zprofile");
 }
 
 async function fileExists(targetPath: string) {
@@ -67,11 +73,12 @@ async function fileExists(targetPath: string) {
 }
 
 export function resolveBundledCliEntryPath() {
-  const resourcesPath = process.resourcesPath ?? app.getAppPath();
+  const appPath = app.getAppPath();
+  const resourcesPath = process.resourcesPath ?? appPath;
   const candidates = [
+    path.join(appPath, "apps", "cli", "dist", "index.js"),
+    path.join(appPath, "..", "apps", "cli", "dist", "index.js"),
     path.join(resourcesPath, "cli", "dist", "index.js"),
-    path.join(app.getAppPath(), "apps", "cli", "dist", "index.js"),
-    path.join(app.getAppPath(), "..", "apps", "cli", "dist", "index.js"),
     path.join(process.cwd(), "apps", "cli", "dist", "index.js"),
   ];
 
@@ -159,11 +166,12 @@ function ensureWindowsUserPath(installDir: string) {
 async function installMacCli(cliEntryPath: string): Promise<CliInstallResult> {
   const installDir = getMacInstallDir();
   const commandPath = getCommandPath("darwin");
+  const scriptEntryPath = toPosixPath(cliEntryPath);
 
   await mkdir(installDir, { recursive: true });
   await writeFile(
     commandPath,
-    `#!/usr/bin/env bash\nexec node ${JSON.stringify(cliEntryPath)} "$@"\n`,
+    `#!/usr/bin/env bash\nexec node ${JSON.stringify(scriptEntryPath)} "$@"\n`,
     "utf-8",
   );
   await chmod(commandPath, 0o755);
@@ -187,11 +195,12 @@ async function installWindowsCli(
 ): Promise<CliInstallResult> {
   const installDir = getWindowsInstallDir();
   const commandPath = getCommandPath("win32");
+  const scriptEntryPath = toPosixPath(cliEntryPath);
 
   await mkdir(installDir, { recursive: true });
   await writeFile(
     commandPath,
-    `@echo off\r\nnode ${JSON.stringify(cliEntryPath)} %*\r\n`,
+    `@echo off\r\nnode ${JSON.stringify(scriptEntryPath)} %*\r\n`,
     "utf-8",
   );
 
