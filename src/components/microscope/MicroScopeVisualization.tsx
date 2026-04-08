@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import * as d3Force from "d3-force";
 import ZoomControls from "@/components/visualize/ZoomControls";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import normalizeMathMarkdown from "@/utils/normalizeMathMarkdown";
 
 // 타입 정의
 interface RawNode {
@@ -64,19 +66,40 @@ const COLOR_PALETTE = [
 ];
 
 const EDGE_PALETTE = [
-  "#8B5CF6", "#3B82F6", "#10B981", "#F43F5E",
-  "#F59E0B", "#06B6D4", "#EC4899", "#84CC16",
-  "#F97316", "#0EA5E9", "#A855F7", "#14B8A6",
+  "#8B5CF6",
+  "#3B82F6",
+  "#10B981",
+  "#F43F5E",
+  "#F59E0B",
+  "#06B6D4",
+  "#EC4899",
+  "#84CC16",
+  "#F97316",
+  "#0EA5E9",
+  "#A855F7",
+  "#14B8A6",
 ];
 
-function getNodeColors(type: string, allTypes: string[]): { fill: string; stroke: string; gradient: string } {
+const FALLBACK_NODE_COLOR = {
+  fill: "#6B7280",
+  stroke: "#4B5563",
+  gradient: "#9CA3AF",
+};
+const FALLBACK_EDGE_COLOR = "#6B7280";
+
+function getNodeColors(
+  type: string,
+  allTypes: string[],
+): { fill: string; stroke: string; gradient: string } {
   const idx = allTypes.indexOf(type);
-  return COLOR_PALETTE[idx % COLOR_PALETTE.length];
+  if (idx < 0) return FALLBACK_NODE_COLOR;
+  return COLOR_PALETTE[idx % COLOR_PALETTE.length] ?? FALLBACK_NODE_COLOR;
 }
 
 function getEdgeColor(type: string, allTypes: string[]): string {
   const idx = allTypes.indexOf(type);
-  return EDGE_PALETTE[idx % EDGE_PALETTE.length];
+  if (idx < 0) return FALLBACK_EDGE_COLOR;
+  return EDGE_PALETTE[idx % EDGE_PALETTE.length] ?? FALLBACK_EDGE_COLOR;
 }
 
 function getNodeAbbr(type: string): string {
@@ -92,11 +115,126 @@ interface Props {
   title?: string;
   subtitle?: string;
   onBack?: () => void;
-  onCtrlClickNodes?: (nodes: { id: string; name: string; type: string }[]) => void;
+  onCtrlClickNodes?: (
+    nodes: { id: string; name: string; type: string }[],
+  ) => void;
   externalContextNodeIds?: string[];
 }
 
 const NODE_RADIUS = 18;
+const INLINE_MATH_PATTERN =
+  /(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$(?:\\.|[^\n$])+\$)/g;
+
+function renderKatexExpression(
+  expression: string,
+  displayMode = false,
+): string {
+  return katex.renderToString(expression, {
+    throwOnError: false,
+    strict: false,
+    displayMode,
+    output: "html",
+  });
+}
+
+function looksLikeStandaloneLatex(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (
+    trimmed.includes("$") ||
+    trimmed.includes("\\(") ||
+    trimmed.includes("\\[")
+  ) {
+    return true;
+  }
+  if (trimmed.startsWith("\\") || trimmed.startsWith("{")) {
+    return true;
+  }
+  const plainTextRemainder = trimmed
+    .replace(/\\[A-Za-z]+/g, " ")
+    .replace(/[{}_^=+\-*/(),.[\]|]/g, " ");
+
+  return (
+    /\\[A-Za-z]+/.test(trimmed) && !/[A-Za-z]{3,}/.test(plainTextRemainder)
+  );
+}
+
+function parseMathToken(token: string): {
+  expression: string;
+  displayMode: boolean;
+} {
+  if (token.startsWith("\\[") && token.endsWith("\\]")) {
+    return { expression: token.slice(2, -2).trim(), displayMode: true };
+  }
+  if (token.startsWith("\\(") && token.endsWith("\\)")) {
+    return { expression: token.slice(2, -2).trim(), displayMode: false };
+  }
+  if (token.startsWith("$$") && token.endsWith("$$")) {
+    return { expression: token.slice(2, -2).trim(), displayMode: true };
+  }
+  return { expression: token.slice(1, -1).trim(), displayMode: false };
+}
+
+function buildLatexNodes(text: string): React.ReactNode {
+  const normalized = normalizeMathMarkdown(text).trim();
+  if (!normalized) return text;
+
+  const matches = Array.from(normalized.matchAll(INLINE_MATH_PATTERN));
+  if (matches.length === 0) {
+    if (!looksLikeStandaloneLatex(normalized)) {
+      return normalized;
+    }
+    return (
+      <span
+        dangerouslySetInnerHTML={{
+          __html: renderKatexExpression(normalized, false),
+        }}
+      />
+    );
+  }
+
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  matches.forEach((match, index) => {
+    const token = match[0];
+    const start = match.index ?? 0;
+
+    if (start > lastIndex) {
+      nodes.push(
+        <React.Fragment key={`text-${index}`}>
+          {normalized.slice(lastIndex, start)}
+        </React.Fragment>,
+      );
+    }
+
+    const { expression, displayMode } = parseMathToken(token);
+    nodes.push(
+      <span
+        key={`math-${index}`}
+        className={displayMode ? "block my-1" : undefined}
+        dangerouslySetInnerHTML={{
+          __html: renderKatexExpression(expression, displayMode),
+        }}
+      />,
+    );
+    lastIndex = start + token.length;
+  });
+
+  if (lastIndex < normalized.length) {
+    nodes.push(
+      <React.Fragment key="text-tail">
+        {normalized.slice(lastIndex)}
+      </React.Fragment>,
+    );
+  }
+
+  return nodes;
+}
+
+function LatexText({ text, className }: { text: string; className?: string }) {
+  return <span className={className}>{buildLatexNodes(text)}</span>;
+}
 
 export default function MicroScopeVisualization({
   data,
@@ -111,7 +249,10 @@ export default function MicroScopeVisualization({
   const { t } = useTranslation();
 
   // 가짜 AI 응답 생성 함수
-  function generateFakeResponse(contextNodes: GraphNode[], question: string): string {
+  function generateFakeResponse(
+    contextNodes: GraphNode[],
+    question: string,
+  ): string {
     if (contextNodes.length === 0) {
       return t("graphVisualization.agent.noContext");
     }
@@ -119,24 +260,39 @@ export default function MicroScopeVisualization({
     const nodeNames = contextNodes.map((n) => `"${n.name}"`).join(", ");
     const nodeTypeLabels = contextNodes.map((n) => n.type);
 
-    if (question.includes("관계") || question.includes("연결") || question.includes("connection")) {
+    if (
+      question.includes("관계") ||
+      question.includes("연결") ||
+      question.includes("connection")
+    ) {
       if (contextNodes.length === 1) {
         const node = contextNodes[0];
         return `**${node.name}** - ${t("graphVisualization.agent.analyzeOneIntro", { type: node.type })}\n\n**${t("graphVisualization.agent.descLabel")}:** ${node.description}\n\n${t("graphVisualization.agent.analyzeOneOutro")}`;
       } else {
         const relationshipAnalysis = contextNodes
-          .map((n, i) => `${i + 1}. **${n.name}** (${n.type}): ${n.description.slice(0, 100)}...`)
+          .map(
+            (n, i) =>
+              `${i + 1}. **${n.name}** (${n.type}): ${n.description.slice(0, 100)}...`,
+          )
           .join("\n\n");
 
         return `**${t("graphVisualization.agent.analyzeMultipleTitle", { count: contextNodes.length })}**\n\n${relationshipAnalysis}\n\n**${t("graphVisualization.agent.relationSummaryTitle")}**\n${contextNodes[0].name}${t("graphVisualization.agent.analyzeMultipleSummary", { second: contextNodes.length > 1 ? contextNodes[1].name : t("graphVisualization.agent.otherElements") })}`;
       }
     }
 
-    if (question.includes("설명") || question.includes("뭐") || question.includes("무엇")) {
+    if (
+      question.includes("설명") ||
+      question.includes("뭐") ||
+      question.includes("무엇")
+    ) {
       return `**${t("graphVisualization.agent.describeTitle")}**\n\n${contextNodes.map((n) => `- **${n.name}** (${n.type})\n  ${n.description}`).join("\n\n")}`;
     }
 
-    if (question.includes("중요") || question.includes("핵심") || question.includes("의미")) {
+    if (
+      question.includes("중요") ||
+      question.includes("핵심") ||
+      question.includes("의미")
+    ) {
       return `**${t("graphVisualization.agent.importanceTitle", { names: nodeNames })}**\n\n${t("graphVisualization.agent.importanceBody")}\n\n${contextNodes.map((n) => `- **${n.name}** (${n.type}): ${n.description.slice(0, 80)}...`).join("\n\n")}`;
     }
 
@@ -173,8 +329,13 @@ export default function MicroScopeVisualization({
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const layoutCalculatedRef = useRef<{ network: boolean; cluster: boolean }>({ network: false, cluster: false });
-  const initialDimensionsRef = useRef<{ width: number; height: number } | null>(null);
+  const layoutCalculatedRef = useRef<{ network: boolean; cluster: boolean }>({
+    network: false,
+    cluster: false,
+  });
+  const initialDimensionsRef = useRef<{ width: number; height: number } | null>(
+    null,
+  );
 
   // 컨테이너 크기 감지 - 최초 한 번만 dimensions 설정
   useEffect(() => {
@@ -231,7 +392,11 @@ export default function MicroScopeVisualization({
         const targetKey = `${edge.target}-${findNodeType(chunk.nodes, edge.target)}`;
         const edgeKey = `${sourceKey}-${targetKey}-${edge.type}`;
 
-        if (!edgeSet.has(edgeKey) && nodeMap.has(sourceKey) && nodeMap.has(targetKey)) {
+        if (
+          !edgeSet.has(edgeKey) &&
+          nodeMap.has(sourceKey) &&
+          nodeMap.has(targetKey)
+        ) {
           edgeSet.add(edgeKey);
           connectedNodes.add(sourceKey);
           connectedNodes.add(targetKey);
@@ -299,7 +464,12 @@ export default function MicroScopeVisualization({
 
   // Force 시뮬레이션 (Network 모드)
   useEffect(() => {
-    if (processedData.nodes.length === 0 || viewMode !== "network" || dimensions.width === 0) return;
+    if (
+      processedData.nodes.length === 0 ||
+      viewMode !== "network" ||
+      dimensions.width === 0
+    )
+      return;
     // 이미 레이아웃이 계산되었으면 재실행하지 않음
     if (layoutCalculatedRef.current.network) return;
     layoutCalculatedRef.current.network = true;
@@ -319,12 +489,17 @@ export default function MicroScopeVisualization({
 
     const simulation = d3Force
       .forceSimulation(simNodes as any)
-      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.05))
+      .force(
+        "center",
+        d3Force
+          .forceCenter(dimensions.width / 2, dimensions.height / 2)
+          .strength(0.05),
+      )
       .force(
         "charge",
         d3Force.forceManyBody().strength((d: any) => {
           return d.hasEdges ? -350 : -150;
-        })
+        }),
       )
       .force(
         "link",
@@ -332,7 +507,7 @@ export default function MicroScopeVisualization({
           .forceLink(simEdges as any)
           .id((d: any) => d.id)
           .distance(180)
-          .strength(0.4)
+          .strength(0.4),
       )
       .force("collision", d3Force.forceCollide(NODE_RADIUS + 40))
       .force("x", d3Force.forceX(dimensions.width / 2).strength(0.02))
@@ -349,7 +524,12 @@ export default function MicroScopeVisualization({
 
   // Force 시뮬레이션 (Cluster 모드) - 타입별 클러스터 위치로 그루핑
   useEffect(() => {
-    if (processedData.nodes.length === 0 || viewMode !== "cluster" || dimensions.width === 0) return;
+    if (
+      processedData.nodes.length === 0 ||
+      viewMode !== "cluster" ||
+      dimensions.width === 0
+    )
+      return;
     if (layoutCalculatedRef.current.cluster) return;
     layoutCalculatedRef.current.cluster = true;
 
@@ -373,24 +553,40 @@ export default function MicroScopeVisualization({
 
     const simulation = d3Force
       .forceSimulation(simNodes as any)
-      .force("center", d3Force.forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.01))
-      .force("charge", d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -180 : -80)))
+      .force(
+        "center",
+        d3Force
+          .forceCenter(dimensions.width / 2, dimensions.height / 2)
+          .strength(0.01),
+      )
+      .force(
+        "charge",
+        d3Force.forceManyBody().strength((d: any) => (d.hasEdges ? -180 : -80)),
+      )
       .force(
         "link",
         d3Force
           .forceLink(simEdges as any)
           .id((d: any) => d.id)
           .distance(80)
-          .strength(0.3)
+          .strength(0.3),
       )
       .force("collision", d3Force.forceCollide(NODE_RADIUS + 20))
       .force(
         "x",
-        d3Force.forceX((d: any) => clusterPositions[d.type]?.x ?? dimensions.width / 2).strength(0.5)
+        d3Force
+          .forceX(
+            (d: any) => clusterPositions[d.type]?.x ?? dimensions.width / 2,
+          )
+          .strength(0.5),
       )
       .force(
         "y",
-        d3Force.forceY((d: any) => clusterPositions[d.type]?.y ?? dimensions.height / 2).strength(0.5)
+        d3Force
+          .forceY(
+            (d: any) => clusterPositions[d.type]?.y ?? dimensions.height / 2,
+          )
+          .strength(0.5),
       )
       .stop();
 
@@ -400,7 +596,13 @@ export default function MicroScopeVisualization({
 
     setNodes(simNodes);
     setEdges(processedData.edges);
-  }, [processedData, dimensions.width, dimensions.height, viewMode, clusterPositions]);
+  }, [
+    processedData,
+    dimensions.width,
+    dimensions.height,
+    viewMode,
+    clusterPositions,
+  ]);
 
   // 모드 변경 시 선택 초기화 및 레이아웃 플래그 리셋
   useEffect(() => {
@@ -422,7 +624,9 @@ export default function MicroScopeVisualization({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const zoomIntensity = 0.002;
-      setScale((prev) => Math.min(Math.max(prev * (1 - e.deltaY * zoomIntensity), 0.3), 3));
+      setScale((prev) =>
+        Math.min(Math.max(prev * (1 - e.deltaY * zoomIntensity), 0.3), 3),
+      );
     };
     svgEl.addEventListener("wheel", handleWheel, { passive: false });
     return () => svgEl.removeEventListener("wheel", handleWheel);
@@ -478,7 +682,11 @@ export default function MicroScopeVisualization({
 
       if (onCtrlClickNodes) {
         onCtrlClickNodes(
-          newContextNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
+          newContextNodes.map((n) => ({
+            id: n.id,
+            name: n.name,
+            type: n.type,
+          })),
         );
       } else {
         // 에이전트 창 열기
@@ -500,11 +708,17 @@ export default function MicroScopeVisualization({
     setIsTyping(true);
 
     // 가짜 응답 생성 (타이핑 효과)
-    setTimeout(() => {
-      const response = generateFakeResponse(contextNodes, inputValue);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: response }]);
-      setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    setTimeout(
+      () => {
+        const response = generateFakeResponse(contextNodes, inputValue);
+        setChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response },
+        ]);
+        setIsTyping(false);
+      },
+      1000 + Math.random() * 1000,
+    );
   };
 
   // 컨텍스트에서 노드 제거
@@ -538,7 +752,13 @@ export default function MicroScopeVisualization({
     const dy = target.y - source.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0)
-      return { path: `M${source.x},${source.y}`, x1: source.x, y1: source.y, x2: source.x, y2: source.y };
+      return {
+        path: `M${source.x},${source.y}`,
+        x1: source.x,
+        y1: source.y,
+        x2: source.x,
+        y2: source.y,
+      };
 
     const nx = dx / len;
     const ny = dy / len;
@@ -580,11 +800,11 @@ export default function MicroScopeVisualization({
   };
 
   // 컨텍스트에 있는 노드인지 확인
-  const isInContext = (nodeId: string) => contextNodes.some((n) => n.id === nodeId);
+  const isInContext = (nodeId: string) =>
+    contextNodes.some((n) => n.id === nodeId);
 
   return (
     <div className="flex flex-col h-screen bg-bg-primary relative">
-
       <div className="flex flex-1 overflow-hidden">
         {/* 사이드바 - 범례 */}
         <div className="w-[259px] p-4 pb-20 border-r border-text-tertiary/20 overflow-y-auto scroll-hidden bg-bg-secondary/30">
@@ -596,21 +816,28 @@ export default function MicroScopeVisualization({
                   onClick={onBack}
                   className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-3"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M19 12H5M12 19l-7-7 7-7" />
                   </svg>
-                  <span className="text-sm font-medium">{t("graphVisualization.back")}</span>
+                  <span className="text-sm font-medium">
+                    {t("graphVisualization.back")}
+                  </span>
                 </button>
               )}
               {title && (
                 <h1 className="text-base font-bold text-text-primary leading-tight mb-1">
-                  {title}
+                  <LatexText text={title} />
                 </h1>
               )}
               {subtitle && (
-                <p className="text-xs text-text-secondary">
-                  {subtitle}
-                </p>
+                <p className="text-xs text-text-secondary">{subtitle}</p>
               )}
             </div>
           )}
@@ -624,24 +851,26 @@ export default function MicroScopeVisualization({
               {nodeTypes.map((type) => {
                 const colors = getNodeColors(type, nodeTypes);
                 return (
-                <div
-                  key={type}
-                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
-                >
                   <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
-                    style={{
-                      background: `linear-gradient(135deg, ${colors.gradient} 0%, ${colors.fill} 100%)`,
-                      boxShadow: `0 2px 4px ${colors.fill}40`,
-                    }}
+                    key={type}
+                    className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
                   >
-                    {getNodeAbbr(type)}
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
+                      style={{
+                        background: `linear-gradient(135deg, ${colors.gradient} 0%, ${colors.fill} 100%)`,
+                        boxShadow: `0 2px 4px ${colors.fill}40`,
+                      }}
+                    >
+                      {getNodeAbbr(type)}
+                    </div>
+                    <span className="text-xs text-text-secondary flex-1">
+                      {type}
+                    </span>
+                    <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
+                      {nodeStats[type] || 0}
+                    </span>
                   </div>
-                  <span className="text-xs text-text-secondary flex-1">{type}</span>
-                  <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
-                    {nodeStats[type] || 0}
-                  </span>
-                </div>
                 );
               })}
             </div>
@@ -656,38 +885,40 @@ export default function MicroScopeVisualization({
               {edgeTypes.map((type) => {
                 const color = getEdgeColor(type, edgeTypes);
                 return (
-                <div
-                  key={type}
-                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
-                >
-                  <svg width="20" height="12" className="flex-shrink-0">
-                    <defs>
-                      <marker
-                        id={`legend-arrow-${type}`}
-                        markerWidth="6"
-                        markerHeight="6"
-                        refX="5"
-                        refY="3"
-                        orient="auto"
-                      >
-                        <path d="M0,0 L6,3 L0,6 Z" fill={color} />
-                      </marker>
-                    </defs>
-                    <line
-                      x1="0"
-                      y1="6"
-                      x2="14"
-                      y2="6"
-                      stroke={color}
-                      strokeWidth="2"
-                      markerEnd={`url(#legend-arrow-${type})`}
-                    />
-                  </svg>
-                  <span className="text-xs text-text-secondary flex-1">{type}</span>
-                  <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
-                    {edgeStats[type] || 0}
-                  </span>
-                </div>
+                  <div
+                    key={type}
+                    className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary/50 transition-colors cursor-default"
+                  >
+                    <svg width="20" height="12" className="flex-shrink-0">
+                      <defs>
+                        <marker
+                          id={`legend-arrow-${type}`}
+                          markerWidth="6"
+                          markerHeight="6"
+                          refX="5"
+                          refY="3"
+                          orient="auto"
+                        >
+                          <path d="M0,0 L6,3 L0,6 Z" fill={color} />
+                        </marker>
+                      </defs>
+                      <line
+                        x1="0"
+                        y1="6"
+                        x2="14"
+                        y2="6"
+                        stroke={color}
+                        strokeWidth="2"
+                        markerEnd={`url(#legend-arrow-${type})`}
+                      />
+                    </svg>
+                    <span className="text-xs text-text-secondary flex-1">
+                      {type}
+                    </span>
+                    <span className="text-[10px] text-text-placeholder bg-bg-tertiary px-1.5 py-0.5 rounded-full">
+                      {edgeStats[type] || 0}
+                    </span>
+                  </div>
                 );
               })}
             </div>
@@ -701,11 +932,15 @@ export default function MicroScopeVisualization({
             <div className="grid grid-cols-2 gap-2">
               <div className="text-center p-2 bg-bg-primary rounded-lg">
                 <p className="text-lg font-bold text-primary">{nodes.length}</p>
-                <p className="text-[10px] text-text-secondary">{t("graphVisualization.nodes")}</p>
+                <p className="text-[10px] text-text-secondary">
+                  {t("graphVisualization.nodes")}
+                </p>
               </div>
               <div className="text-center p-2 bg-bg-primary rounded-lg">
                 <p className="text-lg font-bold text-primary">{edges.length}</p>
-                <p className="text-[10px] text-text-secondary">{t("graphVisualization.edges")}</p>
+                <p className="text-[10px] text-text-secondary">
+                  {t("graphVisualization.edges")}
+                </p>
               </div>
             </div>
           </div>
@@ -713,19 +948,25 @@ export default function MicroScopeVisualization({
           {/* 도움말 */}
           <div className="mt-4 p-3 bg-primary/5 rounded-xl border border-primary/10">
             <p className="text-[10px] text-text-secondary leading-relaxed">
-              <strong className="text-text-primary">{t("graphVisualization.help.title") + ":"}</strong>{" "}
+              <strong className="text-text-primary">
+                {t("graphVisualization.help.title") + ":"}
+              </strong>{" "}
               {viewMode === "network"
                 ? t("graphVisualization.help.network")
                 : t("graphVisualization.help.cluster")}
             </p>
             <p className="text-[10px] text-primary mt-2 leading-relaxed">
-              <strong>{t("graphVisualization.help.ctrlClick")}</strong> {t("graphVisualization.help.ctrlClickDesc")}
+              <strong>{t("graphVisualization.help.ctrlClick")}</strong>{" "}
+              {t("graphVisualization.help.ctrlClickDesc")}
             </p>
           </div>
         </div>
 
         {/* 그래프 영역 */}
-        <div ref={containerRef} className="flex-1 relative overflow-hidden bg-bg-primary">
+        <div
+          ref={containerRef}
+          className="flex-1 relative overflow-hidden bg-bg-primary"
+        >
           {/* Floating 2D/3D 모드 토글 패널 - 오른쪽 상단 */}
           <div className="absolute z-20 top-6 right-6 flex flex-col gap-2">
             {/* 뷰 모드 토글 */}
@@ -733,7 +974,9 @@ export default function MicroScopeVisualization({
               <div
                 onClick={() => setViewMode("network")}
                 className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
-                  viewMode === "network" ? "text-primary" : "text-text-secondary"
+                  viewMode === "network"
+                    ? "text-primary"
+                    : "text-text-secondary"
                 }`}
               >
                 {t("graphVisualization.viewMode.network")}
@@ -741,7 +984,9 @@ export default function MicroScopeVisualization({
               <div
                 onClick={() => setViewMode("cluster")}
                 className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
-                  viewMode === "cluster" ? "text-primary" : "text-text-secondary"
+                  viewMode === "cluster"
+                    ? "text-primary"
+                    : "text-text-secondary"
                 }`}
               >
                 {t("graphVisualization.viewMode.cluster")}
@@ -781,10 +1026,27 @@ export default function MicroScopeVisualization({
                   </linearGradient>
                 );
               })}
-              <filter id="node-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.15" />
+              <filter
+                id="node-shadow"
+                x="-50%"
+                y="-50%"
+                width="200%"
+                height="200%"
+              >
+                <feDropShadow
+                  dx="0"
+                  dy="2"
+                  stdDeviation="2"
+                  floodOpacity="0.15"
+                />
               </filter>
-              <filter id="context-glow" x="-100%" y="-100%" width="300%" height="300%">
+              <filter
+                id="context-glow"
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
                 <feGaussianBlur stdDeviation="3" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
@@ -810,8 +1072,9 @@ export default function MicroScopeVisualization({
               })}
             </defs>
 
-            <g transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}>
-
+            <g
+              transform={`translate(${offset.x}, ${offset.y}) scale(${scale})`}
+            >
               {/* 엣지 */}
               {edges.map((edge, idx) => {
                 const source = nodeById(edge.source);
@@ -821,10 +1084,13 @@ export default function MicroScopeVisualization({
 
                 const isHovered = hoveredEdge === edge;
                 const isConnectedToSelected =
-                  selectedNode && (edge.source === selectedNode.id || edge.target === selectedNode.id);
+                  selectedNode &&
+                  (edge.source === selectedNode.id ||
+                    edge.target === selectedNode.id);
                 const color = getEdgeColor(edge.type, edgeTypes);
                 const pathData = getEdgePath(source, target);
-                const isCrossCluster = viewMode === "cluster" && source.type !== target.type;
+                const isCrossCluster =
+                  viewMode === "cluster" && source.type !== target.type;
 
                 return (
                   <g key={`edge-${idx}`}>
@@ -841,11 +1107,19 @@ export default function MicroScopeVisualization({
                       d={pathData.path}
                       stroke={color}
                       strokeWidth={isHovered || isConnectedToSelected ? 2 : 1}
-                      strokeOpacity={isCrossCluster ? 0.8 : isHovered || isConnectedToSelected ? 0.9 : 0.4}
+                      strokeOpacity={
+                        isCrossCluster
+                          ? 0.8
+                          : isHovered || isConnectedToSelected
+                            ? 0.9
+                            : 0.4
+                      }
                       strokeDasharray={isCrossCluster ? "6 3" : "none"}
                       fill="none"
                       markerEnd={`url(#arrow-${edge.type})`}
-                      style={{ transition: "stroke-width 0.2s, stroke-opacity 0.2s" }}
+                      style={{
+                        transition: "stroke-width 0.2s, stroke-opacity 0.2s",
+                      }}
                     />
                   </g>
                 );
@@ -871,7 +1145,13 @@ export default function MicroScopeVisualization({
                   >
                     {/* 컨텍스트 표시 (외곽 글로우) */}
                     {isContext && (
-                      <circle r={NODE_RADIUS + 8} fill="none" stroke="#8B5CF6" strokeWidth={3} opacity={0.6} />
+                      <circle
+                        r={NODE_RADIUS + 8}
+                        fill="none"
+                        stroke="#8B5CF6"
+                        strokeWidth={3}
+                        opacity={0.6}
+                      />
                     )}
                     {isActive && (
                       <circle
@@ -883,7 +1163,11 @@ export default function MicroScopeVisualization({
                         opacity={0.6}
                       />
                     )}
-                    <circle r={NODE_RADIUS} fill={`url(#node-gradient-${node.type})`} filter="url(#node-shadow)" />
+                    <circle
+                      r={NODE_RADIUS}
+                      fill={`url(#node-gradient-${node.type})`}
+                      filter="url(#node-shadow)"
+                    />
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
@@ -896,26 +1180,44 @@ export default function MicroScopeVisualization({
                     </text>
                     <g style={{ opacity: isActive ? 1 : 0.7 }}>
                       <rect
-                        x={-getTextWidth(truncateText(node.name, 20)) / 2 - 6}
+                        x={-getLabelWidth(node.name) / 2 - 6}
                         y={NODE_RADIUS + 6}
-                        width={getTextWidth(truncateText(node.name, 20)) + 12}
-                        height={18}
+                        width={getLabelWidth(node.name) + 12}
+                        height={22}
                         rx={9}
                         fill="var(--color-bg-primary)"
-                        stroke={isContext ? "#8B5CF6" : "var(--color-text-tertiary)"}
+                        stroke={
+                          isContext ? "#8B5CF6" : "var(--color-text-tertiary)"
+                        }
                         strokeWidth={isContext ? 1.5 : 0.5}
                         opacity={0.95}
                       />
-                      <text
-                        y={NODE_RADIUS + 18}
-                        textAnchor="middle"
-                        fill="var(--color-text-primary)"
-                        fontSize="10"
-                        fontWeight="500"
-                        style={{ pointerEvents: "none" }}
+                      <foreignObject
+                        x={-getLabelWidth(node.name) / 2}
+                        y={NODE_RADIUS + 8}
+                        width={getLabelWidth(node.name)}
+                        height={18}
+                        style={{ pointerEvents: "none", overflow: "visible" }}
                       >
-                        {truncateText(node.name, 20)}
-                      </text>
+                        <div
+                          style={{
+                            width: `${getLabelWidth(node.name)}px`,
+                            height: "18px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "10px",
+                            fontWeight: 500,
+                            color: "var(--color-text-primary)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            lineHeight: 1,
+                          }}
+                        >
+                          <LatexText text={node.name} />
+                        </div>
+                      </foreignObject>
                     </g>
                   </g>
                 );
@@ -958,20 +1260,36 @@ export default function MicroScopeVisualization({
                   <span className="inline-block text-[10px] font-medium px-2 py-0.5 bg-bg-tertiary rounded-full text-text-secondary mb-1">
                     {selectedNode.type}
                   </span>
-                  <h3 className="text-sm font-semibold text-text-primary leading-tight">{selectedNode.name}</h3>
+                  <h3 className="text-sm font-semibold text-text-primary leading-tight">
+                    <LatexText text={selectedNode.name} />
+                  </h3>
                 </div>
               </div>
 
               <div className="mb-4 p-3 bg-bg-tertiary/50 rounded-xl">
-                <p className="text-xs text-text-secondary leading-relaxed">{selectedNode.description}</p>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {selectedNode.description}
+                </p>
               </div>
 
               <h4 className="text-xs font-semibold text-text-primary mb-2 uppercase tracking-wider">
-                {t("graphVisualization.connections")} ({edges.filter((e) => e.source === selectedNode.id || e.target === selectedNode.id).length})
+                {t("graphVisualization.connections")} (
+                {
+                  edges.filter(
+                    (e) =>
+                      e.source === selectedNode.id ||
+                      e.target === selectedNode.id,
+                  ).length
+                }
+                )
               </h4>
               <div className="space-y-2">
                 {edges
-                  .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
+                  .filter(
+                    (e) =>
+                      e.source === selectedNode.id ||
+                      e.target === selectedNode.id,
+                  )
                   .map((edge, idx) => {
                     const isSource = edge.source === selectedNode.id;
                     const otherNodeId = isSource ? edge.target : edge.source;
@@ -991,7 +1309,9 @@ export default function MicroScopeVisualization({
                           >
                             {edge.type}
                           </span>
-                          <span className="text-text-placeholder text-[10px]">{isSource ? "→" : "←"}</span>
+                          <span className="text-text-placeholder text-[10px]">
+                            {isSource ? "→" : "←"}
+                          </span>
                           {edge.confidence && (
                             <span className="text-[10px] text-text-placeholder ml-auto">
                               {Math.round(edge.confidence * 100)}%
@@ -1002,12 +1322,21 @@ export default function MicroScopeVisualization({
                           <div
                             className="w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold text-white flex-shrink-0"
                             style={{
-                              backgroundColor: otherNode ? getNodeColors(otherNode.type, nodeTypes).fill : "#9CA3AF",
+                              backgroundColor: otherNode
+                                ? getNodeColors(otherNode.type, nodeTypes).fill
+                                : "#9CA3AF",
                             }}
                           >
                             {otherNode ? getNodeAbbr(otherNode.type) : "?"}
                           </div>
-                          <p className="text-text-primary truncate">{truncateText(otherNode?.name || otherNodeId, 30)}</p>
+                          <p className="text-text-primary truncate">
+                            <LatexText
+                              text={truncateText(
+                                otherNode?.name || otherNodeId,
+                                30,
+                              )}
+                            />
+                          </p>
                         </div>
                       </div>
                     );
@@ -1018,11 +1347,15 @@ export default function MicroScopeVisualization({
             <div className="p-4">
               <div
                 className="inline-block px-2.5 py-1 rounded-lg text-white text-xs font-medium mb-3"
-                style={{ backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes) }}
+                style={{
+                  backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes),
+                }}
               >
                 {hoveredEdge.type}
               </div>
-              <p className="text-sm text-text-secondary leading-relaxed mb-3">{hoveredEdge.description}</p>
+              <p className="text-sm text-text-secondary leading-relaxed mb-3">
+                {hoveredEdge.description}
+              </p>
               {hoveredEdge.confidence && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
@@ -1030,11 +1363,16 @@ export default function MicroScopeVisualization({
                       className="h-full rounded-full"
                       style={{
                         width: `${hoveredEdge.confidence * 100}%`,
-                        backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes),
+                        backgroundColor: getEdgeColor(
+                          hoveredEdge.type,
+                          edgeTypes,
+                        ),
                       }}
                     />
                   </div>
-                  <span className="text-xs text-text-placeholder">{Math.round(hoveredEdge.confidence * 100)}%</span>
+                  <span className="text-xs text-text-placeholder">
+                    {Math.round(hoveredEdge.confidence * 100)}%
+                  </span>
                 </div>
               )}
             </div>
@@ -1048,7 +1386,9 @@ export default function MicroScopeVisualization({
           {/* 헤더 */}
           <div className="p-4 border-b border-text-tertiary/20 bg-bg-secondary/50">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-text-primary">{t("graphVisualization.agent.title")}</h2>
+              <h2 className="text-lg font-bold text-text-primary">
+                {t("graphVisualization.agent.title")}
+              </h2>
               <button
                 onClick={() => setIsAgentOpen(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg-tertiary text-text-secondary"
@@ -1059,7 +1399,11 @@ export default function MicroScopeVisualization({
 
             {/* 컨텍스트 노드 목록 */}
             <div>
-              <p className="text-xs text-text-secondary mb-2">{t("graphVisualization.agent.selectedContext", { count: contextNodes.length })}</p>
+              <p className="text-xs text-text-secondary mb-2">
+                {t("graphVisualization.agent.selectedContext", {
+                  count: contextNodes.length,
+                })}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {contextNodes.map((node) => (
                   <div
@@ -1068,9 +1412,14 @@ export default function MicroScopeVisualization({
                   >
                     <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: getNodeColors(node.type, nodeTypes).fill }}
+                      style={{
+                        backgroundColor: getNodeColors(node.type, nodeTypes)
+                          .fill,
+                      }}
                     />
-                    <span className="text-text-primary max-w-[120px] truncate">{node.name}</span>
+                    <span className="text-text-primary max-w-[120px] truncate">
+                      <LatexText text={node.name} />
+                    </span>
                     <button
                       onClick={() => removeFromContext(node.id)}
                       className="text-text-placeholder hover:text-text-primary ml-1"
@@ -1080,7 +1429,9 @@ export default function MicroScopeVisualization({
                   </div>
                 ))}
                 {contextNodes.length === 0 && (
-                  <p className="text-xs text-text-placeholder">{t("graphVisualization.agent.addNodeHint")}</p>
+                  <p className="text-xs text-text-placeholder">
+                    {t("graphVisualization.agent.addNodeHint")}
+                  </p>
                 )}
               </div>
             </div>
@@ -1090,11 +1441,15 @@ export default function MicroScopeVisualization({
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {chatMessages.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-text-secondary mb-2">{t("graphVisualization.agent.askAboutNodes")}</p>
+                <p className="text-sm text-text-secondary mb-2">
+                  {t("graphVisualization.agent.askAboutNodes")}
+                </p>
                 <div className="space-y-2">
                   <button
                     onClick={() => {
-                      setInputValue(t("graphVisualization.agent.suggestRelationInput"));
+                      setInputValue(
+                        t("graphVisualization.agent.suggestRelationInput"),
+                      );
                       handleSendMessage();
                     }}
                     className="block w-full text-left px-3 py-2 bg-bg-tertiary rounded-lg text-xs text-text-primary hover:bg-bg-tertiary/80"
@@ -1103,7 +1458,9 @@ export default function MicroScopeVisualization({
                   </button>
                   <button
                     onClick={() => {
-                      setInputValue(t("graphVisualization.agent.suggestImportanceInput"));
+                      setInputValue(
+                        t("graphVisualization.agent.suggestImportanceInput"),
+                      );
                       handleSendMessage();
                     }}
                     className="block w-full text-left px-3 py-2 bg-bg-tertiary rounded-lg text-xs text-text-primary hover:bg-bg-tertiary/80"
@@ -1115,7 +1472,10 @@ export default function MicroScopeVisualization({
             )}
 
             {chatMessages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={idx}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 <div
                   className={`max-w-[80%] p-3 rounded-2xl text-sm ${
                     msg.role === "user"
@@ -1156,7 +1516,9 @@ export default function MicroScopeVisualization({
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !e.shiftKey && handleSendMessage()
+                }
                 placeholder={t("graphVisualization.agent.inputPlaceholder")}
                 className="flex-1 px-4 py-2 bg-bg-tertiary rounded-xl text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
@@ -1177,6 +1539,10 @@ export default function MicroScopeVisualization({
 
 function getTextWidth(text: string): number {
   return text.length * 6;
+}
+
+function getLabelWidth(text: string): number {
+  return Math.max(48, Math.min(getTextWidth(text), 220));
 }
 
 function truncateText(text: string, maxLength: number): string {
