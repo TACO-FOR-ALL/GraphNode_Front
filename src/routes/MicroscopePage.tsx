@@ -60,7 +60,11 @@ export default function MicroscopePage() {
   const { isGenerating, setGenerating } = useMicroscopeGenerationStore();
   const [requested, setRequested] = useState(false);
 
-  const { setIsOpen: setAgentOpen, setMicroscopeNodes, microscopeNodes } = useAgentToolBoxStore();
+  const {
+    setIsOpen: setAgentOpen,
+    setMicroscopeNodes,
+    microscopeNodes,
+  } = useAgentToolBoxStore();
 
   const handleCtrlClickNodes = useCallback(
     (nodes: { id: string; name: string; type: string }[]) => {
@@ -71,10 +75,8 @@ export default function MicroscopePage() {
   );
 
   const locationState = location.state as {
-    graphData?: GraphData;
     nodeTitle?: string;
   } | null;
-  const passedGraphData = locationState?.graphData;
   const nodeTitle = locationState?.nodeTitle ?? nodeId;
 
   // 워크스페이스 목록 조회
@@ -84,12 +86,12 @@ export default function MicroscopePage() {
   });
 
   // 선택된 워크스페이스의 그래프 데이터 조회
-  const { data: workspaceGraphData, isLoading: isGraphLoading } = useQuery({
+  const { data: workspaceGraphData, isLoading: isGraphLoading } = useQuery<GraphData[]>({
     queryKey: ["microscope-workspace-graph", selectedWorkspaceId],
     queryFn: async () =>
       unwrapResponse(
         await api.microscope.getWorkspaceGraph(selectedWorkspaceId!),
-      ),
+      ) as unknown as GraphData[],
     enabled: !!selectedWorkspaceId,
   });
 
@@ -136,19 +138,11 @@ export default function MicroscopePage() {
     }
   };
 
-  // 표시할 그래프 데이터 결정
-  const graphData: GraphData[] =
-    selectedWorkspaceId && workspaceGraphData
-      ? (workspaceGraphData as unknown as GraphData[])
-      : passedGraphData
-        ? [passedGraphData]
-        : [];
-
   const selectedWorkspace = workspaceList.find(
     (ws) => ws._id === selectedWorkspaceId,
   );
   const displayTitle = selectedWorkspace?.name ?? nodeTitle;
-  const hasContent = graphData.length > 0;
+  const hasContent = (workspaceGraphData?.length ?? 0) > 0;
 
   return (
     <div className="w-full h-full flex overflow-hidden">
@@ -261,7 +255,7 @@ export default function MicroscopePage() {
           </div>
         ) : hasContent ? (
           <MicroScopeVisualization
-            data={graphData}
+            data={workspaceGraphData ?? []}
             title={displayTitle}
             subtitle={t("visualizeDetail.subtitle")}
             onCtrlClickNodes={handleCtrlClickNodes}
