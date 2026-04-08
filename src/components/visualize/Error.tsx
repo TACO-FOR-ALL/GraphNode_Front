@@ -8,7 +8,11 @@ export default function ErrorScreen({ onRetry }: ErrorScreenProps) {
   const { t } = useTranslation();
 
   const handleOpenStatus = () => {
-    window.systemAPI.openExternal("https://www.graphnode.site/dev/status");
+    if (window.systemAPI) {
+      window.systemAPI.openExternal("https://www.graphnode.site/dev/status");
+    } else {
+      window.open("https://www.graphnode.site/dev/status", "_blank");
+    }
   };
 
   return (

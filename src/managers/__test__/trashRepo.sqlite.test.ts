@@ -3,14 +3,29 @@ import { trashRepo } from "../trashRepo";
 jest.mock("@/apiClient", () => ({
   api: {
     note: {
+      getNote: jest.fn(async (id: string) => ({
+        isSuccess: notes.has(id),
+        data: notes.get(id),
+      })),
+      getFolder: jest.fn(async () => ({ isSuccess: false, data: undefined })),
+      listNotes: jest.fn(async () => ({ isSuccess: true, data: [] })),
       softDeleteNote: jest.fn(async () => ({ isSuccess: true, data: undefined })),
+      restoreNote: jest.fn(async () => ({ isSuccess: true, data: undefined })),
       hardDeleteNote: jest.fn(async () => ({ isSuccess: true, data: undefined })),
       softDeleteFolder: jest.fn(async () => ({ isSuccess: true, data: undefined })),
+      restoreFolder: jest.fn(async () => ({ isSuccess: true, data: undefined })),
       hardDeleteFolder: jest.fn(async () => ({ isSuccess: true, data: undefined })),
+      listTrash: jest.fn(async () => ({
+        isSuccess: true,
+        data: { notes: [], folders: [] },
+      })),
     },
     conversations: {
+      get: jest.fn(async () => ({ isSuccess: false, data: undefined })),
       softDelete: jest.fn(async () => ({ isSuccess: true, data: undefined })),
+      restore: jest.fn(async () => ({ isSuccess: true, data: undefined })),
       hardDelete: jest.fn(async () => ({ isSuccess: true, data: undefined })),
+      listTrash: jest.fn(async () => ({ isSuccess: true, data: [] })),
     },
   },
 }));
@@ -19,6 +34,11 @@ const notes = new Map<string, any>();
 const trashedNotes = new Map<string, any>();
 
 function installGraphNodeMock() {
+  Object.defineProperty(window, "windowAPI", {
+    configurable: true,
+    value: {},
+  });
+
   Object.defineProperty(window, "graphnodeAPI", {
     configurable: true,
     value: {
@@ -119,5 +139,30 @@ describe("trashRepo SQLite", () => {
     await trashRepo.cleanupExpiredItems();
 
     expect(window.graphnodeAPI.bulkDeleteExpiredSQLiteTrash).toHaveBeenCalled();
+  });
+
+  test("moveNoteToTrash uses API only on web", async () => {
+    Object.defineProperty(window, "windowAPI", {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(window, "graphnodeAPI", {
+      configurable: true,
+      value: undefined,
+    });
+
+    notes.set("note-web", {
+      id: "note-web",
+      title: "Web title",
+      content: "Web body",
+      folderId: null,
+      createdAt: "2026-04-08T00:00:00.000Z",
+      updatedAt: "2026-04-08T00:00:00.000Z",
+    });
+
+    const result = await trashRepo.moveNoteToTrash("note-web");
+
+    expect(result?.id).toBe("note-web");
+    expect(result?.originalNote.title).toBe("Web title");
   });
 });

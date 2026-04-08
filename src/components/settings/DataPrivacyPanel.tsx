@@ -1,10 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  IoBookOutline,
-  IoChatbubblesOutline,
-  IoCloudDownloadOutline,
-} from "react-icons/io5";
 import { threadRepo } from "@/managers/threadRepo";
 import DropJsonZone from "./DropJsonZone";
 import SettingsPanelLayout from "./SettingsPanelLayout";
@@ -19,14 +14,15 @@ import { unwrapResponse } from "@/utils/httpResponse";
 import { folderRepo } from "@/managers/folderRepo";
 import { trashRepo } from "@/managers/trashRepo";
 import DeveloperToolsPanel, { isDeveloperToolsEnabled } from "./DeveloperToolsPanel";
+import { isElectron } from "@/utils/platform";
+import ExportNotesCard from "./ExportNotesCard";
+import ExportChatsCard from "./ExportChatsCard";
 
 export default function DataPrivacyPanel() {
   const { t } = useTranslation();
   const [showChatConfirm, setShowChatConfirm] = useState(false);
   const [showNoteConfirm, setShowNoteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isExportingNotes, setIsExportingNotes] = useState(false);
-  const [isExportingChats, setIsExportingChats] = useState(false);
 
   const { addToast } = useToastStore();
 
@@ -36,7 +32,9 @@ export default function DataPrivacyPanel() {
       unwrapResponse(await api.conversations.deleteAll());
       await threadRepo.clearAll();
       await trashRepo.clearThreadsTrash();
-      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("thread");
+      if (isElectron()) {
+        await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("thread");
+      }
       setShowChatConfirm(false);
       addToast({
         message: t("settings.dataPrivacy.clearChats.toast.success"),
@@ -63,8 +61,10 @@ export default function DataPrivacyPanel() {
       await noteRepo.clearAll();
       await folderRepo.clearAll();
       await trashRepo.clearNotesAndFoldersTrash();
-      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("note");
-      await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("folder");
+      if (isElectron()) {
+        await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("note");
+        await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("folder");
+      }
       setShowNoteConfirm(false);
       addToast({
         message: t("settings.dataPrivacy.clearNotes.toast.success"),
@@ -83,73 +83,6 @@ export default function DataPrivacyPanel() {
     }
   };
 
-  const handleExportNotes = async () => {
-    setIsExportingNotes(true);
-    try {
-      const notes = await noteRepo.getAllNotes();
-      const result =
-        await window.graphnodeAPI.exportSQLiteNotesToDirectory(notes);
-
-      if (result.canceled) {
-        addToast({
-          message: t("settings.dataPrivacy.export.toast.cancelled"),
-          type: "info",
-        });
-        return;
-      }
-
-      addToast({
-        message: t("settings.dataPrivacy.export.toast.notesSuccess", {
-          count: result.count ?? notes.length,
-        }),
-        type: "success",
-      });
-    } catch (err) {
-      addToast({
-        message:
-          err instanceof Error
-            ? err.message
-            : t("settings.dataPrivacy.export.toast.notesError"),
-        type: "error",
-      });
-    } finally {
-      setIsExportingNotes(false);
-    }
-  };
-
-  const handleExportChats = async () => {
-    setIsExportingChats(true);
-    try {
-      const threads = await threadRepo.getThreadList();
-      const result =
-        await window.graphnodeAPI.exportSQLiteThreadsToDirectory(threads);
-
-      if (result.canceled) {
-        addToast({
-          message: t("settings.dataPrivacy.export.toast.cancelled"),
-          type: "info",
-        });
-        return;
-      }
-
-      addToast({
-        message: t("settings.dataPrivacy.export.toast.chatsSuccess", {
-          count: result.count ?? threads.length,
-        }),
-        type: "success",
-      });
-    } catch (err) {
-      addToast({
-        message:
-          err instanceof Error
-            ? err.message
-            : t("settings.dataPrivacy.export.toast.chatsError"),
-        type: "error",
-      });
-    } finally {
-      setIsExportingChats(false);
-    }
-  };
 
   return (
     <SettingsPanelLayout>
@@ -177,54 +110,8 @@ export default function DataPrivacyPanel() {
           )}
         />
         <div className="flex gap-3 w-full mt-4">
-          <button
-            onClick={handleExportNotes}
-            disabled={isExportingNotes || isExportingChats}
-            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
-          >
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                <IoBookOutline className="text-base" />
-              </div>
-              <IoCloudDownloadOutline
-                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingNotes ? "animate-pulse" : ""}`}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-text-primary">
-                {isExportingNotes
-                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-                  : t("settings.dataPrivacy.export.notes", "Export Notes")}
-              </p>
-              <p className="text-xs text-text-tertiary mt-0.5">
-                {t("settings.dataPrivacy.export.notesHint", "Markdown files")}
-              </p>
-            </div>
-          </button>
-          <button
-            onClick={handleExportChats}
-            disabled={isExportingChats || isExportingNotes}
-            className="group flex flex-col gap-3 flex-1 p-4 bg-bg-secondary hover:bg-bg-tertiary border border-transparent hover:border-text-tertiary/20 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
-          >
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/10 text-violet-500 group-hover:bg-violet-500/20 transition-colors">
-                <IoChatbubblesOutline className="text-base" />
-              </div>
-              <IoCloudDownloadOutline
-                className={`text-lg text-text-tertiary group-hover:text-text-secondary transition-colors ${isExportingChats ? "animate-pulse" : ""}`}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-text-primary">
-                {isExportingChats
-                  ? t("settings.dataPrivacy.export.exporting", "Exporting...")
-                  : t("settings.dataPrivacy.export.chats", "Export Chats")}
-              </p>
-              <p className="text-xs text-text-tertiary mt-0.5">
-                {t("settings.dataPrivacy.export.chatsHint", "JSON files")}
-              </p>
-            </div>
-          </button>
+          <ExportNotesCard />
+          <ExportChatsCard />
         </div>
       </div>
       {/* Trash Section */}

@@ -9,6 +9,7 @@ import { FaKeyboard } from "react-icons/fa";
 import { IoLanguageOutline } from "react-icons/io5";
 import { FiServer } from "react-icons/fi";
 import { IconType } from "react-icons/lib";
+import { isElectron } from "@/utils/platform";
 
 export default function SideExpandBarSettings() {
   const { t } = useTranslation();
@@ -30,10 +31,14 @@ export default function SideExpandBarSettings() {
       id: "appearance",
       icon: IoMdColorPalette,
     },
-    {
-      id: "mcp",
-      icon: FiServer,
-    },
+    ...(isElectron()
+      ? [
+          {
+            id: "mcp",
+            icon: FiServer,
+          },
+        ]
+      : []),
     {
       id: "notification",
       icon: IoIosNotifications,

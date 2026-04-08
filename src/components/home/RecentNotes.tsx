@@ -37,6 +37,7 @@ export default function RecentNotes() {
       </p>
       <div className="grid grid-cols-3 gap-3">
         <div
+          data-testid="home-create-note"
           className="w-[240px] flex items-center justify-center cursor-pointer h-[180px] rounded-[12px] border-[1px] border-dashed border-[rgba(var(--color-chatbox-border-rgb),0.2)] bg-notebox-background"
           onClick={() => navigate("/note")}
         >

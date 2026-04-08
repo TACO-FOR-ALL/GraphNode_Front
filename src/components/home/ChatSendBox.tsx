@@ -11,6 +11,7 @@ import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import ModelSelector from "@/components/common/ModelSelector";
 import { LLM_MODEL_DEFAULT, type LLMModel } from "@/constants/OPENAI_MODEL";
+import { NEW_CONVERSATION_PLACEHOLDER } from "@/constants/chat";
 
 export default function ChatSendBox() {
   const { t } = useTranslation();
@@ -41,7 +42,7 @@ export default function ChatSendBox() {
     setSending(true);
     try {
       // 새 스레드 생성
-      const created = await threadRepo.create("loading…", []);
+      const created = await threadRepo.create(NEW_CONVERSATION_PLACEHOLDER, []);
 
       const id = uuid();
 
@@ -62,6 +63,7 @@ export default function ChatSendBox() {
           id: id,
           attachedFiles: attachedFiles,
           selectedModel: selectedModel,
+          isNewThread: true,
         },
       });
     } catch (error) {

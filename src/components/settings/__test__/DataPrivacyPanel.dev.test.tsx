@@ -68,6 +68,10 @@ jest.mock("@/store/useToastStore", () => ({
   }),
 }));
 
+jest.mock("@/utils/platform", () => ({
+  isElectron: jest.fn(() => true),
+}));
+
 jest.mock("@/apiClient", () => ({
   api: {
     conversations: {
@@ -302,7 +306,7 @@ describe("DataPrivacyPanel developer tools", () => {
     ]);
   });
 
-  test("force sync chat uploads local-only chats and pulls server-only chats", async () => {
+  test("force sync chat by client uploads local chats to the server", async () => {
     mockGetThreadList.mockResolvedValueOnce([
       { id: "local-thread", title: "Local Chat", messages: [], updatedAt: 1 },
     ]);
@@ -311,28 +315,10 @@ describe("DataPrivacyPanel developer tools", () => {
       statusCode: 200,
       data: { conversations: [] },
     });
-    const { api } = jest.requireMock("@/apiClient") as {
-      api: { conversations: { list: jest.Mock } };
-    };
-    api.conversations.list.mockResolvedValueOnce({
-      isSuccess: true,
-      statusCode: 200,
-      data: [
-        {
-          id: "server-thread",
-          title: "Server Chat",
-          messages: [],
-          updatedAt: new Date(2).toISOString(),
-          createdAt: new Date(2).toISOString(),
-          deletedAt: null,
-        },
-      ],
-    });
-
     await renderPanel();
 
     await act(async () => {
-      clickButtonByText("force sync chat");
+      clickButtonByText("force sync chat by client");
     });
 
     expect(mockBulkCreateConversations).toHaveBeenCalledWith({
@@ -344,10 +330,8 @@ describe("DataPrivacyPanel developer tools", () => {
         },
       ],
     });
-    expect(mockUpsertManyThreads).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "server-thread", title: "Server Chat" }),
-    ]);
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+    expect(mockUpsertManyThreads).not.toHaveBeenCalled();
+    expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
       queryKey: ["chatThreads"],
     });
   });

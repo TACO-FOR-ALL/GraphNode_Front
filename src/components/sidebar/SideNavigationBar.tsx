@@ -93,6 +93,7 @@ export default function SideNavigationBar({
         {NAVIGATION_ITEMS.map((item) => (
           <div
             key={item.id}
+            data-testid={`nav-${item.id}`}
             className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
             onClick={
               item.id === "search"

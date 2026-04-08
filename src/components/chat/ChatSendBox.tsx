@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FaArrowRight } from "react-icons/fa6";
 import uuid from "../../utils/uuid";
 import threadRepo from "../../managers/threadRepo";
+import type { ChatThread } from "../../types/Chat";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import AutoResizeTextarea from "../AutoResizeTextArea";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import useFileAttachment from "@/hooks/useFileAttachment";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useTranslation } from "react-i18next";
 import { useToastStore } from "@/store/useToastStore";
+import { NEW_CONVERSATION_PLACEHOLDER } from "@/constants/chat";
 import {
   LLM_MODEL_DEFAULT,
   getProvider,
@@ -22,6 +24,7 @@ import { playSound } from "@/utils/sound";
 
 const NETWORK_ERROR_CONTENT = "__NETWORK_ERROR__";
 
+api.conversations.hardDeleteMessage;
 const isNetworkErrorMessage = (msg: string) =>
   msg.toLowerCase().includes("failed to fetch") ||
   msg.toLowerCase().includes("networkerror") ||
@@ -34,7 +37,12 @@ export default function ChatSendBox({
 }: {
   setIsTyping: (v: boolean) => void;
   retrySendRef?: React.RefObject<
-    ((userMessageId: string, userContent: string, errorMessageId: string) => void) | null
+    | ((
+        userMessageId: string,
+        userContent: string,
+        errorMessageId: string,
+      ) => void)
+    | null
   >;
 }) {
   const { t } = useTranslation();
@@ -125,7 +133,32 @@ export default function ChatSendBox({
       let streamingText = "";
       let lastUpdateTime = 0;
       const THROTTLE_INTERVAL = 100; // 100ms마다 한 번만 DB 업데이트
-      let resultReceived = false; // 웹 SSE 타이밍 차이로 인한 안전망 false positive 방지
+      let resultReceived = false; // result 이벤트 수신 여부 (상태 중복 해제 방지용)
+      let anyEventReceived = false; // SSE 이벤트 수신 여부
+
+      // SSE 무응답 타임아웃 (15초 내 이벤트 없으면 API 키 미등록으로 간주)
+      const noResponseTimer = setTimeout(async () => {
+        if (!anyEventReceived) {
+          addToast({
+            message: t("toast.apiKeyRequired"),
+            type: "error",
+            action: {
+              label: t("toast.goToSettings"),
+              onClick: () => navigate("/settings"),
+            },
+          });
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.deleteMessageFromThreadById(
+              targetThreadId,
+              assistantMessageId,
+            );
+          }
+          setIsTyping(false);
+          setSending(false);
+          sendingRef.current = false;
+        }
+      }, 15000);
 
       // 스트리밍 시작 전 빈 어시스턴트 메시지 추가
       await threadRepo.addMessageToThreadById(targetThreadId, {
@@ -143,9 +176,14 @@ export default function ChatSendBox({
             id: id,
             chatContent: messageText,
             modelName: modelToUse,
+            title: isNewThread ? NEW_CONVERSATION_PLACEHOLDER : undefined,
           },
           filesToSend,
           async (event) => {
+            if (!anyEventReceived) {
+              anyEventReceived = true;
+              clearTimeout(noResponseTimer);
+            }
             switch (event.event) {
               case "chunk":
                 // 실시간 타이핑 효과 - 텍스트 청크 받을 때마다
@@ -164,34 +202,62 @@ export default function ChatSendBox({
                 break;
 
               case "result":
-                // 스트리밍 완료 - 최종 응답
-                const messages = event.data.messages;
-                const title = event.data.title ?? null;
-
-                const assistantText =
-                  messages[1]?.content ?? "⚠️ 응답을 파싱할 수 없어요.";
-
-                // 타이틀 업데이트
-                if (title) {
-                  await threadRepo.updateThreadTitleById(targetThreadId, title);
-                  queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
-                }
-
-                // 최종 메시지로 업데이트
-                await threadRepo.updateMessageInThreadById(
-                  targetThreadId,
-                  assistantMessageId,
-                  assistantText,
-                );
-
-                // 스트리밍 완료 - 타이핑 상태 해제
+                // 스트리밍 완료 - 안전망 false positive 방지를 위해 상태 먼저 해제
                 resultReceived = true;
                 setIsTyping(false);
                 setSending(false);
                 sendingRef.current = false;
 
-                // 메시지 수신 완료 사운드
-                playSound("message");
+                // 최종 응답 처리
+                {
+                  console.log(event.data);
+                  const messages: { role: string; content: string }[] =
+                    event.data.messages ?? [];
+                  const title: string | null = event.data.title ?? null;
+                  // role로 assistant 메시지 찾기 (messages[1] 인덱스 의존 제거)
+                  const assistantMsg = messages.find(
+                    (m) => m.role === "assistant",
+                  );
+                  const assistantText =
+                    assistantMsg?.content ?? "⚠️ 응답을 파싱할 수 없어요.";
+
+                  // 타이틀 업데이트
+                  if (title) {
+                    // 사이드바 즉시 반영 (서버 PATCH 완료 전에도 표시)
+                    queryClient.setQueryData<ChatThread[]>(
+                      ["chatThreads"],
+                      (old) =>
+                        old?.map((t) =>
+                          t.id === targetThreadId ? { ...t, title } : t,
+                        ) ?? [],
+                    );
+                    let titlePersisted = false;
+                    try {
+                      await threadRepo.updateThreadTitleById(
+                        targetThreadId,
+                        title,
+                      );
+                      titlePersisted = true;
+                    } catch (e) {
+                      console.error("[ChatSendBox] title update failed:", e);
+                    }
+                    if (titlePersisted) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["chatThreads"],
+                      });
+                    }
+                  }
+
+                  // 최종 메시지로 업데이트
+                  await threadRepo.updateMessageInThreadById(
+                    targetThreadId,
+                    assistantMessageId,
+                    assistantText,
+                  );
+
+                  // 메시지 수신 완료 사운드
+                  playSound("message");
+                }
                 break;
 
               case "error":
@@ -215,8 +281,14 @@ export default function ChatSendBox({
                   const cleaned = await cleanupNewThreadOnError();
                   if (!cleaned) {
                     // 기존 채팅방: 유저/어시스턴트 메시지만 삭제
-                    await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
-                    await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+                    await threadRepo.deleteMessageFromThreadById(
+                      targetThreadId,
+                      id,
+                    );
+                    await threadRepo.deleteMessageFromThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                    );
                   }
 
                   setIsTyping(false);
@@ -261,7 +333,7 @@ export default function ChatSendBox({
 
               case "status":
                 // 상태 업데이트
-                console.log("Status update:", event.data);
+                // console.log("Status update:", event.data);
 
                 // phase가 'done'이면 스트리밍 완료
                 if (event.data.phase === "done") {
@@ -284,6 +356,7 @@ export default function ChatSendBox({
           },
         );
       } catch (streamError: any) {
+        clearTimeout(noResponseTimer);
         // SSE 연결 자체가 실패한 경우 (예: 403 Forbidden)
         console.error("SSE Connection failed:", streamError);
         console.error("Error details:", {
@@ -318,7 +391,10 @@ export default function ChatSendBox({
           const cleaned = await cleanupNewThreadOnError();
           if (!cleaned) {
             await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
-            await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
+            await threadRepo.deleteMessageFromThreadById(
+              targetThreadId,
+              assistantMessageId,
+            );
           }
         } else if (isNetworkErrorMessage(streamError?.message || "")) {
           const cleaned = await cleanupNewThreadOnError();
@@ -341,28 +417,6 @@ export default function ChatSendBox({
         }
 
         // 타이핑 상태 해제
-        setIsTyping(false);
-        setSending(false);
-        sendingRef.current = false;
-      }
-
-      // 안전망: SDK가 콜백 없이 조용히 종료된 경우 (예: 403 응답)
-      // result/error 이벤트 없이 await가 완료되면 sendingRef가 여전히 true임
-      // resultReceived로 정상 완료 여부를 구분해 웹 SSE 타이밍 차이로 인한 false positive 방지
-      if (sendingRef.current && !resultReceived) {
-        addToast({
-          message: t("toast.apiKeyRequired"),
-          type: "error",
-          action: {
-            label: t("toast.goToSettings"),
-            onClick: () => navigate("/settings"),
-          },
-        });
-        const cleaned = await cleanupNewThreadOnError();
-        if (!cleaned) {
-          await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
-          await threadRepo.deleteMessageFromThreadById(targetThreadId, assistantMessageId);
-        }
         setIsTyping(false);
         setSending(false);
         sendingRef.current = false;
@@ -399,6 +453,7 @@ export default function ChatSendBox({
       attachedFiles?: File[]; // [Check] 여기서 받은 File[]을 그대로 chat()에 넘기면 됨
       id?: string;
       selectedModel?: LLMModel;
+      isNewThread?: boolean;
     } | null;
 
     // state가 없거나 autoSend가 아니면 리턴
@@ -437,6 +492,7 @@ export default function ChatSendBox({
       id,
       state.attachedFiles,
       state.selectedModel,
+      state.isNewThread ?? false,
     ).catch((err) => {
       console.error("Auto send failed:", err);
       // 에러 발생 시 ref 리셋하여 재시도 가능하게
@@ -474,8 +530,13 @@ export default function ChatSendBox({
     let tid = threadId;
     const isNewThread = !tid; // 새 채팅방 여부를 스레드 생성 전에 판단
     if (!tid) {
-      const created = await threadRepo.create("loading…", []);
+      const created = await threadRepo.create(NEW_CONVERSATION_PLACEHOLDER, []);
       tid = created.id;
+      // Immediately add to sidebar without waiting for invalidateQueries
+      queryClient.setQueryData<ChatThread[]>(["chatThreads"], (old) => [
+        created,
+        ...(old ?? []),
+      ]);
       navigate(`/chat/${tid}`, { replace: true });
     }
 

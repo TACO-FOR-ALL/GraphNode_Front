@@ -15,8 +15,8 @@ import SettingCategoryTitle from "./SettingCategoryTitle";
 export function isDeveloperToolsEnabled() {
   const runtimeDev =
     process.env.NODE_ENV !== "production" ||
-    (globalThis as { __GRAPHNODE_DEVTOOLS__?: boolean }).__GRAPHNODE_DEVTOOLS__ ===
-      true;
+    (globalThis as { __GRAPHNODE_DEVTOOLS__?: boolean })
+      .__GRAPHNODE_DEVTOOLS__ === true;
 
   return (
     runtimeDev ||
@@ -54,8 +54,12 @@ export default function DeveloperToolsPanel() {
       const localFolderIds = new Set(localFolders.map((folder) => folder.id));
       const serverFolderIds = new Set(serverFolders.map((folder) => folder.id));
 
-      const localOnlyNotes = localNotes.filter((note) => !serverNoteIds.has(note.id));
-      const serverOnlyNotes = serverNotes.filter((note) => !localNoteIds.has(note.id));
+      const localOnlyNotes = localNotes.filter(
+        (note) => !serverNoteIds.has(note.id),
+      );
+      const serverOnlyNotes = serverNotes.filter(
+        (note) => !localNoteIds.has(note.id),
+      );
       const serverOnlyFolders = serverFolders.filter(
         (folder) => !localFolderIds.has(folder.id),
       );
@@ -97,7 +101,9 @@ export default function DeveloperToolsPanel() {
     } catch (err) {
       addToast({
         message:
-          err instanceof Error ? err.message : "노트 강제 sync 중 오류가 발생했습니다.",
+          err instanceof Error
+            ? err.message
+            : "노트 강제 sync 중 오류가 발생했습니다.",
         type: "error",
       });
     } finally {
@@ -126,7 +132,9 @@ export default function DeveloperToolsPanel() {
     } catch (err) {
       addToast({
         message:
-          err instanceof Error ? err.message : "채팅 강제 sync 중 오류가 발생했습니다.",
+          err instanceof Error
+            ? err.message
+            : "채팅 강제 sync 중 오류가 발생했습니다.",
         type: "error",
       });
     } finally {
@@ -161,7 +169,9 @@ export default function DeveloperToolsPanel() {
     } catch (err) {
       addToast({
         message:
-          err instanceof Error ? err.message : "채팅 강제 sync 중 오류가 발생했습니다.",
+          err instanceof Error
+            ? err.message
+            : "채팅 강제 sync 중 오류가 발생했습니다.",
         type: "error",
       });
     } finally {
@@ -184,21 +194,37 @@ export default function DeveloperToolsPanel() {
           <div className="flex gap-2 flex-wrap mb-4">
             <button
               onClick={handleSyncChatFromServer}
-              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
+              disabled={
+                isSyncingChatFromServer ||
+                isSyncingChatFromClient ||
+                isReconcilingNotes
+              }
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSyncingChatFromServer ? "syncing..." : "force sync chat by server"}
+              {isSyncingChatFromServer
+                ? "syncing..."
+                : "force sync chat by server"}
             </button>
             <button
               onClick={handleSyncChatFromClient}
-              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
+              disabled={
+                isSyncingChatFromServer ||
+                isSyncingChatFromClient ||
+                isReconcilingNotes
+              }
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSyncingChatFromClient ? "syncing..." : "force sync chat by client"}
+              {isSyncingChatFromClient
+                ? "syncing..."
+                : "force sync chat by client"}
             </button>
             <button
               onClick={handleReconcileNotes}
-              disabled={isSyncingChatFromServer || isSyncingChatFromClient || isReconcilingNotes}
+              disabled={
+                isSyncingChatFromServer ||
+                isSyncingChatFromClient ||
+                isReconcilingNotes
+              }
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isReconcilingNotes ? "syncing notes..." : "force sync notes"}
@@ -221,7 +247,7 @@ export default function DeveloperToolsPanel() {
             </button>
             <button
               onClick={async () => {
-                const result = await api.conversations.list();
+                const result = await api.conversations.listTest();
                 console.log(result);
               }}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
@@ -230,9 +256,20 @@ export default function DeveloperToolsPanel() {
             </button>
             <button
               onClick={async () => {
+                console.log("click");
+                const result = await api.conversations.deleteAll();
+                console.log(result);
+              }}
+            >
+              delte server chat
+            </button>
+            <button
+              onClick={async () => {
                 await threadRepo.clearAll();
                 await trashRepo.clearThreadsTrash();
-                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("thread");
+                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                  "thread",
+                );
                 const result = await api.conversations.deleteAll();
                 console.log(result);
               }}
@@ -272,8 +309,12 @@ export default function DeveloperToolsPanel() {
                 await noteRepo.clearAll();
                 await folderRepo.clearAll();
                 await trashRepo.clearNotesAndFoldersTrash();
-                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("note");
-                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType("folder");
+                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                  "note",
+                );
+                await window.graphnodeAPI.deleteSQLiteOutboxByEntityType(
+                  "folder",
+                );
                 const results = await Promise.all([
                   api.note.deleteAllNotes(),
                   api.note.deleteAllFolders(),

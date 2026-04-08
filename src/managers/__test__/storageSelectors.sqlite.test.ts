@@ -1,3 +1,19 @@
+jest.mock("@/utils/platform", () => ({
+  isElectron: jest.fn(() => true),
+}));
+
+jest.mock("../storage/adapters/api/apiNoteStorage", () => ({
+  apiNoteStorage: { kind: "api-note" },
+}));
+
+jest.mock("../storage/adapters/api/apiFolderStorage", () => ({
+  apiFolderStorage: { kind: "api-folder" },
+}));
+
+jest.mock("../storage/adapters/api/apiThreadStorage", () => ({
+  apiThreadStorage: { kind: "api-thread" },
+}));
+
 import {
   getPreferredNoteReadStorage,
   getPreferredNoteWriteStorage,

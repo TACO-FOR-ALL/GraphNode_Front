@@ -716,7 +716,8 @@
   "microscope": {
     "sidebarEmpty": "노드를 선택하면\n분석 정보가 표시됩니다",
     "noWorkspaces": "아직 분석한 항목이 없습니다",
-    "selectToView": "왼쪽에서 항목을 선택하세요"
+    "selectToView": "왼쪽에서 항목을 선택하세요",
+    "noDataToAnalyze": "분석할 노트나 대화가 없습니다"
   },
   "visualizeDetail": {
     "subtitle": "Microscope를 통한 지식 시각화",

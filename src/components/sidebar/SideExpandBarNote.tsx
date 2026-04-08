@@ -2,7 +2,7 @@ import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
 
 import { Folder } from "@/types/Folder";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { folderRepo } from "@/managers/folderRepo";
 import { noteRepo } from "@/managers/noteRepo";
@@ -56,6 +56,19 @@ export default function SideExpandBarNote({
     if (!path.includes("/note") || !folders || !notes) return null;
     return buildFolderTree(folders, notes);
   }, [folders, notes, path]);
+
+  // 선택된 노트가 폴더 안에 있으면 해당 폴더 자동 펼치기
+  useEffect(() => {
+    if (!buildTree || !selectedId) return;
+    buildTree.folderNotes.forEach((notes, folderId) => {
+      if (notes.some((note) => note.id === selectedId)) {
+        setExpandedFolders((prev) => {
+          if (prev.has(folderId)) return prev;
+          return new Set(prev).add(folderId);
+        });
+      }
+    });
+  }, [selectedId, buildTree]);
 
   // 폴더 토글
   const toggleFolder = (folderId: string) => {
@@ -205,7 +218,7 @@ export default function SideExpandBarNote({
     onFolderDragOver: handleFolderDragOver,
     onFolderDrop: handleFolderDrop,
     onDragLeave: handleDragLeave,
-    onNoteClick: (noteId) => navigate(`/notes/${noteId}`),
+    onNoteClick: (noteId) => navigate(`/note/${noteId}`),
     setEditingFolderName,
     setEditingFolderId,
     setNewFolderName,

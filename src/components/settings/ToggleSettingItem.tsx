@@ -24,9 +24,12 @@ export default function ToggleSettingItem({
               className="text-primary cursor-pointer hover:underline"
               onClick={(e) => {
                 e.preventDefault();
-                window.systemAPI.openExternal(
-                  "https://www.graphnode.site/dev/docs/intro"
-                );
+                const url = "https://www.graphnode.site/dev/docs/intro";
+                if (window.systemAPI) {
+                  window.systemAPI.openExternal(url);
+                } else {
+                  window.open(url, "_blank");
+                }
               }}
             >
               GraphNode API

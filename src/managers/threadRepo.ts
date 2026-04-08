@@ -1,9 +1,9 @@
-import sortItemByDate from "@/utils/sortItemByDate";
 import { ChatThread, ChatMessage } from "../types/Chat";
 import uuid from "../utils/uuid";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { outboxRepo } from "./outboxRepo";
 import { trashRepo } from "./trashRepo";
+import { isElectron } from "@/utils/platform";
 import {
   getPreferredThreadReadStorage,
   getPreferredThreadWriteStorage,
@@ -22,6 +22,8 @@ export const threadRepo = {
     };
     const writeStorage = await getPreferredThreadWriteStorage();
     await writeStorage.createThreadRecord(newThread);
+    // ChatWindow가 refreshThread로 다시 읽기 전에 새 스레드를 Zustand에 미리 넣어 경쟁 상태를 막는다.
+    useThreadsStore.getState().updateThreadInStore(newThread);
     return newThread;
   },
 
@@ -39,7 +41,10 @@ export const threadRepo = {
   },
 
   async updateThreadTitleById(id: string, title: string) {
-    const thread = await this.getThreadById(id);
+    // 서버의 오래된 응답으로 로컬 메시지 상태가 덮어쓰이지 않도록
+    // Zustand 캐시를 우선 사용하고, 없을 때만 저장소에서 조회한다.
+    const thread =
+      useThreadsStore.getState().threads[id] ?? (await this.getThreadById(id));
     if (!thread) return null;
 
     const updated = { ...thread, title, updatedAt: Date.now() };
@@ -47,7 +52,9 @@ export const threadRepo = {
 
     await writeStorage.runThreadWriteTransaction(async () => {
       await writeStorage.putThread(updated);
-      await outboxRepo.enqueueThreadUpdateTitle(id, { title: title });
+      if (isElectron()) {
+        await outboxRepo.enqueueThreadUpdateTitle(id, { title: title });
+      }
 
       // Zustand 상태 반영 (타이틀 변경)
       useThreadsStore.getState().updateThreadInStore(updated);
@@ -57,7 +64,10 @@ export const threadRepo = {
   },
 
   async addMessageToThreadById(id: string, message: ChatMessage) {
-    const thread = await this.getThreadById(id);
+    // 웹에서 getThreadById는 API 호출 → 서버는 로컬에서 추가한 메시지를 모름
+    // → Zustand 캐시 우선 사용, 없을 때만 스토리지 조회
+    const thread =
+      useThreadsStore.getState().threads[id] ?? (await this.getThreadById(id));
     if (!thread) return null;
 
     const updated = {
@@ -65,10 +75,10 @@ export const threadRepo = {
       messages: [...thread.messages, message],
       updatedAt: Date.now(),
     };
-    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
-    // Zustand 상태도 업데이트 (메시지 추가)
+    // UI 즉시 반영 (낙관적 업데이트, API 호출 전)
     useThreadsStore.getState().updateThreadInStore(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
     return updated;
   },
 
@@ -77,7 +87,10 @@ export const threadRepo = {
     messageId: string,
     content: string,
   ) {
-    const thread = await this.getThreadById(threadId);
+    // 웹에서 API getThread는 로컬 메시지를 모르므로 Zustand 캐시 우선 사용
+    const thread =
+      useThreadsStore.getState().threads[threadId] ??
+      (await this.getThreadById(threadId));
     if (!thread) return null;
 
     const updated = {
@@ -87,15 +100,17 @@ export const threadRepo = {
       ),
       updatedAt: Date.now(),
     };
-    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
-    // Zustand 상태도 업데이트
+    // UI 즉시 반영 (낙관적 업데이트, API 호출 전)
     useThreadsStore.getState().updateThreadInStore(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
     return updated;
   },
 
   async deleteMessageFromThreadById(threadId: string, messageId: string) {
-    const thread = await this.getThreadById(threadId);
+    const thread =
+      useThreadsStore.getState().threads[threadId] ??
+      (await this.getThreadById(threadId));
     if (!thread) return null;
 
     const updated = {
@@ -103,10 +118,10 @@ export const threadRepo = {
       messages: thread.messages.filter((msg) => msg.id !== messageId),
       updatedAt: Date.now(),
     };
-    await (await getPreferredThreadWriteStorage()).putThread(updated);
 
-    // Zustand 상태도 업데이트
+    // UI 즉시 반영 (낙관적 업데이트, API 호출 전)
     useThreadsStore.getState().updateThreadInStore(updated);
+    await (await getPreferredThreadWriteStorage()).putThread(updated);
     return updated;
   },
 
@@ -114,14 +129,20 @@ export const threadRepo = {
     const thread = await this.getThreadById(id);
     if (!thread) return null;
 
-    // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
-    const trashedThread = await trashRepo.moveThreadToTrash(id);
-    if (!trashedThread) return null;
+    if (isElectron()) {
+      // 휴지통으로 이동 (서버 삭제는 영구 삭제 시에만)
+      const trashedThread = await trashRepo.moveThreadToTrash(id);
+      if (!trashedThread) return null;
+    } else {
+      const writeStorage = await getPreferredThreadWriteStorage();
+      await writeStorage.bulkDeleteThreads([id]);
+    }
 
     return id;
   },
 
   async upsertMany(newOnes: ChatThread[]): Promise<void> {
+    if (!isElectron()) return;
     await (await getPreferredThreadWriteStorage()).bulkPutThreads(newOnes);
   },
 

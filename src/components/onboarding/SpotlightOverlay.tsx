@@ -184,7 +184,13 @@ export default function SpotlightOverlay() {
   };
 
   const handleLinkClick = () => {
-    if (config.link?.url) window.systemAPI?.openExternal(config.link.url);
+    if (config.link?.url) {
+      if (window.systemAPI) {
+        window.systemAPI.openExternal(config.link.url);
+      } else {
+        window.open(config.link.url, "_blank");
+      }
+    }
   };
 
   // 수축 중(isContracting=true)이면 전체화면을 덮어 오버레이가 안 보이게 함

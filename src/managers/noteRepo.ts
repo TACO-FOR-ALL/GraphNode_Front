@@ -8,6 +8,8 @@ import {
   getPreferredNoteReadStorage,
   getPreferredNoteWriteStorage,
 } from "./storage/selectors/noteStorageSelector";
+import { api } from "@/apiClient";
+import { mapFolder } from "@/utils/dtoMappers";
 
 export const noteRepo = {
   async create(content: string, folderId: string | null = null): Promise<Note> {
@@ -77,6 +79,20 @@ export const noteRepo = {
   ): Promise<Note | null> {
     const note = await this.getNoteById(noteId);
     if (!note) return null;
+
+    // Electron: folderId가 SQLite에 없으면 서버에서 가져와 저장 (FOREIGN KEY 방지)
+    if (folderId && isElectron()) {
+      const exists = await window.graphnodeAPI.getSQLiteFolderById(folderId);
+      if (!exists) {
+        const result = await api.note.getFolder(folderId);
+        if (result.isSuccess) {
+          await window.graphnodeAPI.upsertSQLiteFolder(mapFolder(result.data));
+        }
+        // Server 404: folder may be pending outbox sync (just created locally).
+        // Proceed — if folder truly missing from SQLite, moveNoteRecord will fail naturally.
+      }
+    }
+
     const primaryWriteStorage = await getPreferredNoteWriteStorage();
 
     await primaryWriteStorage.runNoteWriteTransaction(async () => {
@@ -109,6 +125,7 @@ export const noteRepo = {
   },
 
   async upsertMany(newOnes: Note[]): Promise<void> {
+    if (!isElectron()) return;
     await (await getPreferredNoteWriteStorage()).bulkPutNotes(newOnes);
   },
 

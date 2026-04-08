@@ -68,7 +68,7 @@ export default function SideTabBar({
     <div className="flex h-full select-none">
       <SideNavigationBar
         firstLetter={firstLetter}
-        path={path.split("/")[1]}
+        path={path.split("/")[1] === "note" ? "notes" : path.split("/")[1]}
         setOpenSearch={setOpenSearch}
         avatarUrl={avatarUrl}
       />

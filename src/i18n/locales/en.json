@@ -373,7 +373,8 @@
   "microscope": {
     "sidebarEmpty": "Select a node to view\nanalysis details",
     "noWorkspaces": "No analyses yet",
-    "selectToView": "Select an item from the sidebar"
+    "selectToView": "Select an item from the sidebar",
+    "noDataToAnalyze": "No notes or conversations to analyze"
   },
   "settings": {
     "title": "Settings",

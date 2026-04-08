@@ -16,12 +16,14 @@ import {
   IoCloudUpload,
   IoCheckmarkCircle,
   IoAlertCircle,
+  IoFolderOpen,
 } from "react-icons/io5";
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { addToast } = useToastStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
@@ -58,7 +60,7 @@ export default function DropJsonZone() {
       const data = JSON.parse(text);
 
       // 4) 변환
-      const threads = await parseConversations(data);
+      const threads = parseConversations(data);
       if (!threads?.length) {
         // 비정상/빈 데이터 경고이지만 실패로 보진 않음
         console.warn("parsed threads = 0, JSON shape might differ");
@@ -86,7 +88,12 @@ export default function DropJsonZone() {
               conversations: normalized.map((n) => ({
                 id: n.id,
                 title: n.title,
-                messages: n.messages,
+                messages: n.messages.map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                  createdAt: new Date(m.ts).toISOString(),
+                })),
               })),
             }),
           );
@@ -128,18 +135,18 @@ export default function DropJsonZone() {
         ? "error"
         : "idle";
 
-  const { dragProps, isOver } = useDragDrop({
-    onFileDrop: (files) => {
-      setProgress(0);
-      reset();
-      // 첫 파일만
-      importJson(files[0]);
-    },
-  });
+  const handleFiles = (files: File[]) => {
+    setProgress(0);
+    reset();
+    importJson(files[0]);
+  };
+
+  const { dragProps, isOver } = useDragDrop({ onFileDrop: handleFiles });
 
   return (
     <div
       {...dragProps}
+      onClick={() => fileInputRef.current?.click()}
       className={`
         relative w-full rounded-xl border-2 border-dashed p-6
         transition-all duration-200 cursor-pointer flex-1
@@ -152,6 +159,17 @@ export default function DropJsonZone() {
         ${status === "error" ? "border-red-500 bg-red-50 dark:bg-red-900/20" : ""}
       `}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length > 0) handleFiles(files);
+          e.target.value = "";
+        }}
+      />
       <div className="flex flex-col items-center gap-3">
         {/* Icon */}
         <div

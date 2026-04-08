@@ -10,6 +10,10 @@ jest.mock("@/utils/uuid", () => ({
   default: jest.fn(() => "thread-1"),
 }));
 
+jest.mock("@/utils/platform", () => ({
+  isElectron: jest.fn(() => true),
+}));
+
 jest.mock("../outboxRepo", () => ({
   outboxRepo: {
     enqueueThreadUpdateTitle: (...args: unknown[]) =>
@@ -26,6 +30,7 @@ jest.mock("../trashRepo", () => ({
 jest.mock("@/store/useThreadStore", () => ({
   useThreadsStore: {
     getState: jest.fn(() => ({
+      threads: {},
       updateThreadInStore: mockUpdateThreadInStore,
     })),
   },

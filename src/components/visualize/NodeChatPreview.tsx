@@ -7,10 +7,10 @@ import { FiExternalLink, FiMessageCircle } from "react-icons/fi";
 import MarkdownBubble from "../MarkdownBubble";
 import { useThreadsStore } from "@/store/useThreadStore";
 import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
-import { useMicroscopeGenerationStore } from "@/store/useMicroscopeGenerationStore";
 import logo from "@/assets/icons/logo.svg";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
+import { FiRefreshCw } from "react-icons/fi";
 
 const PAGE = 10;
 
@@ -34,11 +34,9 @@ export default function NodeChatPreview({
   const [visibleCount, setVisibleCount] = useState(PAGE);
   const [isExpanding, setIsExpanding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasGraphData, setHasGraphData] = useState<boolean | null>(null);
-  const [graphData, setGraphData] = useState<{
-    nodes: object[];
-    edges: object[];
-  } | null>(null);
+  const [microDataStatus, setMicroDataStatus] = useState<
+    "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  >("PENDING");
 
   // 드래그 관련 상태
   const [isDragging, setIsDragging] = useState(false);
@@ -92,10 +90,6 @@ export default function NodeChatPreview({
 
   const { threads, refreshThread } = useThreadsStore();
   const { isExpanded } = useSidebarExpandStore();
-  const {
-    isGenerating: isMicroscopeGenerating,
-    setGenerating: setMicroscopeGenerating,
-  } = useMicroscopeGenerationStore();
   const thread = threads[threadId];
 
   const userMaxWidth = isExpanded ? "708px" : "880px";
@@ -105,12 +99,11 @@ export default function NodeChatPreview({
     (async () => {
       try {
         const data = unwrapResponse(
-          await api.microscope.getLatestGraphByNodeId(threadId),
+          await api.microscope.ingestFromConversation(threadId),
         );
-        setHasGraphData(data.nodes.length > 0);
-        setGraphData(data);
+        setMicroDataStatus(data.documents[0].status);
       } catch {
-        setHasGraphData(false);
+        setMicroDataStatus("PENDING");
       }
     })();
   }, [threadId]);
@@ -228,19 +221,19 @@ export default function NodeChatPreview({
 
   const handleViewDetail = () => {
     navigate(`/microscope/${threadId}`, {
-      state: { graphData, nodeTitle: thread?.title ?? undefined },
+      state: { nodeTitle: thread?.title ?? undefined },
     });
     onClose();
   };
 
   const handleAnalyze = async () => {
-    if (isMicroscopeGenerating) return;
-    setMicroscopeGenerating(true);
+    if (microDataStatus === "PROCESSING") return;
+    setMicroDataStatus("PROCESSING");
     try {
       await api.microscope.ingestFromConversation(threadId);
     } catch (e) {
       console.error(e);
-      setMicroscopeGenerating(false);
+      setMicroDataStatus("FAILED");
     }
   };
 
@@ -406,18 +399,22 @@ export default function NodeChatPreview({
       {!isExpanding && (
         <div className="px-4 py-3 border-t border-base-border bg-bg-secondary/30">
           <button
-            onClick={hasGraphData ? handleViewDetail : handleAnalyze}
-            disabled={isMicroscopeGenerating}
+            onClick={
+              microDataStatus === "COMPLETED" ? handleViewDetail : handleAnalyze
+            }
+            disabled={microDataStatus === "PROCESSING"}
             className="w-full py-2.5 px-4 bg-primary text-white rounded-lg font-medium text-[13px] hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isMicroscopeGenerating && !hasGraphData ? (
+            {microDataStatus === "PROCESSING" ? (
               <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
+            ) : microDataStatus === "COMPLETED" ? (
               <FiExternalLink size={14} />
+            ) : (
+              <FiRefreshCw size={14} />
             )}
-            {isMicroscopeGenerating && !hasGraphData
+            {microDataStatus === "PROCESSING"
               ? t("visualize.chatPreview.analyzing")
-              : hasGraphData
+              : microDataStatus === "COMPLETED"
                 ? t("visualize.chatPreview.viewAnalysis")
                 : t("visualize.chatPreview.analyzeWithMicroscope")}
           </button>
