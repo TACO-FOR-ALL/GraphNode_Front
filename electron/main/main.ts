@@ -46,6 +46,72 @@ let loginWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
 let setupWindow: BrowserWindow | null = null;
 
+function logAppEvent(scope: string, message: string) {
+  const line = `[${new Date().toISOString()}] [${scope}] ${message}\n`;
+
+  try {
+    const logPath = path.join(app.getPath("userData"), "graphnode-electron.log");
+    fs.appendFileSync(logPath, line, "utf-8");
+  } catch (error) {
+    console.error("Failed to write app log:", error);
+  }
+
+  console.log(line.trim());
+}
+
+function attachWindowDebugLogging(
+  scope: string,
+  win: BrowserWindow,
+  expectedUrl?: string,
+) {
+  if (expectedUrl) {
+    logAppEvent(scope, `load requested: ${expectedUrl}`);
+  }
+
+  win.webContents.on("did-start-loading", () => {
+    logAppEvent(scope, "did-start-loading");
+  });
+
+  win.webContents.on("did-finish-load", () => {
+    logAppEvent(scope, `did-finish-load: ${win.webContents.getURL()}`);
+  });
+
+  win.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL) => {
+      logAppEvent(
+        scope,
+        `did-fail-load: code=${errorCode}, desc=${errorDescription}, url=${validatedURL}`,
+      );
+    },
+  );
+
+  win.webContents.on("did-navigate", (_event, url) => {
+    logAppEvent(scope, `did-navigate: ${url}`);
+  });
+
+  win.webContents.on("render-process-gone", (_event, details) => {
+    logAppEvent(
+      scope,
+      `render-process-gone: reason=${details.reason}, exitCode=${details.exitCode}`,
+    );
+  });
+
+  win.webContents.on(
+    "console-message",
+    (_event, level, message, line, sourceId) => {
+      logAppEvent(
+        scope,
+        `console[level=${level}] ${message} (${sourceId}:${line})`,
+      );
+    },
+  );
+
+  win.on("unresponsive", () => {
+    logAppEvent(scope, "window became unresponsive");
+  });
+}
+
 // 로그인/메인 창에 렌더링할 URL 반환
 function resolveRendererUrl(hash = "") {
   // 개발 모드: 개발 서버 URL 반환 http://localhost:5173/#/login
@@ -323,6 +389,7 @@ function closeSplashWindow() {
 function registerAuthHandlers() {
   // ipcMain.on(): "auth-success"라는 이벤트를 수신 및 이벤트 수신 시 처리하는 핸들러 등록
   ipcMain.on("auth-success", () => {
+    logAppEvent("auth", "received auth-success");
     if (loginWindow) {
       loginWindow.close();
       loginWindow = null;
@@ -336,6 +403,7 @@ function registerAuthHandlers() {
   });
 
   ipcMain.on("auth-show-login", () => {
+    logAppEvent("auth", "received auth-show-login");
     if (!loginWindow) {
       createLoginWindow();
     }
@@ -346,6 +414,7 @@ function registerAuthHandlers() {
   });
 
   ipcMain.on("auth-logout", () => {
+    logAppEvent("auth", "received auth-logout");
     if (mainWindow) {
       mainWindow.close();
       mainWindow = null;
@@ -398,6 +467,7 @@ function createSetupWindow() {
   setupWindow.removeMenu();
 
   const setupUrl = resolveRendererUrl("#/setup");
+  attachWindowDebugLogging("setup-window", setupWindow, setupUrl);
 
   if (app.isPackaged) {
     const texts = getSplashTexts();
@@ -476,6 +546,7 @@ function createLoginWindow() {
   loginWindow.removeMenu();
 
   const loginUrl = resolveRendererUrl("#/login");
+  attachWindowDebugLogging("login-window", loginWindow, loginUrl);
 
   // 배포 모드: 타임아웃 및 에러 핸들링
   if (app.isPackaged) {
@@ -579,6 +650,7 @@ function createMainWindow() {
   });
 
   const mainUrl = resolveRendererUrl();
+  attachWindowDebugLogging("main-window", mainWindow, mainUrl);
 
   if (!app.isPackaged) {
     // 개발 모드

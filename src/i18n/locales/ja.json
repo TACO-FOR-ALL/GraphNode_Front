@@ -22,6 +22,7 @@
     "minimizeWindow": "ウィンドウを最小化",
     "maximizeWindow": "ウィンドウを最大化",
     "popupBlocked": "ポップアップがブロックされました。ポップアップを許可してください。",
+    "openingApp": "アプリを開いています...",
     "agreePrefix": "ログインすることで、",
     "terms": "利用規約",
     "agreeMiddle": "および",
