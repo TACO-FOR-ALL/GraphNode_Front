@@ -98,10 +98,11 @@ export default function NodeChatPreview({
   useEffect(() => {
     (async () => {
       try {
-        const data = unwrapResponse(
-          await api.microscope.ingestFromConversation(threadId),
+        const workspace = unwrapResponse(
+          await api.microscope.getLatestWorkspaceByNodeId(threadId),
         );
-        setMicroDataStatus(data.documents[0].status);
+        const firstDoc = workspace.documents?.[0];
+        setMicroDataStatus(firstDoc?.status ?? "PENDING");
       } catch {
         setMicroDataStatus("PENDING");
       }
