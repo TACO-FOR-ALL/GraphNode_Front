@@ -22,6 +22,7 @@
     "minimizeWindow": "最小化窗口",
     "maximizeWindow": "最大化窗口",
     "popupBlocked": "弹窗被阻止。请允许弹窗。",
+    "openingApp": "正在打开应用...",
     "agreePrefix": "登录即表示您同意我们的",
     "terms": "服务条款",
     "agreeMiddle": "和",

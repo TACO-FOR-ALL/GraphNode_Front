@@ -22,6 +22,7 @@
     "minimizeWindow": "창 최소화",
     "maximizeWindow": "창 최대화",
     "popupBlocked": "팝업이 차단되었습니다. 팝업 허용을 해주세요.",
+    "openingApp": "앱을 여는 중입니다...",
     "agreePrefix": "로그인하면",
     "terms": "이용약관",
     "agreeMiddle": "과",
