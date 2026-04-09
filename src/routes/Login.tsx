@@ -50,6 +50,21 @@ export default function Login() {
 
   const error = sessionError || oauthError;
 
+  if (hasSession === true) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-white text-center px-6">
+        <img src={LogoIcon} alt="GraphNode" className="w-8 h-8 mb-4" />
+        <p className="text-[18px] font-medium text-primary">
+          {t("login.welcome")}
+        </p>
+        <p className="mt-2 text-[13px] text-text-secondary">
+          {t("login.openingApp")}
+        </p>
+        <div className="mt-6 w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!hasSession) {
     return (
       <div className="h-screen flex flex-col items-stretch justify-start bg-white text-center relative">

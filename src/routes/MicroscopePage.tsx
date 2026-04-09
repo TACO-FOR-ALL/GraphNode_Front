@@ -271,6 +271,7 @@ export default function MicroscopePage() {
           </div>
         ) : hasContent ? (
           <MicroScopeVisualization
+            key={selectedWorkspaceId ?? undefined}
             data={workspaceGraphData ?? []}
             title={displayTitle}
             subtitle={t("visualizeDetail.subtitle")}
