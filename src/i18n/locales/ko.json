@@ -221,6 +221,11 @@
     "workspace": "워크스페이스",
     "newNote": "새 노트",
     "newFolder": "새 폴더",
+    "codeBlock": {
+      "copied": "{{language}} 코드가 복사되었습니다.",
+      "copyFailed": "코드 복사에 실패했습니다.",
+      "copyAriaLabel": "{{language}} 코드 블록 복사"
+    },
     "image": {
       "onlyImageFiles": "이미지 파일만 업로드할 수 있습니다.",
       "added": "이미지 {{count}}개가 추가되었습니다.",

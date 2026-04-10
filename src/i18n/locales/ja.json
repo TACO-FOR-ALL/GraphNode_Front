@@ -221,6 +221,11 @@
     "workspace": "ワークスペース",
     "newNote": "新しいメモ",
     "newFolder": "新しいフォルダ",
+    "codeBlock": {
+      "copied": "{{language}} のコードをコピーしました。",
+      "copyFailed": "コードのコピーに失敗しました。",
+      "copyAriaLabel": "{{language}} のコードブロックをコピー"
+    },
     "image": {
       "onlyImageFiles": "画像ファイルのみアップロードできます。",
       "added": "画像{{count}}枚を追加しました。",

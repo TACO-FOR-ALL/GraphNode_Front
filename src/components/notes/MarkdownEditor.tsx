@@ -1,7 +1,6 @@
 import "./styles.scss";
 import "katex/dist/katex.min.css";
 
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { useCurrentHightlightStore } from "@/store/useCurrentHighlight";
 
 import {
@@ -11,7 +10,10 @@ import {
 } from "@tiptap/extension-details";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Image } from "@tiptap/extension-image";
-import { TaskItem, TaskList } from "@tiptap/extension-list";
+import { MarkdownLink } from "./MarkdownLink";
+import { NoteCodeBlock } from "./NoteCodeBlock";
+import { TaskList } from "@tiptap/extension-list";
+import { NoteTaskItem } from "./NoteTaskItem";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import { Mention } from "@tiptap/extension-mention";
 import { TableKit } from "@tiptap/extension-table";
@@ -25,7 +27,6 @@ import { noteRepo } from "@/managers/noteRepo";
 import { CustomReactNode } from "./CustomReactComponent";
 import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
-import { useSidebarExpandStore } from "@/store/useSidebarExpandStore";
 import { useImageCompression } from "@/hooks/useImageCompression";
 import useDragDrop from "@/hooks/useDragDrop";
 import { useToastStore } from "@/store/useToastStore";
@@ -104,17 +105,26 @@ export default ({ noteId }: { noteId: string | null }) => {
       StarterKit.configure({
         codeBlock: false,
       }),
-      CodeBlockLowlight.configure({
+      NoteCodeBlock.configure({
         lowlight: lowlight,
         HTMLAttributes: {
           class: "hljs",
+        },
+      }),
+      MarkdownLink.configure({
+        autolink: true,
+        linkOnPaste: true,
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer nofollow",
         },
       }),
       Details,
       DetailsSummary,
       DetailsContent,
       TaskList,
-      TaskItem.configure({
+      NoteTaskItem.configure({
         nested: true,
       }),
       Image.configure({
@@ -355,8 +365,6 @@ export default ({ noteId }: { noteId: string | null }) => {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [currentNoteId]);
 
-  const { isExpanded } = useSidebarExpandStore();
-
   // 이미지 드롭 핸들러
   const handleImageDrop = async (files: File[]) => {
     if (!editor) return;
@@ -461,7 +469,7 @@ export default ({ noteId }: { noteId: string | null }) => {
   return (
     <div
       data-testid="note-editor"
-      className={`markdown-parser-demo ${isExpanded ? "ml-4" : "ml-[259px]"} flex justify-start bg-bg-primary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative ${isOver ? "ring-2 ring-primary ring-opacity-50" : ""}`}
+      className={`markdown-parser-demo mx-auto flex justify-start bg-bg-secondary border-solid border-[1px] border-note-editor-border shadow-[0_2px_4px_-2px_rgba(23,23,23,0.06)] relative ${isOver ? "ring-2 ring-primary ring-opacity-50" : ""}`}
       {...dragProps}
     >
       {/* 저장 상태 UI */}
@@ -480,7 +488,9 @@ export default ({ noteId }: { noteId: string | null }) => {
       {isOver && (
         <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary flex items-center justify-center z-50 pointer-events-none">
           <div className="bg-bg-primary rounded-lg px-4 py-2 shadow-lg">
-            <p className="text-primary font-medium">{t("notes.image.dropHere")}</p>
+            <p className="text-primary font-medium">
+              {t("notes.image.dropHere")}
+            </p>
           </div>
         </div>
       )}
