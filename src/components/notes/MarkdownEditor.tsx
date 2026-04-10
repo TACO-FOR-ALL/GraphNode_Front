@@ -104,6 +104,7 @@ export default ({ noteId }: { noteId: string | null }) => {
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        link: false,
       }),
       NoteCodeBlock.configure({
         lowlight: lowlight,
