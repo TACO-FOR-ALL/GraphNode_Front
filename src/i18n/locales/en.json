@@ -221,6 +221,11 @@
     "workspace": "workspace",
     "newNote": "New Note",
     "newFolder": "New Folder",
+    "codeBlock": {
+      "copied": "Copied {{language}} code.",
+      "copyFailed": "Failed to copy code.",
+      "copyAriaLabel": "Copy {{language}} code block"
+    },
     "image": {
       "onlyImageFiles": "Only image files can be uploaded.",
       "added": "{{count}} image(s) added.",

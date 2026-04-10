@@ -10,7 +10,7 @@
 .markdown-parser-demo .editor-container {
   flex: 1 1 auto;
   overflow: auto;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-secondary);
 
   /* 스크롤바 숨기기 */
   scrollbar-width: none; /* Firefox */
@@ -138,7 +138,11 @@
   }
 
   li {
-    margin: 0.5em 0;
+    margin: 0.25em 0;
+
+    > p {
+      margin: 0.5em 0;
+    }
   }
 
   ul {
@@ -151,7 +155,7 @@
 
   /* Blockquote */
   blockquote {
-    border-left: 4px solid var(--color-blockquote-border);
+    border-left: 4px solid rgba(var(--color-chatbox-active-rgb), 0.5);
     padding-left: 1rem;
     margin: 1em 0;
     color: var(--color-text-secondary);
@@ -251,13 +255,14 @@
           -webkit-appearance: none;
           width: 1rem;
           height: 1rem;
-          border: 2px solid var(--color-primary);
+          border: 2px solid var(--color-text-tertiary);
           border-radius: 0.25rem;
           cursor: pointer;
           position: relative;
           background: transparent;
 
           &:checked {
+            border-color: var(--color-primary);
             background: var(--color-primary);
 
             &::after {
@@ -274,8 +279,11 @@
           }
 
           &:hover {
+            border-color: var(--color-text-secondary);
+          }
+
+          &:checked:hover {
             border-color: var(--color-primary);
-            opacity: 0.8;
           }
         }
       }
@@ -295,6 +303,99 @@
       }
     }
   }
+}
+
+.note-code-block {
+  margin: 1rem 0;
+
+  &__shell {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-base-border);
+    border-radius: 0.375rem;
+    background: var(--color-bg-tertiary);
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  &__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.5rem;
+    background: rgba(24, 24, 27, 0.78);
+    color: var(--color-text-secondary);
+    padding: 0.35rem 0.55rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+    line-height: 1;
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+
+  &__copy:hover,
+  &__copy:focus-visible {
+    background: rgba(39, 39, 42, 0.94);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f4f4f5;
+    outline: none;
+  }
+
+  &__copy.is-copied {
+    color: var(--color-primary);
+  }
+
+  &__language {
+    letter-spacing: 0.01em;
+  }
+
+  .tiptap &__pre,
+  .ProseMirror &__pre {
+    margin: 0;
+    padding: 1rem;
+    padding-right: 8.25rem;
+    overflow-x: auto;
+    background: var(--color-bg-tertiary);
+    border-radius: 0;
+  }
+
+  .tiptap &__content,
+  .ProseMirror &__content {
+    display: block;
+    min-width: max-content;
+    background: transparent !important;
+    color: var(--color-codeblock-text);
+    padding: 0 !important;
+    font-size: 0.9em;
+    line-height: 1.7;
+    white-space: pre;
+    font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  }
+
+  &.ProseMirror-selectednode &__shell {
+    border-color: rgba(43, 137, 248, 0.65);
+    box-shadow: 0 0 0 1px rgba(43, 137, 248, 0.2);
+  }
+}
+
+.dark .note-code-block__copy:hover,
+.dark .note-code-block__copy:focus-visible {
+  background: rgba(63, 63, 70, 0.94);
 }
 
 /* Basic table styles for the editor */
