@@ -221,6 +221,11 @@
     "workspace": "工作区",
     "newNote": "新建笔记",
     "newFolder": "新建文件夹",
+    "codeBlock": {
+      "copied": "已复制 {{language}} 代码。",
+      "copyFailed": "复制代码失败。",
+      "copyAriaLabel": "复制 {{language}} 代码块"
+    },
     "image": {
       "onlyImageFiles": "只能上传图片文件。",
       "added": "已添加 {{count}} 张图片。",
