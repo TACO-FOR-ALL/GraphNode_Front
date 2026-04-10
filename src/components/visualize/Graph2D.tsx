@@ -1435,6 +1435,18 @@ export default function Graph2D({
         ),
       );
 
+      // 중분류 그룹 노드 위치도 함께 이동
+      setGroupNodePositions((prev) => {
+        const next = new Map(prev);
+        subclusters.forEach((sc) => {
+          const firstNode = positionedNodes.find((n) => sc.nodeIds.includes(n.id));
+          if (!firstNode || firstNode.clusterName !== draggingClusterId) return;
+          const cur = next.get(sc.id);
+          if (cur) next.set(sc.id, { x: cur.x + dx, y: cur.y + dy });
+        });
+        return next;
+      });
+
       return;
     }
 
@@ -1942,6 +1954,7 @@ export default function Graph2D({
                   ? "grabbing"
                   : "grab",
           touchAction: "none",
+          backgroundColor: "var(--color-cluster-default)",
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -1959,9 +1972,7 @@ export default function Graph2D({
                   cx={circle.centerX}
                   cy={circle.centerY}
                   r={circle.radius}
-                  fill="var(--color-cluster-default)"
-                  stroke="var(--color-edge-default)"
-                  strokeWidth={1}
+                  fill="none"
                   style={{ pointerEvents: "none" }}
                 />
               </g>
@@ -2008,7 +2019,7 @@ export default function Graph2D({
                 x2={t.x}
                 y2={t.y}
                 stroke="var(--color-edge-default)"
-                strokeWidth={0.5}
+                strokeWidth={0.7}
                 strokeOpacity={0.7}
               />
             );
@@ -2027,7 +2038,7 @@ export default function Graph2D({
                 x2={t.x}
                 y2={t.y}
                 stroke="var(--color-edge-default)"
-                strokeWidth={0.5}
+                strokeWidth={0.7}
               />
             );
           })}
@@ -2078,7 +2089,12 @@ export default function Graph2D({
                   onMouseLeave={() => setHoveredId(null)}
                   onClick={(e) => handleNodeClick(e, n)}
                 >
-                  <circle r={displayRadius} fill={groupFill} />
+                  <circle
+                    r={displayRadius}
+                    fill={groupFill}
+                    stroke="var(--color-cluster-default)"
+                    strokeWidth={0.75}
+                  />
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -2129,6 +2145,8 @@ export default function Graph2D({
                 <circle
                   r={radius}
                   fill={fill}
+                  stroke="var(--color-cluster-default)"
+                  strokeWidth={0.75}
                   className="shadow-[0_2px_20px_#BADAFF]"
                 />
                 {displayTitle && (
