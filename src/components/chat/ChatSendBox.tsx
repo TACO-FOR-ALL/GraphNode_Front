@@ -210,7 +210,6 @@ export default function ChatSendBox({
 
                 // 최종 응답 처리
                 {
-                  console.log(event.data);
                   const messages: { role: string; content: string }[] =
                     event.data.messages ?? [];
                   const title: string | null = event.data.title ?? null;
