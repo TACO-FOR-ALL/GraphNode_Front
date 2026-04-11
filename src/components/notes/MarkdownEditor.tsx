@@ -16,7 +16,7 @@ import { TaskList } from "@tiptap/extension-list";
 import { NoteTaskItem } from "./NoteTaskItem";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import { Mention } from "@tiptap/extension-mention";
-import { TableKit } from "@tiptap/extension-table";
+import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 // import { Youtube } from "@tiptap/extension-youtube"; 유튜브 임베딩 지원
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -32,6 +32,8 @@ import useDragDrop from "@/hooks/useDragDrop";
 import { useToastStore } from "@/store/useToastStore";
 import { useTranslation } from "react-i18next";
 import normalizeMathMarkdown from "@/utils/normalizeMathMarkdown";
+import normalizeTableMarkdown from "@/utils/normalizeTableMarkdown";
+import { NoteTable } from "./NoteTable";
 
 const lowlight = createLowlight(common);
 
@@ -135,7 +137,10 @@ export default ({ noteId }: { noteId: string | null }) => {
           class: "markdown-image",
         },
       }),
-      TableKit,
+      NoteTable,
+      TableRow,
+      TableHeader,
+      TableCell,
       Highlight,
       Mention.configure({
         HTMLAttributes: {
@@ -187,7 +192,9 @@ export default ({ noteId }: { noteId: string | null }) => {
           const note = await noteRepo.getNoteById(noteId);
 
           if (note) {
-            const normalizedContent = normalizeMathMarkdown(note.content);
+            const normalizedContent = normalizeTableMarkdown(
+              normalizeMathMarkdown(note.content),
+            );
             editor.commands.setContent(normalizedContent, {
               contentType: "markdown",
             });
@@ -269,7 +276,7 @@ export default ({ noteId }: { noteId: string | null }) => {
 
       let markdown = "";
       try {
-        markdown = editor.getMarkdown();
+        markdown = normalizeTableMarkdown(editor.getMarkdown());
       } catch (error) {
         console.error("Failed to get markdown:", error);
         return;

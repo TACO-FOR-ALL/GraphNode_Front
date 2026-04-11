@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "앱 화면을 불러오지 못했습니다",
+    "subtitle": "렌더러 초기화 중 예상치 못한 오류가 발생했습니다.",
+    "retry": "다시 시도",
+    "goHome": "홈으로"
+  },
   "setup": {
     "welcome": {
       "title": "GraphNode에 오신 것을 환영합니다",

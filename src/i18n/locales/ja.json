@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "画面を読み込めませんでした",
+    "subtitle": "アプリのレンダリング中に予期しないエラーが発生しました。",
+    "retry": "再試行",
+    "goHome": "ホームへ"
+  },
   "setup": {
     "welcome": {
       "title": "GraphNodeへようこそ",
