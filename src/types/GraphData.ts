@@ -36,6 +36,7 @@ export type PositionedNode = {
   numMessages: number;
   createdAt?: number;
   updatedAt?: number;
+  sourceType?: "chat" | "markdown" | "notion";
   x: number;
   y: number;
   edgeCount: number;

@@ -255,10 +255,13 @@
     "recommendations": "Recommendations",
     "expand": "See more",
     "collapse": "Collapse",
-    "chatPreview": {
-      "title": "Chat Preview",
+    "nodePreview": {
+      "chatTitle": "Chat Preview",
+      "noteTitle": "Note Preview",
       "viewDetail": "View Detail",
       "deletedConversation": "This conversation has been deleted.",
+      "noteNotFound": "This note could not be found.",
+      "openNote": "Open Note",
       "analyzeWithMicroscope": "Analyze with Microscope",
       "analyzing": "Analyzing...",
       "viewAnalysis": "View Analysis"

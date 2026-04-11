@@ -255,10 +255,13 @@
     "recommendations": "추천 사항",
     "expand": "더보기",
     "collapse": "접기",
-    "chatPreview": {
-      "title": "채팅 미리보기",
+    "nodePreview": {
+      "chatTitle": "채팅 미리보기",
+      "noteTitle": "노트 미리보기",
       "viewDetail": "상세 보기",
       "deletedConversation": "삭제된 대화입니다.",
+      "noteNotFound": "노트를 찾을 수 없습니다.",
+      "openNote": "노트 열기",
       "analyzeWithMicroscope": "Microscope로 분석하기",
       "analyzing": "분석 중...",
       "viewAnalysis": "분석결과 보기"

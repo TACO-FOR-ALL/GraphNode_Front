@@ -255,10 +255,13 @@
     "recommendations": "おすすめ",
     "expand": "もっと見る",
     "collapse": "折りたたむ",
-    "chatPreview": {
-      "title": "チャットプレビュー",
+    "nodePreview": {
+      "chatTitle": "チャットプレビュー",
+      "noteTitle": "ノートプレビュー",
       "viewDetail": "詳細を見る",
       "deletedConversation": "この会話は削除されています。",
+      "noteNotFound": "ノートが見つかりません。",
+      "openNote": "ノートを開く",
       "analyzeWithMicroscope": "Microscopeで分析する",
       "analyzing": "分析中...",
       "viewAnalysis": "分析結果を見る"
