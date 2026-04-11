@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "subtitle": "An unexpected error occurred while rendering the app.",
+    "retry": "Try Again",
+    "goHome": "Go Home"
+  },
   "setup": {
     "welcome": {
       "title": "Welcome to GraphNode",

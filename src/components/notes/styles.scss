@@ -410,26 +410,141 @@
 }
 
 /* Basic table styles for the editor */
-.tiptap table,
-.ProseMirror table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5rem 0;
+.tiptap .note-table,
+.ProseMirror .note-table {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.1rem 0;
+  overflow: visible;
 }
 
-.tiptap table td,
-.tiptap table th,
-.ProseMirror table td,
-.ProseMirror table th {
-  border: 1px solid var(--color-table-border);
+.tiptap .note-table__table,
+.ProseMirror .note-table__table {
+  width: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+  border: 0.5px solid var(--color-table-border);
+  border-radius: 0.2rem;
+  overflow: hidden;
+  background: transparent;
+  table-layout: auto;
+}
+
+.tiptap .note-table__table td,
+.tiptap .note-table__table th,
+.ProseMirror .note-table__table td,
+.ProseMirror .note-table__table th {
+  border-right: 1px solid var(--color-table-border);
+  border-bottom: 1px solid var(--color-table-border);
   padding: 0.5rem;
   text-align: left;
+  vertical-align: top;
+  background: transparent;
 }
 
-.tiptap table th,
-.ProseMirror table th {
+.tiptap .note-table__table th,
+.ProseMirror .note-table__table th {
   background: var(--color-table-header-bg);
   font-weight: 600;
+}
+
+.tiptap .note-table__table p,
+.ProseMirror .note-table__table p {
+  margin: 0;
+}
+
+.tiptap .note-table__table tr > :last-child,
+.ProseMirror .note-table__table tr > :last-child {
+  border-right: none;
+}
+
+.tiptap .note-table__table tr:last-child > td,
+.tiptap .note-table__table tr:last-child > th,
+.ProseMirror .note-table__table tr:last-child > td,
+.ProseMirror .note-table__table tr:last-child > th {
+  border-bottom: none;
+}
+
+.tiptap .note-table__add,
+.ProseMirror .note-table__add {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid var(--color-table-action-border);
+  border-radius: 999px;
+  background: var(--color-table-action-bg);
+  color: var(--color-table-action-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: var(--color-table-action-shadow);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.tiptap .note-table__add span,
+.ProseMirror .note-table__add span {
+  transform: translateY(-0.02em);
+}
+
+.tiptap .note-table__add--column,
+.ProseMirror .note-table__add--column {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%) scale(0.94);
+}
+
+.tiptap .note-table__add--row,
+.ProseMirror .note-table__add--row {
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%) scale(0.94);
+}
+
+.tiptap .note-table[data-hover-edge="column"] .note-table__add--column,
+.ProseMirror .note-table[data-hover-edge="column"] .note-table__add--column,
+.tiptap .note-table[data-hover-edge="row"] .note-table__add--row,
+.ProseMirror .note-table[data-hover-edge="row"] .note-table__add--row {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tiptap .note-table[data-hover-edge="column"] .note-table__add--column,
+.ProseMirror .note-table[data-hover-edge="column"] .note-table__add--column {
+  transform: translate(50%, -50%) scale(1);
+}
+
+.tiptap .note-table[data-hover-edge="row"] .note-table__add--row,
+.ProseMirror .note-table[data-hover-edge="row"] .note-table__add--row {
+  transform: translate(-50%, 50%) scale(1);
+}
+
+.tiptap .note-table__add:hover,
+.tiptap .note-table__add:focus-visible,
+.ProseMirror .note-table__add:hover,
+.ProseMirror .note-table__add:focus-visible {
+  background: var(--color-table-action-hover-bg);
+  border-color: var(--color-table-action-hover-border);
+  color: var(--color-table-action-hover-text);
+  outline: none;
+}
+
+.tiptap .note-table[data-table-editable="false"] .note-table__add,
+.ProseMirror .note-table[data-table-editable="false"] .note-table__add {
+  display: none;
 }
 
 /* Custom React Component styling */

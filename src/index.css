@@ -41,8 +41,6 @@
   --color-code-bg: #f1f5f9;
   --color-code-text: #e11d48;
   --color-codeblock-text: #1f2937;
-  --color-table-header-bg: #f9fafb;
-  --color-table-border: #d1d5db;
   --color-scrollbar-thumb: #d4d4d4;
   --color-scrollbar-thumb-hover: #9ca3af;
   --font-family-noto-sans-kr:
@@ -54,6 +52,15 @@
   --color-chatbox-active-rgb: 43, 137, 248;
   --color-blockquote-accent: rgba(43, 137, 248, 0.55);
   --color-blockquote-surface: rgba(43, 137, 248, 0.12);
+  --color-table-header-bg: transparent;
+  --color-table-border: #c7cfd9;
+  --color-table-action-bg: rgba(255, 255, 255, 0.96);
+  --color-table-action-border: rgba(148, 163, 184, 0.42);
+  --color-table-action-text: #475569;
+  --color-table-action-hover-bg: rgba(241, 245, 249, 0.98);
+  --color-table-action-hover-border: rgba(100, 116, 139, 0.58);
+  --color-table-action-hover-text: #334155;
+  --color-table-action-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
   --color-codeblock-action-bg: rgba(218, 224, 232, 0.97);
   --color-codeblock-action-border: rgba(71, 85, 105, 0.34);
   --color-codeblock-action-text: #1f2937;
@@ -130,8 +137,15 @@
   --color-codeblock-action-hover-border: rgba(255, 255, 255, 0.24);
   --color-codeblock-action-hover-text: #fafafa;
   --color-codeblock-action-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
-  --color-table-header-bg: #1c1c1e;
-  --color-table-border: #3f3f46;
+  --color-table-header-bg: transparent;
+  --color-table-border: #5a6069;
+  --color-table-action-bg: rgba(24, 24, 27, 0.96);
+  --color-table-action-border: rgba(255, 255, 255, 0.16);
+  --color-table-action-text: #e4e4e7;
+  --color-table-action-hover-bg: rgba(39, 39, 42, 0.98);
+  --color-table-action-hover-border: rgba(255, 255, 255, 0.26);
+  --color-table-action-hover-text: #fafafa;
+  --color-table-action-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
 
   --font-family-noto-sans-kr:
     "NotoSansKR", system-ui, -apple-system, "Apple SD Gothic Neo",

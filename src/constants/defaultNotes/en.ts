@@ -51,6 +51,24 @@ GraphNode supports \`inline code\` and full code blocks:
 print("Hello, World!") # use \` code block for inline code
 \`\`\`
 
+### Tables
+
+Simple markdown tables are rendered right away:
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| GraphNode | In progress | Organizing notes |
+| Table UI | Done | Supports adding rows and columns |
+
+\`\`\`markdown
+| Item | Status | Notes |
+| --- | --- | --- |
+| GraphNode | In progress | Organizing notes |
+| Table UI | Done | Supports adding rows and columns |
+\`\`\`
+
+Hover the **right edge of a table to add a column**, or the **bottom edge to add a row**.
+
 ### Mentions
 
 Hey, [@ id="johnhan" label="John Han"], have you seen [@ id="ayatsunoyuki" label="Ayatsuno Yuki"]?

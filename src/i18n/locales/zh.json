@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "无法加载应用界面",
+    "subtitle": "渲染应用时发生意外错误。",
+    "retry": "重试",
+    "goHome": "返回主页"
+  },
   "setup": {
     "welcome": {
       "title": "欢迎使用 GraphNode",
