@@ -71,7 +71,9 @@
     },
     "visualize": {
       "title": "Generate your graph",
-      "description": "Build your personal knowledge graph from your conversations and notes. Press 'Generate Graph' to get started!"
+      "description": "Build your personal knowledge graph from your conversations and notes. Press 'Generate Graph' to get started!",
+      "updateTitle": "You already have a graph!",
+      "updateDescription": "New notes and chats have been added? Press this button anytime to update your graph with the latest content."
     },
     "permissions": {
       "title": "App Permissions",

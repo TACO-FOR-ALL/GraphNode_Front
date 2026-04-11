@@ -15,6 +15,12 @@ interface SpotlightConfig {
   navigateTo?: string;
   settingsCategory?: SettingsCategory["id"];
   position: "top" | "bottom" | "left" | "right";
+  fallback?: {
+    targetSelector: string;
+    title: string;
+    description: string;
+    position?: "top" | "bottom" | "left" | "right";
+  };
 }
 
 export default function SpotlightOverlay() {
@@ -24,6 +30,9 @@ export default function SpotlightOverlay() {
     useOnboardingStore();
   const { setSelectedCategory } = useSidebarSettingsStore();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [resolvedConfig, setResolvedConfig] = useState<SpotlightConfig | null>(
+    null,
+  );
   const navigatedStepRef = useRef<OnboardingStep | null>(null);
 
   // 애니메이션 상태
@@ -72,6 +81,12 @@ export default function SpotlightOverlay() {
         description: t("onboarding.visualize.description"),
         navigateTo: "/visualize",
         position: "bottom",
+        fallback: {
+          targetSelector: '[data-onboarding="update-graph-button"]',
+          title: t("onboarding.visualize.updateTitle"),
+          description: t("onboarding.visualize.updateDescription"),
+          position: "top",
+        },
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
     ],
@@ -85,6 +100,7 @@ export default function SpotlightOverlay() {
     setIsContracting(true);
     setTooltipVisible(false);
     setTargetRect(null);
+    setResolvedConfig(null);
   }, [currentStep]);
 
   // 페이지 이동 및 타겟 요소 찾기
@@ -98,13 +114,34 @@ export default function SpotlightOverlay() {
       if (config.navigateTo) navigate(config.navigateTo);
     }
 
+    // primary와 fallback을 매 시도마다 동시에 확인
+    // generate-graph-button이 없으면 즉시 update-graph-button으로 전환
     const findTarget = () => {
       const target = document.querySelector(config.targetSelector);
       if (target) {
-        setTargetRect(target.getBoundingClientRect()); // DOM 요소의 화면상 위치의 크기를 픽셀 단위로 반환하는 브라우저 내장 API
-      } else {
-        setTimeout(findTarget, 100);
+        setResolvedConfig(config);
+        setTargetRect(target.getBoundingClientRect());
+        return;
       }
+
+      if (config.fallback) {
+        const fallbackTarget = document.querySelector(
+          config.fallback.targetSelector,
+        );
+        if (fallbackTarget) {
+          setResolvedConfig({
+            ...config,
+            targetSelector: config.fallback.targetSelector,
+            title: config.fallback.title,
+            description: config.fallback.description,
+            position: config.fallback.position ?? config.position,
+          });
+          setTargetRect(fallbackTarget.getBoundingClientRect());
+          return;
+        }
+      }
+
+      setTimeout(findTarget, 100);
     };
 
     const timer = setTimeout(findTarget, 300);
@@ -149,6 +186,8 @@ export default function SpotlightOverlay() {
 
   if (!config || !isOnboardingActive) return null;
 
+  const activeConfig = resolvedConfig ?? config;
+
   const padding = 12;
   const spotlightStyle = targetRect
     ? {
@@ -163,7 +202,7 @@ export default function SpotlightOverlay() {
   const getTooltipStyle = () => {
     if (!targetRect) return {};
     const tooltipGap = 16;
-    switch (config.position) {
+    switch (activeConfig.position) {
       case "right":
         return { left: targetRect.right + tooltipGap, top: targetRect.top };
       case "left":
@@ -184,11 +223,11 @@ export default function SpotlightOverlay() {
   };
 
   const handleLinkClick = () => {
-    if (config.link?.url) {
+    if (activeConfig.link?.url) {
       if (window.systemAPI) {
-        window.systemAPI.openExternal(config.link.url);
+        window.systemAPI.openExternal(activeConfig.link.url);
       } else {
-        window.open(config.link.url, "_blank");
+        window.open(activeConfig.link.url, "_blank");
       }
     }
   };
@@ -231,17 +270,17 @@ export default function SpotlightOverlay() {
           }}
         >
           <h3 className="text-base font-semibold text-text-primary mb-2">
-            {config.title}
+            {activeConfig.title}
           </h3>
           <p className="text-sm text-text-secondary mb-1 leading-relaxed">
-            {config.description}
+            {activeConfig.description}
           </p>
-          {config.link && (
+          {activeConfig.link && (
             <div
               onClick={handleLinkClick}
               className="flex items-center justify-end gap-1 text-sm text-primary hover:underline mb-3 cursor-pointer"
             >
-              <span>{config.link.text}</span>
+              <span>{activeConfig.link?.text}</span>
               <FiExternalLink className="w-3 h-3" />
             </div>
           )}

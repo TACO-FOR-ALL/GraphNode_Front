@@ -71,7 +71,9 @@
     },
     "visualize": {
       "title": "生成图谱",
-      "description": "基于你的对话记录和笔记，构建专属知识图谱。点击「生成图谱」按钮开始吧！"
+      "description": "基于你的对话记录和笔记，构建专属知识图谱。点击「生成图谱」按钮开始吧！",
+      "updateTitle": "您已经有图谱了！",
+      "updateDescription": "每当有新的笔记或对话添加时，随时点击此按钮更新您的图谱。"
     },
     "permissions": {
       "title": "应用权限设置",

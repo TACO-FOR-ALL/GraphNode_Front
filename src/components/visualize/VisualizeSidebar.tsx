@@ -758,6 +758,7 @@ export default function VisualizeSidebar({
             <button
               onClick={onUpdateGraph}
               disabled={isUpdating}
+              data-onboarding="update-graph-button"
               className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-[13px] transition-all duration-200 ${
                 isUpdating
                   ? "bg-primary/50 text-white cursor-not-allowed"

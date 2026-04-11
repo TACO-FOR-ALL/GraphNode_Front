@@ -467,83 +467,116 @@
   border-bottom: none;
 }
 
-.tiptap .note-table__add,
-.ProseMirror .note-table__add {
+.tiptap .note-table__controls,
+.ProseMirror .note-table__controls {
   position: absolute;
   z-index: 2;
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: stretch;
   justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
+  min-width: 2.9rem;
+  height: 1.45rem;
   border: 1px solid var(--color-table-action-border);
   border-radius: 999px;
   background: var(--color-table-action-bg);
-  color: var(--color-table-action-text);
-  font-size: 0.95rem;
-  font-weight: 500;
-  line-height: 1;
   box-shadow: var(--color-table-action-shadow);
   backdrop-filter: blur(10px);
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transition:
     opacity 0.16s ease,
     transform 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease;
+    border-color 0.16s ease;
 }
 
-.tiptap .note-table__add span,
-.ProseMirror .note-table__add span {
+.tiptap .note-table__action,
+.ProseMirror .note-table__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45rem;
+  height: 100%;
+  padding: 0 0.08rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-table-action-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.tiptap .note-table__action + .note-table__action,
+.ProseMirror .note-table__action + .note-table__action {
+  border-left: 1px solid var(--color-table-action-border);
+}
+
+.tiptap .note-table__action span,
+.ProseMirror .note-table__action span {
   transform: translateY(-0.02em);
 }
 
-.tiptap .note-table__add--column,
-.ProseMirror .note-table__add--column {
+.tiptap .note-table__controls--column,
+.ProseMirror .note-table__controls--column {
   top: 50%;
   right: 0;
   transform: translate(50%, -50%) scale(0.94);
 }
 
-.tiptap .note-table__add--row,
-.ProseMirror .note-table__add--row {
+.tiptap .note-table__controls--row,
+.ProseMirror .note-table__controls--row {
   left: 50%;
   bottom: 0;
   transform: translate(-50%, 50%) scale(0.94);
 }
 
-.tiptap .note-table[data-hover-edge="column"] .note-table__add--column,
-.ProseMirror .note-table[data-hover-edge="column"] .note-table__add--column,
-.tiptap .note-table[data-hover-edge="row"] .note-table__add--row,
-.ProseMirror .note-table[data-hover-edge="row"] .note-table__add--row {
+.tiptap .note-table[data-hover-edge="column"] .note-table__controls--column,
+.ProseMirror .note-table[data-hover-edge="column"] .note-table__controls--column,
+.tiptap .note-table[data-hover-edge="row"] .note-table__controls--row,
+.ProseMirror .note-table[data-hover-edge="row"] .note-table__controls--row {
   opacity: 1;
   pointer-events: auto;
 }
 
-.tiptap .note-table[data-hover-edge="column"] .note-table__add--column,
-.ProseMirror .note-table[data-hover-edge="column"] .note-table__add--column {
+.tiptap .note-table[data-hover-edge="column"] .note-table__controls--column,
+.ProseMirror .note-table[data-hover-edge="column"] .note-table__controls--column {
   transform: translate(50%, -50%) scale(1);
 }
 
-.tiptap .note-table[data-hover-edge="row"] .note-table__add--row,
-.ProseMirror .note-table[data-hover-edge="row"] .note-table__add--row {
+.tiptap .note-table[data-hover-edge="row"] .note-table__controls--row,
+.ProseMirror .note-table[data-hover-edge="row"] .note-table__controls--row {
   transform: translate(-50%, 50%) scale(1);
 }
 
-.tiptap .note-table__add:hover,
-.tiptap .note-table__add:focus-visible,
-.ProseMirror .note-table__add:hover,
-.ProseMirror .note-table__add:focus-visible {
+.tiptap .note-table__action:hover,
+.tiptap .note-table__action:focus-visible,
+.ProseMirror .note-table__action:hover,
+.ProseMirror .note-table__action:focus-visible {
   background: var(--color-table-action-hover-bg);
-  border-color: var(--color-table-action-hover-border);
   color: var(--color-table-action-hover-text);
   outline: none;
 }
 
-.tiptap .note-table[data-table-editable="false"] .note-table__add,
-.ProseMirror .note-table[data-table-editable="false"] .note-table__add {
+.tiptap .note-table__action:disabled,
+.ProseMirror .note-table__action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tiptap .note-table__action:disabled:hover,
+.tiptap .note-table__action:disabled:focus-visible,
+.ProseMirror .note-table__action:disabled:hover,
+.ProseMirror .note-table__action:disabled:focus-visible {
+  background: transparent;
+  color: var(--color-table-action-text);
+}
+
+.tiptap .note-table[data-table-editable="false"] .note-table__controls,
+.ProseMirror .note-table[data-table-editable="false"] .note-table__controls {
   display: none;
 }
 

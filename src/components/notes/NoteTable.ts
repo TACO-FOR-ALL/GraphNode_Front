@@ -7,15 +7,17 @@ const EDGE_THRESHOLD = 18;
 
 type HoverEdge = "column" | "row" | null;
 type GetPos = () => number | undefined;
+type EdgeKind = Exclude<HoverEdge, null>;
+type EdgeOperation = "add" | "remove";
 
 class NoteTableView extends TableView {
   private editor: Editor;
 
   private getPosRef: GetPos;
 
-  private columnButton: HTMLButtonElement;
+  private columnControls: HTMLDivElement;
 
-  private rowButton: HTMLButtonElement;
+  private rowControls: HTMLDivElement;
 
   private activeEdge: HoverEdge = null;
 
@@ -34,12 +36,13 @@ class NoteTableView extends TableView {
     this.dom.dataset.tableEditable = String(editor.isEditable);
     this.table.classList.add("note-table__table");
 
-    this.columnButton = this.createActionButton("column", "Add column");
-    this.rowButton = this.createActionButton("row", "Add row");
+    this.columnControls = this.createActionControls("column");
+    this.rowControls = this.createActionControls("row");
 
-    this.dom.append(this.columnButton, this.rowButton);
+    this.dom.append(this.columnControls, this.rowControls);
     this.dom.addEventListener("mousemove", this.handleMouseMove);
     this.dom.addEventListener("mouseleave", this.handleMouseLeave);
+    this.refreshControlState();
   }
 
   override update(node: ProseMirrorNode) {
@@ -47,6 +50,7 @@ class NoteTableView extends TableView {
 
     if (didUpdate) {
       this.dom.dataset.tableEditable = String(this.editor.isEditable);
+      this.refreshControlState();
     }
 
     return didUpdate;
@@ -55,47 +59,81 @@ class NoteTableView extends TableView {
   stopEvent(event: Event) {
     return (
       event.target instanceof HTMLElement &&
-      event.target.closest(".note-table__add") !== null
+      event.target.closest(".note-table__controls") !== null
     );
   }
 
   destroy() {
     this.dom.removeEventListener("mousemove", this.handleMouseMove);
     this.dom.removeEventListener("mouseleave", this.handleMouseLeave);
-    this.columnButton.removeEventListener("mousedown", this.handleButtonMouseDown);
-    this.columnButton.removeEventListener("click", this.handleButtonClick);
-    this.columnButton.removeEventListener(
-      "mouseenter",
-      this.handleColumnButtonMouseEnter,
-    );
-    this.rowButton.removeEventListener("mousedown", this.handleButtonMouseDown);
-    this.rowButton.removeEventListener("click", this.handleButtonClick);
-    this.rowButton.removeEventListener(
-      "mouseenter",
-      this.handleRowButtonMouseEnter,
-    );
+    this.destroyControls(this.columnControls, this.handleColumnControlsMouseEnter);
+    this.destroyControls(this.rowControls, this.handleRowControlsMouseEnter);
   }
 
-  private createActionButton(kind: Exclude<HoverEdge, null>, label: string) {
+  private destroyControls(
+    controls: HTMLDivElement,
+    mouseEnterHandler: () => void,
+  ) {
+    controls.removeEventListener("mouseenter", mouseEnterHandler);
+    controls
+      .querySelectorAll<HTMLButtonElement>(".note-table__action")
+      .forEach((button) => {
+        button.removeEventListener("mousedown", this.handleButtonMouseDown);
+        button.removeEventListener("click", this.handleButtonClick);
+      });
+  }
+
+  private createActionButton(
+    kind: EdgeKind,
+    operation: EdgeOperation,
+    label: string,
+    symbol: "+" | "−",
+  ) {
     const button = document.createElement("button");
 
     button.type = "button";
-    button.className = `note-table__add note-table__add--${kind}`;
-    button.dataset.action = kind;
+    button.className = `note-table__action note-table__action--${operation}`;
+    button.dataset.edge = kind;
+    button.dataset.operation = operation;
     button.setAttribute("aria-label", label);
     button.setAttribute("contenteditable", "false");
-    button.innerHTML = '<span aria-hidden="true">+</span>';
+    button.innerHTML = `<span aria-hidden="true">${symbol}</span>`;
 
     button.addEventListener("mousedown", this.handleButtonMouseDown);
     button.addEventListener("click", this.handleButtonClick);
-    button.addEventListener(
-      "mouseenter",
-      kind === "column"
-        ? this.handleColumnButtonMouseEnter
-        : this.handleRowButtonMouseEnter,
-    );
 
     return button;
+  }
+
+  private createActionControls(kind: EdgeKind) {
+    const controls = document.createElement("div");
+
+    controls.className = `note-table__controls note-table__controls--${kind}`;
+    controls.setAttribute("contenteditable", "false");
+    controls.dataset.edge = kind;
+    controls.append(
+      this.createActionButton(
+        kind,
+        "add",
+        kind === "column" ? "Add column" : "Add row",
+        "+",
+      ),
+      this.createActionButton(
+        kind,
+        "remove",
+        kind === "column" ? "Remove last column" : "Remove last row",
+        "−",
+      ),
+    );
+
+    controls.addEventListener(
+      "mouseenter",
+      kind === "column"
+        ? this.handleColumnControlsMouseEnter
+        : this.handleRowControlsMouseEnter,
+    );
+
+    return controls;
   }
 
   private setActiveEdge(edge: HoverEdge) {
@@ -125,6 +163,24 @@ class NoteTableView extends TableView {
     return tablePos + 1 + lastCellPos;
   }
 
+  private refreshControlState() {
+    const map = TableMap.get(this.node);
+    const columnRemoveButton = this.columnControls.querySelector<HTMLButtonElement>(
+      '.note-table__action[data-operation="remove"]',
+    );
+    const rowRemoveButton = this.rowControls.querySelector<HTMLButtonElement>(
+      '.note-table__action[data-operation="remove"]',
+    );
+
+    if (columnRemoveButton) {
+      columnRemoveButton.disabled = map.width <= 1;
+    }
+
+    if (rowRemoveButton) {
+      rowRemoveButton.disabled = map.height <= 1;
+    }
+  }
+
   private handleButtonMouseDown = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -134,10 +190,12 @@ class NoteTableView extends TableView {
     event.preventDefault();
     event.stopPropagation();
 
-    const action = (event.currentTarget as HTMLElement | null)?.dataset.action;
+    const target = event.currentTarget as HTMLButtonElement | null;
+    const edge = target?.dataset.edge as EdgeKind | undefined;
+    const operation = target?.dataset.operation as EdgeOperation | undefined;
     const anchorCell = this.getAnchorCellPos();
 
-    if (anchorCell === null) {
+    if (anchorCell === null || !edge || !operation || target?.disabled) {
       return;
     }
 
@@ -146,23 +204,35 @@ class NoteTableView extends TableView {
       headCell: anchorCell,
     });
 
-    if (action === "column") {
+    if (edge === "column" && operation === "add") {
       chain.addColumnAfter().run();
       this.setActiveEdge("column");
       return;
     }
 
-    if (action === "row") {
+    if (edge === "column" && operation === "remove") {
+      chain.deleteColumn().run();
+      this.setActiveEdge("column");
+      return;
+    }
+
+    if (edge === "row" && operation === "add") {
       chain.addRowAfter().run();
+      this.setActiveEdge("row");
+      return;
+    }
+
+    if (edge === "row" && operation === "remove") {
+      chain.deleteRow().run();
       this.setActiveEdge("row");
     }
   };
 
-  private handleColumnButtonMouseEnter = () => {
+  private handleColumnControlsMouseEnter = () => {
     this.setActiveEdge("column");
   };
 
-  private handleRowButtonMouseEnter = () => {
+  private handleRowControlsMouseEnter = () => {
     this.setActiveEdge("row");
   };
 
