@@ -1,4 +1,5 @@
 import threadRepo from "@/managers/threadRepo";
+import { noteRepo } from "@/managers/noteRepo";
 import {
   ClusterCircle,
   PositionedEdge,
@@ -13,7 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import NodeChatPreview from "./NodeChatPreview";
+import NodePreview from "./NodePreview";
 import ZoomControls from "./ZoomControls";
 
 // Graph2D에서 사용하는 노드 타입 (PositionedNode 기반)
@@ -25,6 +26,7 @@ type GraphNode = {
   clusterName: string;
   timestamp: number | null;
   numMessages: number;
+  sourceType?: "chat" | "markdown" | "notion";
   createdAt?: number;
   updatedAt?: number;
 };
@@ -128,7 +130,8 @@ function getVisibleGraph(
     // clusterName을 멤버 노드에서 가져옴
     let clusterName: string | undefined;
     allNodes.forEach((n) => {
-      if (!clusterName && sc.nodeIds.includes(n.id)) clusterName = n.clusterName;
+      if (!clusterName && sc.nodeIds.includes(n.id))
+        clusterName = n.clusterName;
     });
 
     // groupPositions에서 force sim으로 계산된 위치 사용 (centroid가 아님)
@@ -259,7 +262,9 @@ function layoutWithCollapsedSubclusters(
 
     let effCount = 0;
     scIdsHere.forEach((scId) => {
-      effCount += collapsedSet.has(scId) ? 1 : (scMap.get(scId)?.nodeIds.length ?? 0);
+      effCount += collapsedSet.has(scId)
+        ? 1
+        : (scMap.get(scId)?.nodeIds.length ?? 0);
     });
     clusterNodes.forEach((n) => {
       if (!nodeToSc.has(n.id)) effCount += 1;
@@ -372,8 +377,16 @@ function layoutWithCollapsedSubclusters(
             isGroup: false,
             memberCount: 1,
             graphNodeIds: [nodeId],
-            x: cx + r * Math.cos(angle) + (r * 0.4) * Math.cos(subAngle) + (Math.random() - 0.5) * 3,
-            y: cy + r * Math.sin(angle) + (r * 0.4) * Math.sin(subAngle) + (Math.random() - 0.5) * 3,
+            x:
+              cx +
+              r * Math.cos(angle) +
+              r * 0.4 * Math.cos(subAngle) +
+              (Math.random() - 0.5) * 3,
+            y:
+              cy +
+              r * Math.sin(angle) +
+              r * 0.4 * Math.sin(subAngle) +
+              (Math.random() - 0.5) * 3,
           });
         });
       }
@@ -388,8 +401,14 @@ function layoutWithCollapsedSubclusters(
           isGroup: false,
           memberCount: 1,
           graphNodeIds: [n.id],
-          x: cx + boundaryRadius * 0.5 * Math.cos(angle) + (Math.random() - 0.5) * 4,
-          y: cy + boundaryRadius * 0.5 * Math.sin(angle) + (Math.random() - 0.5) * 4,
+          x:
+            cx +
+            boundaryRadius * 0.5 * Math.cos(angle) +
+            (Math.random() - 0.5) * 4,
+          y:
+            cy +
+            boundaryRadius * 0.5 * Math.sin(angle) +
+            (Math.random() - 0.5) * 4,
         });
       }
     });
@@ -399,7 +418,8 @@ function layoutWithCollapsedSubclusters(
     // 개별 노드 간 링크 (슈퍼 노드는 링크 없음)
     const nodeIdToEfId = new Map<number, string>();
     effNodes.forEach((en) => {
-      if (!en.isGroup) en.graphNodeIds.forEach((nid) => nodeIdToEfId.set(nid, en.efId));
+      if (!en.isGroup)
+        en.graphNodeIds.forEach((nid) => nodeIdToEfId.set(nid, en.efId));
     });
     const efIdToNode = new Map(effNodes.map((en) => [en.efId, en]));
     const simLinks: { source: EffNode; target: EffNode }[] = [];
@@ -412,7 +432,10 @@ function layoutWithCollapsedSubclusters(
       const key = [sId, tId].sort().join("|");
       if (linkSet.has(key)) return;
       linkSet.add(key);
-      simLinks.push({ source: efIdToNode.get(sId)!, target: efIdToNode.get(tId)! });
+      simLinks.push({
+        source: efIdToNode.get(sId)!,
+        target: efIdToNode.get(tId)!,
+      });
     });
 
     // force simulation: 슈퍼 노드는 멤버 수에 비례한 척력/충돌 반경
@@ -422,7 +445,9 @@ function layoutWithCollapsedSubclusters(
       .force("radial", d3Force.forceRadial(0, cx, cy).strength(0.05))
       .force(
         "charge",
-        d3Force.forceManyBody<EffNode>().strength((d) => -15 - d.memberCount * 8),
+        d3Force
+          .forceManyBody<EffNode>()
+          .strength((d) => -15 - d.memberCount * 8),
       )
       .force(
         "collision",
@@ -475,6 +500,7 @@ function layoutWithCollapsedSubclusters(
             clusterId: graphNode.clusterId,
             clusterName: graphNode.clusterName,
             numMessages: graphNode.numMessages,
+            sourceType: graphNode.sourceType,
             x: nx + 3 * Math.cos(angle),
             y: ny + 3 * Math.sin(angle),
             edgeCount: edgeCounts.get(nodeId) ?? 0,
@@ -492,6 +518,7 @@ function layoutWithCollapsedSubclusters(
           clusterId: graphNode.clusterId,
           clusterName: graphNode.clusterName,
           numMessages: graphNode.numMessages,
+          sourceType: graphNode.sourceType,
           x: nx,
           y: ny,
           edgeCount: edgeCounts.get(nodeId) ?? 0,
@@ -555,8 +582,14 @@ function runClusterCenterSim(
     sim.tick();
     const padding = 50;
     ccNodes.forEach((n) => {
-      n.x = Math.max(n.radius + padding, Math.min(width - n.radius - padding, n.x!));
-      n.y = Math.max(n.radius + padding, Math.min(height - n.radius - padding, n.y!));
+      n.x = Math.max(
+        n.radius + padding,
+        Math.min(width - n.radius - padding, n.x!),
+      );
+      n.y = Math.max(
+        n.radius + padding,
+        Math.min(height - n.radius - padding, n.y!),
+      );
     });
   }
 
@@ -625,7 +658,10 @@ export default function Graph2D({
 
   const [focusNodeId, setFocusNodeId] = useState<number | null>(null);
   const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<{
+    origId: string;
+    sourceType?: "chat" | "markdown" | "notion";
+  } | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const offsetRef = useRef(offset);
@@ -782,13 +818,20 @@ export default function Graph2D({
 
   const renderedDisplayNodes = useMemo(() => {
     // 클러스터 전체 재배치 애니메이션 중: 개별 노드 + 그룹 노드 모두 업데이트
-    if (expandingSubcluster && (animatedPositions.size > 0 || animatedGroupPositions.size > 0)) {
+    if (
+      expandingSubcluster &&
+      (animatedPositions.size > 0 || animatedGroupPositions.size > 0)
+    ) {
       return focusedDisplayNodes.map((n) => {
         if (typeof n.id === "number" && animatedPositions.has(n.id)) {
           const pos = animatedPositions.get(n.id)!;
           return { ...n, x: pos.x, y: pos.y };
         }
-        if (n.isGroupNode && n.subcluster_id && animatedGroupPositions.has(n.subcluster_id)) {
+        if (
+          n.isGroupNode &&
+          n.subcluster_id &&
+          animatedGroupPositions.has(n.subcluster_id)
+        ) {
           const pos = animatedGroupPositions.get(n.subcluster_id)!;
           return { ...n, x: pos.x, y: pos.y };
         }
@@ -854,7 +897,7 @@ export default function Graph2D({
 
   const normalInterEdges = focusedDisplayEdges.filter((e) => !e.isIntraCluster);
 
-  // hoveredId가 변경될 때 thread title 가져오기
+  // hoveredId가 변경될 때 node title 가져오기
   useEffect(() => {
     if (hoveredId == null || typeof hoveredId !== "number") {
       setHoveredThreadTitle(null);
@@ -867,14 +910,25 @@ export default function Graph2D({
       return;
     }
 
-    threadRepo
-      .getThreadById(n.origId)
-      .then((thread) => {
-        setHoveredThreadTitle(thread?.title || null);
-      })
-      .catch(() => {
-        setHoveredThreadTitle(null);
-      });
+    if (n.sourceType === "markdown") {
+      noteRepo
+        .getNoteById(n.origId)
+        .then((note) => {
+          setHoveredThreadTitle(note?.title || null);
+        })
+        .catch(() => {
+          setHoveredThreadTitle(null);
+        });
+    } else {
+      threadRepo
+        .getThreadById(n.origId)
+        .then((thread) => {
+          setHoveredThreadTitle(thread?.title || null);
+        })
+        .catch(() => {
+          setHoveredThreadTitle(null);
+        });
+    }
   }, [hoveredId, positionedNodeMap]);
 
   const onClustersReadyRef = useRef(onClustersReady);
@@ -933,7 +987,13 @@ export default function Graph2D({
 
     const max = Math.max(...visibleNodes.map((n) => n.edgeCount ?? 0), 1);
     setMaxEdgeCount(max);
-  }, [positionedNodes, rawEdges, subclusters, collapsedSubclusters, groupNodePositions]);
+  }, [
+    positionedNodes,
+    rawEdges,
+    subclusters,
+    collapsedSubclusters,
+    groupNodePositions,
+  ]);
 
   const nodeToSubclusterMap = useMemo(
     () => createNodeToSubclusterMap(subclusters),
@@ -966,8 +1026,11 @@ export default function Graph2D({
         // 이 클러스터에 속한 접힌 서브클러스터의 그룹 노드 위치
         subclusters.forEach((sc) => {
           if (!collapsedSubclusters.has(sc.id)) return;
-          const firstNode = positionedNodes.find((n) => sc.nodeIds.includes(n.id));
-          if (!firstNode || firstNode.clusterName !== circle.clusterName) return;
+          const firstNode = positionedNodes.find((n) =>
+            sc.nodeIds.includes(n.id),
+          );
+          if (!firstNode || firstNode.clusterName !== circle.clusterName)
+            return;
           const gp = groupNodePositions.get(sc.id);
           if (gp) points.push(gp);
         });
@@ -990,7 +1053,14 @@ export default function Graph2D({
         };
       }),
     );
-  }, [positionedNodes, collapsedSubclusters, subclusters, groupNodePositions, nodeToSubclusterMap, expandingSubcluster]);
+  }, [
+    positionedNodes,
+    collapsedSubclusters,
+    subclusters,
+    groupNodePositions,
+    nodeToSubclusterMap,
+    expandingSubcluster,
+  ]);
 
   // expand 완료 후 대분류 클러스터 간격을 동적으로 재조정 (스무스 애니메이션)
   useEffect(() => {
@@ -1062,12 +1132,15 @@ export default function Graph2D({
         setGroupNodePositions((prev) => {
           const next = new Map(prev);
           subclusters.forEach((sc) => {
-            const firstNode = positionedNodes.find((n) => sc.nodeIds.includes(n.id));
+            const firstNode = positionedNodes.find((n) =>
+              sc.nodeIds.includes(n.id),
+            );
             if (!firstNode) return;
             const offset = deltas.get(firstNode.clusterName);
             if (!offset) return;
             const cur = next.get(sc.id);
-            if (cur) next.set(sc.id, { x: cur.x + offset.dx, y: cur.y + offset.dy });
+            if (cur)
+              next.set(sc.id, { x: cur.x + offset.dx, y: cur.y + offset.dy });
           });
           return next;
         });
@@ -1439,7 +1512,9 @@ export default function Graph2D({
       setGroupNodePositions((prev) => {
         const next = new Map(prev);
         subclusters.forEach((sc) => {
-          const firstNode = positionedNodes.find((n) => sc.nodeIds.includes(n.id));
+          const firstNode = positionedNodes.find((n) =>
+            sc.nodeIds.includes(n.id),
+          );
           if (!firstNode || firstNode.clusterName !== draggingClusterId) return;
           const cur = next.get(sc.id);
           if (cur) next.set(sc.id, { x: cur.x + dx, y: cur.y + dy });
@@ -1509,8 +1584,9 @@ export default function Graph2D({
     // 드래그가 아니고 노드를 클릭한 경우에만 채팅 미리보기 표시
     if (!wasDragging && prevDraggingNodeId) {
       const node = positionedNodeMap.get(prevDraggingNodeId);
+      console.log(node);
       if (node) {
-        setSelectedNodeId(node.origId);
+        setSelectedNode({ origId: node.origId, sourceType: node.sourceType });
       }
     }
   };
@@ -1600,7 +1676,10 @@ export default function Graph2D({
         const sc = subclusters.find((s) => s.id === subclusterId);
         if (!sc) return;
 
-        const groupPos = groupNodePositions.get(subclusterId) ?? { x: width / 2, y: height / 2 };
+        const groupPos = groupNodePositions.get(subclusterId) ?? {
+          x: width / 2,
+          y: height / 2,
+        };
         expandingGroupCenterRef.current = groupPos;
 
         // collapsedSubclusters 해제 → getVisibleGraph가 개별 노드를 표시
@@ -1619,8 +1698,10 @@ export default function Graph2D({
             .map((id) => positionedNodes.find((n) => n.id === id))
             .filter(Boolean) as PositionedNode[];
           if (memberNodes.length > 0) {
-            const avgX = memberNodes.reduce((s, n) => s + n.x, 0) / memberNodes.length;
-            const avgY = memberNodes.reduce((s, n) => s + n.y, 0) / memberNodes.length;
+            const avgX =
+              memberNodes.reduce((s, n) => s + n.x, 0) / memberNodes.length;
+            const avgY =
+              memberNodes.reduce((s, n) => s + n.y, 0) / memberNodes.length;
             setGroupNodePositions((prev) => {
               const next = new Map(prev);
               next.set(subclusterId, { x: avgX, y: avgY });
@@ -1643,7 +1724,14 @@ export default function Graph2D({
         });
       }
     },
-    [collapsedSubclusters, subclusters, groupNodePositions, positionedNodes, width, height],
+    [
+      collapsedSubclusters,
+      subclusters,
+      groupNodePositions,
+      positionedNodes,
+      width,
+      height,
+    ],
   );
 
   // 서브클러스터 펼치기: 해당 대분류 클러스터 전체 노드 재배치 live sim
@@ -1665,7 +1753,9 @@ export default function Graph2D({
     if (!groupCenter) return;
 
     // 어느 대분류 클러스터인지 확인
-    const firstMemberNode = positionedNodes.find((n) => expandingSc.nodeIds.includes(n.id));
+    const firstMemberNode = positionedNodes.find((n) =>
+      expandingSc.nodeIds.includes(n.id),
+    );
     const clusterName = firstMemberNode?.clusterName;
     if (!clusterName) return;
 
@@ -1674,7 +1764,9 @@ export default function Graph2D({
     const cy = clusterCircle?.centerY ?? groupCenter.y;
 
     // 이 클러스터에 속한 모든 노드
-    const clusterNodes = positionedNodes.filter((n) => n.clusterName === clusterName);
+    const clusterNodes = positionedNodes.filter(
+      (n) => n.clusterName === clusterName,
+    );
 
     // 이 클러스터에 있는 서브클러스터 목록
     const scIdsInCluster = new Set<string>();
@@ -1761,7 +1853,8 @@ export default function Graph2D({
     // 개별 노드 간 링크 구성
     const nodeIdToEfId = new Map<number, string>();
     effNodes.forEach((en) => {
-      if (!en.isGroup && en.nodeId !== undefined) nodeIdToEfId.set(en.nodeId, en.efId);
+      if (!en.isGroup && en.nodeId !== undefined)
+        nodeIdToEfId.set(en.nodeId, en.efId);
     });
     const efIdToNode = new Map(effNodes.map((en) => [en.efId, en]));
     const simLinks: { source: EffNode; target: EffNode }[] = [];
@@ -1784,7 +1877,9 @@ export default function Graph2D({
       .force("radial", d3Force.forceRadial(0, cx, cy).strength(0.08))
       .force(
         "charge",
-        d3Force.forceManyBody<EffNode>().strength((d) => -15 - d.memberCount * 8),
+        d3Force
+          .forceManyBody<EffNode>()
+          .strength((d) => -15 - d.memberCount * 8),
       )
       .force(
         "collision",
@@ -1800,8 +1895,8 @@ export default function Graph2D({
           .distance(20)
           .strength(0.3),
       )
-      .alpha(0.4)          // 초기 힘을 약하게 → 첫 프레임부터 부드럽게 시작
-      .alphaDecay(0.008)   // 느리게 수렴 → 애니메이션 지속시간 증가
+      .alpha(0.4) // 초기 힘을 약하게 → 첫 프레임부터 부드럽게 시작
+      .alphaDecay(0.008) // 느리게 수렴 → 애니메이션 지속시간 증가
       .velocityDecay(0.55) // 마찰 증가 → 노드가 천천히 이동
       .on("tick", () => {
         // 경계 내로 클램핑
@@ -1836,7 +1931,8 @@ export default function Graph2D({
           effNodes.forEach((en) => {
             if (!en.isGroup && en.nodeId !== undefined) {
               const existing = nodeMap.get(en.nodeId);
-              if (existing) nodeMap.set(en.nodeId, { ...existing, x: en.x!, y: en.y! });
+              if (existing)
+                nodeMap.set(en.nodeId, { ...existing, x: en.x!, y: en.y! });
             }
           });
           return Array.from(nodeMap.values());
@@ -1844,7 +1940,8 @@ export default function Graph2D({
         setGroupNodePositions((prev) => {
           const next = new Map(prev);
           effNodes.forEach((en) => {
-            if (en.isGroup && en.scId) next.set(en.scId, { x: en.x!, y: en.y! });
+            if (en.isGroup && en.scId)
+              next.set(en.scId, { x: en.x!, y: en.y! });
           });
           return next;
         });
@@ -2179,12 +2276,13 @@ export default function Graph2D({
         }}
       />
 
-      {/* 노드 클릭 시 채팅 미리보기 */}
-      {selectedNodeId && (
-        <NodeChatPreview
-          threadId={selectedNodeId}
-          onClose={() => setSelectedNodeId(null)}
-          onExpand={() => setSelectedNodeId(null)}
+      {/* 노드 클릭 시 미리보기 */}
+      {selectedNode && (
+        <NodePreview
+          nodeId={selectedNode.origId}
+          sourceType={selectedNode.sourceType}
+          onClose={() => setSelectedNode(null)}
+          onExpand={() => setSelectedNode(null)}
         />
       )}
     </div>

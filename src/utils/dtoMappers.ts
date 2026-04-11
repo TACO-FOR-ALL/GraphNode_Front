@@ -44,6 +44,7 @@ export function mapGraphNode(dto: GraphNodeDto): PositionedNode {
     clusterName: dto.clusterName,
     timestamp: toTimestamp(dto.timestamp),
     numMessages: dto.numMessages,
+    sourceType: dto.sourceType,
     createdAt: toTimestamp(dto.createdAt) ?? undefined,
     updatedAt: toTimestamp(dto.updatedAt) ?? undefined,
     x: 0,
@@ -226,9 +227,7 @@ export function mapConversation(dto: ConversationDto): ChatThread {
   return {
     id: dto.id,
     title: dto.title,
-    messages: dto.messages
-      .filter((m) => !m.deletedAt)
-      .map(mapMessage),
+    messages: dto.messages.filter((m) => !m.deletedAt).map(mapMessage),
     updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
   };
 }

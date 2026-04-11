@@ -255,10 +255,13 @@
     "recommendations": "建议",
     "expand": "查看更多",
     "collapse": "收起",
-    "chatPreview": {
-      "title": "对话预览",
+    "nodePreview": {
+      "chatTitle": "对话预览",
+      "noteTitle": "笔记预览",
       "viewDetail": "查看详情",
       "deletedConversation": "该对话已被删除。",
+      "noteNotFound": "找不到该笔记。",
+      "openNote": "打开笔记",
       "analyzeWithMicroscope": "用Microscope分析",
       "analyzing": "分析中...",
       "viewAnalysis": "查看分析结果"
