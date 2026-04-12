@@ -19,7 +19,8 @@
  * - 서버는 해당 커서 이후 미수신 알림을 MongoDB에서 조회해 먼저 replay합니다.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+import { getGraphNodeBaseUrl } from "@/utils/graphNodeBaseUrl";
+
 const LAST_EVENT_ID_KEY = "notification_last_event_id";
 
 // 서버에서 전송하는 알림 타입 정의
@@ -80,7 +81,7 @@ class NotificationClient {
    * - lastEventId가 있으면 ?since= 파라미터를 붙입니다.
    */
   private buildStreamUrl(): string {
-    const base = `${API_BASE}/v1/notifications/stream`;
+    const base = `${getGraphNodeBaseUrl()}/v1/notifications/stream`;
     if (this.lastEventId) {
       return `${base}?since=${encodeURIComponent(this.lastEventId)}`;
     }
