@@ -104,38 +104,30 @@ export default function TrashPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        {showEmptyConfirm && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowEmptyConfirm(false)}
-              disabled={isEmptying}
-              className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"
-            >
-              {t("settings.dataPrivacy.cancel", "Cancel")}
-            </button>
-            <button
-              onClick={handleEmptyTrash}
-              disabled={isEmptying}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {isEmptying
-                ? t("settings.dataPrivacy.deleting", "Deleting...")
-                : t("settings.dataPrivacy.confirmDelete", "Confirm Delete")}
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-2 border-b border-bg-tertiary">
         {(
           [
-            { key: "all", label: t("settings.dataPrivacy.trash.all", "All"), count: totalItems },
-            { key: "notes", label: t("search.notes", "Notes"), count: trashedNotes.length },
-            { key: "chats", label: t("search.chats", "Chats"), count: trashedThreads.length },
-            { key: "folders", label: t("notes.folders", "Folders"), count: trashedFolders.length },
+            {
+              key: "all",
+              label: t("settings.dataPrivacy.trash.all", "All"),
+              count: totalItems,
+            },
+            {
+              key: "notes",
+              label: t("search.notes", "Notes"),
+              count: trashedNotes.length,
+            },
+            {
+              key: "chats",
+              label: t("search.chats", "Chats"),
+              count: trashedThreads.length,
+            },
+            {
+              key: "folders",
+              label: t("notes.folders", "Folders"),
+              count: trashedFolders.length,
+            },
           ] as const
         ).map(({ key, label, count }) => (
           <button
@@ -197,16 +189,37 @@ export default function TrashPanel() {
           </>
         )}
       </div>
+
       <div>
-        {totalItems > 0 && !showEmptyConfirm && (
-          <button
-            onClick={() => setShowEmptyConfirm(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-          >
-            <IoTrash className="text-base" />
-            {t("settings.dataPrivacy.trash.empty", "Empty Trash")}
-          </button>
-        )}
+        {totalItems > 0 &&
+          (!showEmptyConfirm ? (
+            <button
+              onClick={() => setShowEmptyConfirm(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+            >
+              <IoTrash className="text-base" />
+              {t("settings.dataPrivacy.trash.empty", "Empty Trash")}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowEmptyConfirm(false)}
+                disabled={isEmptying}
+                className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg transition-colors"
+              >
+                {t("settings.dataPrivacy.cancel", "Cancel")}
+              </button>
+              <button
+                onClick={handleEmptyTrash}
+                disabled={isEmptying}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isEmptying
+                  ? t("settings.dataPrivacy.deleting", "Deleting...")
+                  : t("settings.dataPrivacy.confirmDelete", "Confirm Delete")}
+              </button>
+            </div>
+          ))}
       </div>
     </div>
   );
