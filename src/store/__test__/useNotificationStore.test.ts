@@ -33,6 +33,8 @@ const makeEvent = (
 describe("useNotificationStore", () => {
   const setBadge = jest.fn();
   const showNative = jest.fn();
+  const browserNotification = jest.fn();
+  const originalNotification = global.Notification;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -52,6 +54,24 @@ describe("useNotificationStore", () => {
 
     useGraphGenerationStore.setState({ isGenerating: false });
     useSettingsStore.setState({ desktopNotification: true });
+
+    Object.defineProperty(browserNotification, "permission", {
+      value: "granted",
+      configurable: true,
+    });
+    Object.defineProperty(global, "Notification", {
+      value: browserNotification,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(global, "Notification", {
+      value: originalNotification,
+      configurable: true,
+      writable: true,
+    });
   });
 
   test("CONNECTED 이벤트는 연결 상태만 갱신하고 알림 목록에는 추가하지 않음", () => {
@@ -107,6 +127,22 @@ describe("useNotificationStore", () => {
     expect(useNotificationStore.getState().unreadCount).toBe(1);
     expect(setBadge).toHaveBeenCalledWith(1);
     expect(showNative).not.toHaveBeenCalled();
+  });
+
+  test("웹 환경에서는 브라우저 Notification API로 fallback", () => {
+    delete (window as any).notification;
+
+    useNotificationStore
+      .getState()
+      .addNotification(makeEvent("GRAPH_SUMMARY_COMPLETED"));
+
+    expect(showNative).not.toHaveBeenCalled();
+    expect(browserNotification).toHaveBeenCalledTimes(1);
+    expect(browserNotification.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        tag: "GRAPH_SUMMARY_COMPLETED-2026-03-02T00:00:00.000Z",
+      }),
+    );
   });
 
   test("markAsRead, markAllAsRead, clearNotifications는 unreadCount와 badge를 동기화", () => {

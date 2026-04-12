@@ -507,6 +507,32 @@
         "title": "Enable Desktop Notifications",
         "subtitle": "Receive alerts on your desktop even when the app is not in focus"
       },
+      "permission": {
+        "title": "Site Notification Permission",
+        "description": {
+          "granted": "This site has notification permission. Actual popups can still be blocked by your browser or operating system settings.",
+          "default": "Allow this site's notification permission to receive graph alerts on the web.",
+          "denied": "Notifications are blocked for this site in your browser. Re-enable them from the site permissions and come back here.",
+          "unsupported": "This browser does not support web notifications, so popup alerts are unavailable."
+        },
+        "hint": "On the web, GraphNode receives events over SSE while the tab is open and tries to show notifications when this site's permission is granted.",
+        "requirements": "For a notification to actually appear, GraphNode desktop notifications, this site's permission, your browser notification setting, and your OS notification setting must all be enabled. If browser notifications are turned off, it will not work.",
+        "status": {
+          "granted": "Allowed",
+          "default": "Not set",
+          "denied": "Blocked",
+          "unsupported": "Unsupported"
+        },
+        "actions": {
+          "request": "Allow browser notifications",
+          "refresh": "Refresh status",
+          "test": "Send test notification"
+        },
+        "test": {
+          "title": "GraphNode Test Notification",
+          "body": "If you can see this, web browser notifications are working."
+        }
+      },
       "sounds": {
         "title": "Sounds",
         "subtitle": "Play a sound for..."

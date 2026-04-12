@@ -4,6 +4,7 @@ import {
   type NotificationEvent,
 } from "@/managers/notificationClient";
 import { useNotificationStore } from "@/store/useNotificationStore";
+import { isElectron } from "@/utils/platform";
 
 export function useNotificationConnection() {
   const addNotification = useNotificationStore(
@@ -33,7 +34,11 @@ export function useNotificationConnection() {
         );
 
         // 권한 요청 (데스크톱 알림)
-        if (Notification.permission === "default") {
+        if (
+          isElectron() &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "default"
+        ) {
           Notification.requestPermission();
         }
       } catch (err) {

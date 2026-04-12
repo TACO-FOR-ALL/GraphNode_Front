@@ -507,6 +507,32 @@
         "title": "启用桌面通知",
         "subtitle": "即使应用程序不在焦点时也能收到桌面提醒"
       },
+      "permission": {
+        "title": "站点通知权限",
+        "description": {
+          "granted": "此站点已获得通知权限，但实际弹窗仍可能被浏览器或操作系统设置阻止。",
+          "default": "如需在 Web 端接收图谱提醒，请允许此站点的通知权限。",
+          "denied": "此站点的通知已被浏览器阻止。请在地址栏的站点权限中重新允许通知后再返回这里。",
+          "unsupported": "当前浏览器不支持 Web 通知，因此无法显示弹窗提醒。"
+        },
+        "hint": "在 Web 端，GraphNode 会在标签页打开期间通过 SSE 接收事件，并在此站点权限允许时尝试显示通知。",
+        "requirements": "若要真正看到通知，必须同时开启 GraphNode 的桌面通知开关、此站点权限、浏览器通知设置和操作系统通知设置。如果浏览器通知被关闭，将无法生效。",
+        "status": {
+          "granted": "已允许",
+          "default": "未设置",
+          "denied": "已阻止",
+          "unsupported": "不支持"
+        },
+        "actions": {
+          "request": "允许浏览器通知",
+          "refresh": "刷新状态",
+          "test": "发送测试通知"
+        },
+        "test": {
+          "title": "GraphNode 测试通知",
+          "body": "如果你能看到这条通知，说明 Web 浏览器通知工作正常。"
+        }
+      },
       "sounds": {
         "title": "声音",
         "subtitle": "在以下情况播放声音..."
