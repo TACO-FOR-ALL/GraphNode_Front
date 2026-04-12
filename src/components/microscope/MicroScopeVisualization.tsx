@@ -305,8 +305,12 @@ export default function MicroScopeVisualization({
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
-  const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [clickedEdge, setClickedEdge] = useState<{
+    edge: GraphEdge;
+    x: number;
+    y: number;
+  } | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
@@ -608,7 +612,7 @@ export default function MicroScopeVisualization({
   useEffect(() => {
     setSelectedNode(null);
     setHoveredNode(null);
-    setHoveredEdge(null);
+    setClickedEdge(null);
     // 현재 모드가 아닌 쪽의 레이아웃 플래그만 리셋 (다시 진입할 때 재계산)
     if (viewMode === "network") {
       layoutCalculatedRef.current.cluster = false;
@@ -656,10 +660,10 @@ export default function MicroScopeVisualization({
       const dy = Math.abs(e.clientY - mouseDownPos.current.y);
       const isClick = Math.sqrt(dx * dx + dy * dy) < 5;
 
-      // 배경 클릭 시 노드 선택 해제
+      // 배경 클릭 시 노드 선택 및 엣지 팝업 해제
       if (isClick && !(e.target as Element).closest(".node-group")) {
         setSelectedNode(null);
-        setHoveredEdge(null);
+        setClickedEdge(null);
       }
     }
 
@@ -1082,7 +1086,7 @@ export default function MicroScopeVisualization({
                 if (!source || !target) return null;
                 if (!isEdgeVisible(edge)) return null;
 
-                const isHovered = hoveredEdge === edge;
+                const isClicked = clickedEdge?.edge === edge;
                 const isConnectedToSelected =
                   selectedNode &&
                   (edge.source === selectedNode.id ||
@@ -1100,17 +1104,29 @@ export default function MicroScopeVisualization({
                       strokeWidth={12}
                       fill="none"
                       style={{ cursor: "pointer" }}
-                      onMouseEnter={() => setHoveredEdge(edge)}
-                      onMouseLeave={() => setHoveredEdge(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = containerRef.current?.getBoundingClientRect();
+                        if (!rect) return;
+                        setClickedEdge(
+                          isClicked
+                            ? null
+                            : {
+                                edge,
+                                x: e.clientX - rect.left,
+                                y: e.clientY - rect.top,
+                              },
+                        );
+                      }}
                     />
                     <path
                       d={pathData.path}
                       stroke={color}
-                      strokeWidth={isHovered || isConnectedToSelected ? 2 : 1}
+                      strokeWidth={isClicked || isConnectedToSelected ? 2 : 1}
                       strokeOpacity={
                         isCrossCluster
                           ? 0.8
-                          : isHovered || isConnectedToSelected
+                          : isClicked || isConnectedToSelected
                             ? 0.9
                             : 0.4
                       }
@@ -1119,6 +1135,7 @@ export default function MicroScopeVisualization({
                       markerEnd={`url(#arrow-${edge.type})`}
                       style={{
                         transition: "stroke-width 0.2s, stroke-opacity 0.2s",
+                        pointerEvents: "none",
                       }}
                     />
                   </g>
@@ -1157,9 +1174,8 @@ export default function MicroScopeVisualization({
                       <circle
                         r={NODE_RADIUS + 4}
                         fill="none"
-                        stroke={isSelected ? "white" : colors.stroke}
+                        stroke={colors.stroke}
                         strokeWidth={2}
-                        strokeDasharray={isSelected ? "4 2" : "none"}
                         opacity={0.6}
                       />
                     )}
@@ -1235,12 +1251,59 @@ export default function MicroScopeVisualization({
               setOffset({ x: 0, y: 0 });
             }}
           />
+
+          {/* 엣지 클릭 팝업 */}
+          {clickedEdge && (
+            <div
+              className="absolute z-30 w-64 bg-bg-primary border border-base-border rounded-xl shadow-lg p-3"
+              style={{
+                left: Math.min(clickedEdge.x + 12, (containerRef.current?.clientWidth ?? 0) - 272),
+                top: Math.min(clickedEdge.y + 12, (containerRef.current?.clientHeight ?? 0) - 140),
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div
+                  className="inline-block px-2 py-0.5 rounded-lg text-white text-[11px] font-medium"
+                  style={{
+                    backgroundColor: getEdgeColor(clickedEdge.edge.type, edgeTypes),
+                  }}
+                >
+                  {clickedEdge.edge.type}
+                </div>
+                <button
+                  onClick={() => setClickedEdge(null)}
+                  className="w-5 h-5 flex items-center justify-center rounded text-text-tertiary hover:text-text-primary transition-colors text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-[12px] text-text-secondary leading-relaxed mb-2">
+                {clickedEdge.edge.description}
+              </p>
+              {clickedEdge.edge.confidence && (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1 bg-bg-tertiary rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${clickedEdge.edge.confidence * 100}%`,
+                        backgroundColor: getEdgeColor(clickedEdge.edge.type, edgeTypes),
+                      }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-text-tertiary shrink-0">
+                    {Math.round(clickedEdge.edge.confidence * 100)}%
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 상세 정보 패널 - 선택된 노드가 있을 때만 표시, 애니메이션으로 등장 */}
         <div
           className={`w-80 border-l border-text-tertiary/20 overflow-y-auto scroll-hidden bg-bg-secondary/30 transition-all duration-300 ease-out ${
-            selectedNode || hoveredEdge
+            selectedNode
               ? "translate-x-0 opacity-100"
               : "translate-x-full opacity-0 absolute right-0 top-0 bottom-0 pointer-events-none"
           }`}
@@ -1342,39 +1405,6 @@ export default function MicroScopeVisualization({
                     );
                   })}
               </div>
-            </div>
-          ) : hoveredEdge ? (
-            <div className="p-4">
-              <div
-                className="inline-block px-2.5 py-1 rounded-lg text-white text-xs font-medium mb-3"
-                style={{
-                  backgroundColor: getEdgeColor(hoveredEdge.type, edgeTypes),
-                }}
-              >
-                {hoveredEdge.type}
-              </div>
-              <p className="text-sm text-text-secondary leading-relaxed mb-3">
-                {hoveredEdge.description}
-              </p>
-              {hoveredEdge.confidence && (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${hoveredEdge.confidence * 100}%`,
-                        backgroundColor: getEdgeColor(
-                          hoveredEdge.type,
-                          edgeTypes,
-                        ),
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs text-text-placeholder">
-                    {Math.round(hoveredEdge.confidence * 100)}%
-                  </span>
-                </div>
-              )}
             </div>
           ) : null}
         </div>
