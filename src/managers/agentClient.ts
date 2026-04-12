@@ -1,3 +1,5 @@
+import { getGraphNodeBaseUrl } from "@/utils/graphNodeBaseUrl";
+
 export type Mode = "chat" | "summary" | "note";
 
 export type StreamEventType = "status" | "chunk" | "result" | "error";
@@ -42,8 +44,7 @@ export async function agentChatStream({
 }: AgentChatStreamParams & {
   callbacks: StreamEventCallbacks;
 }): Promise<StreamResultEvent | null> {
-  const API_BASE = import.meta.env.VITE_API_BASE;
-  const res = await fetch(`${API_BASE}/v1/agent/chat/stream`, {
+  const res = await fetch(`${getGraphNodeBaseUrl()}/v1/agent/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
