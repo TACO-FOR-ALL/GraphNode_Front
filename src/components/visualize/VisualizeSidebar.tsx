@@ -8,6 +8,7 @@ import {
   FiLayers,
   FiInfo,
   FiActivity,
+  FiFileText,
   FiMessageCircle,
   FiZap,
   FiStar,
@@ -317,7 +318,7 @@ export default function VisualizeSidebar({
               >
                 <div className="px-[6px] space-y-2 pt-1">
                   {/* 요약 텍스트 - 3줄로 제한하고 인라인 더보기 */}
-                  <p className="text-[11px] text-text-tertiary leading-relaxed">
+                  <p className="text-[13px] text-text-tertiary leading-relaxed">
                     {isOverviewTextExpanded ? (
                       <>
                         {graphSummary.overview.summary_text}
@@ -326,7 +327,7 @@ export default function VisualizeSidebar({
                             e.stopPropagation();
                             setIsOverviewTextExpanded(false);
                           }}
-                          className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
+                          className="text-[13px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
                         >
                           {t("visualize.collapse")}
                         </span>
@@ -340,7 +341,7 @@ export default function VisualizeSidebar({
                             e.stopPropagation();
                             setIsOverviewTextExpanded(true);
                           }}
-                          className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
+                          className="text-[13px] text-text-tertiary hover:text-text-secondary transition-colors ml-0.5 underline"
                         >
                           {t("visualize.expand")}
                         </span>
@@ -350,13 +351,13 @@ export default function VisualizeSidebar({
 
                   {/* 주요 통계 */}
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                    <div className="flex items-center gap-3.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
                       <FiMessageCircle
                         size={12}
                         className="text-primary flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="text-[10px] text-text-tertiary truncate">
+                        <p className="text-[13px] text-text-tertiary truncate">
                           {t("visualize.conversations")}
                         </p>
                         <p className="text-[12px] font-medium text-text-primary truncate">
@@ -364,38 +365,56 @@ export default function VisualizeSidebar({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
-                      <FiActivity
+                    <div className="flex items-center gap-3.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                      <FiFileText
                         size={12}
                         className="text-node-focus flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="text-[10px] text-text-tertiary truncate">
-                          {t("visualize.style")}
+                        <p className="text-[13px] text-text-tertiary truncate">
+                          {t("visualize.notes")}
                         </p>
                         <p className="text-[12px] font-medium text-text-primary truncate">
+                          {graphSummary.overview.total_notes ?? "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="col-span-2 flex w-full items-center gap-3.5 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                      <FiActivity
+                        size={12}
+                        className="text-node-focus flex-shrink-0"
+                      />
+                      <div className="min-w-0 flex flex-col w-full">
+                        <p className="text-[13px] text-text-tertiary truncate">
+                          {t("visualize.style")}
+                        </p>
+                        <p className="text-[12px] font-medium text-text-primary break-words whitespace-normal">
                           {graphSummary.overview.conversation_style}
                         </p>
                       </div>
                     </div>
-                  </div>
-
-                  {/* 주요 관심사 - 전체 표시 */}
-                  <div className="mb-1">
-                    <p className="text-[10px] text-text-tertiary mb-1">
-                      {t("visualize.primaryInterests")}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {graphSummary.overview.primary_interests.map(
-                        (interest, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[9px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full"
-                          >
-                            {interest}
-                          </span>
-                        ),
-                      )}
+                    <div className="col-span-2 p-1.5 bg-bg-tertiary/50 rounded-lg min-w-0">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <FiStar
+                          size={12}
+                          className="text-yellow-500 flex-shrink-0"
+                        />
+                        <p className="text-[13px] text-text-tertiary truncate">
+                          {t("visualize.primaryInterests")}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {graphSummary.overview.primary_interests.map(
+                          (interest, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[12px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full"
+                            >
+                              {interest}
+                            </span>
+                          ),
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

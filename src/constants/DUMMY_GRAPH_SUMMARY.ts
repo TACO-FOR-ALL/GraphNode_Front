@@ -3,6 +3,7 @@ import type { GraphSummary } from "../types/GraphSummary";
 export const DUMMY_GRAPH_SUMMARY: GraphSummary = {
   overview: {
     total_conversations: 376,
+    total_notes: 142,
     time_span: "N/A",
     primary_interests: [
       "소프트웨어 및 머신러닝",
@@ -330,6 +331,7 @@ export const DUMMY_GRAPH_SUMMARY: GraphSummary = {
 export const DUMMY_GRAPH_SUMMARY_MINIMAL: GraphSummary = {
   overview: {
     total_conversations: 15,
+    total_notes: 8,
     time_span: "2025-01-01 ~ 2025-01-31",
     primary_interests: ["프로그래밍", "데이터 분석"],
     conversation_style: "탐색형",
