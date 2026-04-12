@@ -147,7 +147,40 @@ function showDesktopNotification(notification: Notification) {
   if (!desktopNotification) return;
 
   const { title, body } = getNotificationContent(notification);
-  window.notification?.showNative({ title, body });
+
+  if (window.notification?.showNative) {
+    window.notification.showNative({ title, body });
+    return;
+  }
+
+  showBrowserNotification(notification, title, body);
+}
+
+function showBrowserNotification(
+  notification: Notification,
+  title: string,
+  body: string,
+) {
+  if (typeof window === "undefined" || typeof Notification === "undefined") {
+    return;
+  }
+
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  try {
+    const browserNotification = new Notification(title, {
+      body,
+      tag: `${notification.type}-${notification.timestamp}`,
+    });
+
+    browserNotification.onclick = () => {
+      window.focus();
+    };
+  } catch (err) {
+    console.warn("[Notification] Failed to show browser notification:", err);
+  }
 }
 
 function getNotificationContent(notification: Notification): {
