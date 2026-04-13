@@ -1,5 +1,3 @@
-import threadRepo from "@/managers/threadRepo";
-import { noteRepo } from "@/managers/noteRepo";
 import {
   ClusterCircle,
   PositionedEdge,
@@ -22,6 +20,7 @@ type GraphNode = {
   id: number;
   userId: string;
   origId: string;
+  nodeTitle?: string;
   clusterId: string;
   clusterName: string;
   timestamp: number | null;
@@ -497,6 +496,7 @@ function layoutWithCollapsedSubclusters(
             userId: graphNode.userId,
             timestamp: graphNode.timestamp,
             origId: graphNode.origId,
+            nodeTitle: graphNode.nodeTitle,
             clusterId: graphNode.clusterId,
             clusterName: graphNode.clusterName,
             numMessages: graphNode.numMessages,
@@ -515,6 +515,7 @@ function layoutWithCollapsedSubclusters(
           userId: graphNode.userId,
           timestamp: graphNode.timestamp,
           origId: graphNode.origId,
+          nodeTitle: graphNode.nodeTitle,
           clusterId: graphNode.clusterId,
           clusterName: graphNode.clusterName,
           numMessages: graphNode.numMessages,
@@ -681,7 +682,7 @@ export default function Graph2D({
   const dragClusterOffset = useRef<{ dx: number; dy: number } | null>(null);
   const lastPointerWasDraggingRef = useRef(false);
   const collapsedSnapshotRef = useRef<Set<string> | null>(null);
-  const focusFetchIdRef = useRef(0);
+
   const [focusLayoutMap, setFocusLayoutMap] = useState<Map<
     number,
     { x: number; y: number }
@@ -905,30 +906,7 @@ export default function Graph2D({
     }
 
     const n = positionedNodeMap.get(hoveredId);
-    if (!n) {
-      setHoveredThreadTitle(null);
-      return;
-    }
-
-    if (n.sourceType === "markdown") {
-      noteRepo
-        .getNoteById(n.origId)
-        .then((note) => {
-          setHoveredThreadTitle(note?.title || null);
-        })
-        .catch(() => {
-          setHoveredThreadTitle(null);
-        });
-    } else {
-      threadRepo
-        .getThreadById(n.origId)
-        .then((thread) => {
-          setHoveredThreadTitle(thread?.title || null);
-        })
-        .catch(() => {
-          setHoveredThreadTitle(null);
-        });
-    }
+    setHoveredThreadTitle(n?.nodeTitle ?? null);
   }, [hoveredId, positionedNodeMap]);
 
   const onClustersReadyRef = useRef(onClustersReady);
@@ -1290,34 +1268,17 @@ export default function Graph2D({
       setNodeTitleMap(new Map());
       return;
     }
-    const requestId = ++focusFetchIdRef.current;
     const focusNodes = focusedDisplayNodes.filter(
       (n) => !n.isGroupNode && typeof n.id === "number",
     );
-
-    Promise.all(
-      focusNodes.map(async (n) => {
-        const nodeId = n.id as number;
-        const pos = positionedNodeMap.get(nodeId);
-        const threadId =
-          pos?.origId ?? (typeof n.label === "string" ? n.label : null);
-        if (!threadId) return null;
-        try {
-          const thread = await threadRepo.getThreadById(threadId);
-          return { id: nodeId, title: thread?.title || threadId };
-        } catch {
-          return { id: nodeId, title: threadId };
-        }
-      }),
-    ).then((results) => {
-      if (focusFetchIdRef.current !== requestId) return;
-      const map = new Map<number, string>();
-      results.forEach((res) => {
-        if (!res) return;
-        map.set(res.id, res.title);
-      });
-      setNodeTitleMap(map);
+    const map = new Map<number, string>();
+    focusNodes.forEach((n) => {
+      const nodeId = n.id as number;
+      const pos = positionedNodeMap.get(nodeId);
+      const title = pos?.nodeTitle ?? pos?.origId ?? String(nodeId);
+      map.set(nodeId, title);
     });
+    setNodeTitleMap(map);
   }, [focusedClusterId, focusedDisplayNodes, positionedNodeMap]);
 
   useEffect(() => {

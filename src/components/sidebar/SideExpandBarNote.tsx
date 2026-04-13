@@ -231,10 +231,10 @@ export default function SideExpandBarNote({
   };
 
   return (
-    <div className="px-3">
+    <div className="flex flex-col flex-1 min-h-0 pl-3 pr-0.5 pb-13">
       {/* 새 노트 혹 폴더 생성*/}
       <div
-        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer mb-2 mx-3 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/note")}
       >
         <img src={NoteIcon} alt="note" className="w-4 h-4 group-hover:hidden" />
@@ -248,137 +248,139 @@ export default function SideExpandBarNote({
         </p>
       </div>
 
-      {isLoading ? (
-        <>
-          {/* 워크스페이스 헤더 (실제) */}
-          <div className="flex items-center gap-1 px-[6px] py-[2px] mb-[6px] text-text-secondary">
-            <span className="text-[12px] font-medium font-noto-sans-kr">
-              {t("notes.workspace")}
-            </span>
-            <IoChevronDown className="text-[12px]" />
-          </div>
-          <SidebarSkeletonList />
-        </>
-      ) : (
-        <>
-      {/* 루트 토글 헤더 */}
-      {buildTree &&
-        (buildTree.rootFolders.length > 0 ||
-          buildTree.rootNotes.length > 0) && (
-          <div className="flex items-center justify-between px-[6px] py-[2px] rounded-[6px] transition-colors duration-300 text-text-secondary group hover:text-primary hover:bg-sidebar-button-hover cursor-pointer mb-[6px]">
-            <div
-              onClick={() => setIsRootExpanded(!isRootExpanded)}
-              className="flex items-center gap-1 cursor-pointer"
-            >
+      <div className="overflow-y-auto flex-1 min-h-0 pb-20">
+        {isLoading ? (
+          <>
+            {/* 워크스페이스 헤더 (실제) */}
+            <div className="flex items-center gap-1 px-[6px] py-[2px] mb-[6px] text-text-secondary">
               <span className="text-[12px] font-medium font-noto-sans-kr">
                 {t("notes.workspace")}
               </span>
-              {isRootExpanded ? (
-                <IoChevronDown className="text-[12px]" />
-              ) : (
-                <IoChevronForward className="text-[12px]" />
+              <IoChevronDown className="text-[12px]" />
+            </div>
+            <SidebarSkeletonList />
+          </>
+        ) : (
+          <>
+            {/* 루트 토글 헤더 */}
+            {buildTree &&
+              (buildTree.rootFolders.length > 0 ||
+                buildTree.rootNotes.length > 0) && (
+                <div className="flex items-center justify-between px-[6px] py-[2px] rounded-[6px] transition-colors duration-300 text-text-secondary group hover:text-primary hover:bg-sidebar-button-hover cursor-pointer mb-[6px]">
+                  <div
+                    onClick={() => setIsRootExpanded(!isRootExpanded)}
+                    className="flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="text-[12px] font-medium font-noto-sans-kr">
+                      {t("notes.workspace")}
+                    </span>
+                    {isRootExpanded ? (
+                      <IoChevronDown className="text-[12px]" />
+                    ) : (
+                      <IoChevronForward className="text-[12px]" />
+                    )}
+                  </div>
+                  <div
+                    onClick={() => handleStartCreateFolder(null)} // 무조건 ROOT에 생성
+                    className="gap-1 p-[1px] hover:bg-[rgba(var(--color-sidebar-folder-plus-hover),0.2)] rounded-[4px] hidden group-hover:block cursor-pointer"
+                  >
+                    <img
+                      src={FolderPlusIconActive}
+                      alt="folder plus"
+                      className="w-4 h-4"
+                    />
+                  </div>
+                </div>
+              )}
+            {/* 루트에 폴더 생성 UI */}
+            {creatingFolderParentId === "ROOT" && (
+              <NewFolderField
+                newFolderName={newFolderName}
+                setNewFolderName={setNewFolderName}
+                handleCreateFolder={handleCreateFolder}
+                handleCancelCreateFolder={handleCancelCreateFolder}
+                depth={0}
+              />
+            )}
+            <div
+              className="flex flex-col gap-[6px] min-h-[100px]"
+              onDragOver={(e) => {
+                if (draggedNoteId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverFolderId("ROOT");
+                }
+              }}
+              onDrop={(e) => {
+                if (draggedNoteId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleFolderDrop(null, e);
+                }
+              }}
+              onDragLeave={(e) => {
+                // 자식 요소로 이동하는 경우가 아니면 리셋
+                const relatedTarget = e.relatedTarget as Node | null;
+                if (
+                  !e.currentTarget.contains(relatedTarget) &&
+                  !(
+                    relatedTarget instanceof Element &&
+                    relatedTarget.closest("[data-folder-id]")
+                  )
+                ) {
+                  if (dragOverFolderId === "ROOT") {
+                    setDragOverFolderId(null);
+                  }
+                }
+              }}
+            >
+              {buildTree && isRootExpanded && (
+                <>
+                  {buildTree.rootFolders.map((folder) => (
+                    <FolderItem
+                      key={folder.id}
+                      folder={folder}
+                      depth={0}
+                      handleDeleteNote={handleDeleteNote}
+                      context={folderItemContext}
+                    />
+                  ))}
+                  {dragOverFolderId === "ROOT" && (
+                    <div className="px-[6px] py-2 rounded-[6px] bg-blue-100 border-2 border-blue-400 border-dashed text-center text-[12px] text-blue-600">
+                      Drop here to move to root
+                    </div>
+                  )}
+                  {buildTree.rootNotes.map((note) => {
+                    const isSelected = selectedId === note.id;
+                    const isDragging = draggedNoteId === note.id;
+                    return (
+                      <div
+                        key={note.id}
+                        draggable
+                        onDragStart={(e) => handleNoteDragStart(note.id, e)}
+                        onDragEnd={handleNoteDragEnd}
+                        className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
+                          isSelected
+                            ? "bg-sidebar-button-hover text-chatbox-active"
+                            : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
+                        } ${isDragging ? "opacity-50" : ""}`}
+                        onClick={() => navigate(`/note/${note.id}`)}
+                      >
+                        <div className="w-[195px] truncate">{note.title}</div>
+                        <FaTrash
+                          className="text-[10px] cursor-pointer hidden group-hover:block"
+                          onClick={() => handleDeleteNote(note.id)}
+                        />
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </div>
-            <div
-              onClick={() => handleStartCreateFolder(null)} // 무조건 ROOT에 생성
-              className="gap-1 p-[1px] hover:bg-[rgba(var(--color-sidebar-folder-plus-hover),0.2)] rounded-[4px] hidden group-hover:block cursor-pointer"
-            >
-              <img
-                src={FolderPlusIconActive}
-                alt="folder plus"
-                className="w-4 h-4"
-              />
-            </div>
-          </div>
-        )}
-      {/* 루트에 폴더 생성 UI */}
-      {creatingFolderParentId === "ROOT" && (
-        <NewFolderField
-          newFolderName={newFolderName}
-          setNewFolderName={setNewFolderName}
-          handleCreateFolder={handleCreateFolder}
-          handleCancelCreateFolder={handleCancelCreateFolder}
-          depth={0}
-        />
-      )}
-      <div
-        className="flex flex-col gap-[6px] min-h-[100px]"
-        onDragOver={(e) => {
-          if (draggedNoteId) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = "move";
-            setDragOverFolderId("ROOT");
-          }
-        }}
-        onDrop={(e) => {
-          if (draggedNoteId) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleFolderDrop(null, e);
-          }
-        }}
-        onDragLeave={(e) => {
-          // 자식 요소로 이동하는 경우가 아니면 리셋
-          const relatedTarget = e.relatedTarget as Node | null;
-          if (
-            !e.currentTarget.contains(relatedTarget) &&
-            !(
-              relatedTarget instanceof Element &&
-              relatedTarget.closest("[data-folder-id]")
-            )
-          ) {
-            if (dragOverFolderId === "ROOT") {
-              setDragOverFolderId(null);
-            }
-          }
-        }}
-      >
-        {buildTree && isRootExpanded && (
-          <>
-            {buildTree.rootFolders.map((folder) => (
-              <FolderItem
-                key={folder.id}
-                folder={folder}
-                depth={0}
-                handleDeleteNote={handleDeleteNote}
-                context={folderItemContext}
-              />
-            ))}
-            {dragOverFolderId === "ROOT" && (
-              <div className="px-[6px] py-2 rounded-[6px] bg-blue-100 border-2 border-blue-400 border-dashed text-center text-[12px] text-blue-600">
-                Drop here to move to root
-              </div>
-            )}
-            {buildTree.rootNotes.map((note) => {
-              const isSelected = selectedId === note.id;
-              const isDragging = draggedNoteId === note.id;
-              return (
-                <div
-                  key={note.id}
-                  draggable
-                  onDragStart={(e) => handleNoteDragStart(note.id, e)}
-                  onDragEnd={handleNoteDragEnd}
-                  className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
-                    isSelected
-                      ? "bg-sidebar-button-hover text-chatbox-active"
-                      : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
-                  } ${isDragging ? "opacity-50" : ""}`}
-                  onClick={() => navigate(`/note/${note.id}`)}
-                >
-                  <div className="w-[195px] truncate">{note.title}</div>
-                  <FaTrash
-                    className="text-[10px] cursor-pointer hidden group-hover:block"
-                    onClick={() => handleDeleteNote(note.id)}
-                  />
-                </div>
-              );
-            })}
           </>
         )}
       </div>
-        </>
-      )}
     </div>
   );
 }

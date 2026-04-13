@@ -40,6 +40,7 @@ export function mapGraphNode(dto: GraphNodeDto): PositionedNode {
     id: dto.id,
     userId: dto.userId,
     origId: dto.origId,
+    nodeTitle: dto.nodeTitle,
     clusterId: dto.clusterId,
     clusterName: dto.clusterName,
     timestamp: toTimestamp(dto.timestamp),
@@ -137,6 +138,7 @@ export function mapGraphSummary(dto: GraphSummaryDto): GraphSummary {
   return {
     overview: {
       total_conversations: dto.overview.total_conversations,
+      total_notes: dto.overview.total_notes,
       time_span: dto.overview.time_span,
       primary_interests: dto.overview.primary_interests,
       conversation_style: dto.overview.conversation_style,

@@ -76,6 +76,7 @@ export default function SideExpandBarChat({
     });
     // 기존 케시를 만료시키고 서버 호출
     await queryClient.invalidateQueries({ queryKey: ["chatThreads"] });
+    await queryClient.invalidateQueries({ queryKey: ["graphData"] });
   };
 
   const startEditing = (thread: ChatThread) => {
@@ -158,9 +159,9 @@ export default function SideExpandBarChat({
   };
 
   return (
-    <div className="px-3 flex flex-col h-full">
+    <div className="flex flex-col h-full pl-3 pr-0.5 pb-13">
       <div
-        className="cursor-pointer mb-2 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer mb-2 mx-3 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/chat")}
       >
         <FaPlus className="w-4 h-4" />
@@ -172,7 +173,7 @@ export default function SideExpandBarChat({
       {isLoading ? (
         <SidebarSkeletonList />
       ) : (
-        <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 scroll-hidden pb-20">
+        <div className="flex flex-col gap-[6px] overflow-y-auto flex-1 min-h-0 pb-20">
           {data &&
             data.map((item) => {
               const isSelected = selectedId === item.id;

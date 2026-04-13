@@ -13,6 +13,8 @@
 export interface OverviewSection {
   /** Total number of conversations in the graph */
   total_conversations: number;
+  /** Total number of notes in the graph, when available */
+  total_notes?: number;
   /** Time range of conversations (e.g., "2024-01-01 ~ 2025-01-01" or "N/A") */
   time_span: string;
   /** Top 3-5 topics/interests identified */
