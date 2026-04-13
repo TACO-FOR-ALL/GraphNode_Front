@@ -1,8 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import threadRepo from "@/managers/threadRepo";
-import NodeChatPreview from "./NodeChatPreview";
+
+import NodePreview from "./NodePreview";
 import ZoomControls from "./ZoomControls";
 
 import {
@@ -138,6 +138,7 @@ export default function Graph3D({
   avatarUrl,
   width,
   height,
+  onWebGLUnavailable,
 }: {
   data: GraphSnapshot;
   zoomToClusterId?: string | null;
@@ -146,13 +147,22 @@ export default function Graph3D({
   avatarUrl?: string | null;
   width: number;
   height: number;
+  onWebGLUnavailable?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [webGLError, setWebGLError] = useState(false);
+  const onWebGLUnavailableRef = useRef(onWebGLUnavailable);
+  onWebGLUnavailableRef.current = onWebGLUnavailable;
+  const [selectedNode, setSelectedNode] = useState<{
+    origId: string;
+    sourceType?: "chat" | "markdown" | "notion";
+  } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const nodeOrigIdMapRef = useRef<Map<string, string>>(new Map());
-  const setSelectedNodeIdRef = useRef(setSelectedNodeId);
-  setSelectedNodeIdRef.current = setSelectedNodeId;
+  const nodeOrigIdMapRef = useRef<
+    Map<string, { origId: string; sourceType?: "chat" | "markdown" | "notion" }>
+  >(new Map());
+  const setSelectedNodeRef = useRef(setSelectedNode);
+  setSelectedNodeRef.current = setSelectedNode;
   const tooltipRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -179,8 +189,7 @@ export default function Graph3D({
   const clusterLabelsRef = useRef<Map<string, THREE.Sprite>>(new Map());
   const nodeLabelsRef = useRef<Map<string, THREE.Sprite>>(new Map());
   const nodeLabelTextRef = useRef<Map<string, string>>(new Map());
-  const nodeTitleCacheRef = useRef<Map<string, string>>(new Map());
-  const labelFetchInFlightRef = useRef<Set<string>>(new Set());
+
   const focusLabelUpdaterRef = useRef<((clusterId: string) => void) | null>(
     null,
   );
@@ -423,10 +432,24 @@ export default function Graph3D({
     );
     camera.position.set(0, 0, 200);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      canvas: canvasRef.current,
-    });
+    // Three.js v0.181.1 버그: catch(error) 블록에서 error 파라미터가 내부 error() 함수를
+    // 섀도잉해 "error is not a function" throw 발생 → WebGL 미지원 환경에서 AppErrorBoundary 발동.
+    // WebGL 컨텍스트 생성 실패 시 여기서 잡아 빈 fallback UI를 렌더링한다.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        canvas: canvasRef.current,
+      });
+    } catch (_) {
+      // 부모가 콜백을 제공한 경우 2D 등 대체 모드로 전환, 없으면 내부 fallback UI 표시
+      if (onWebGLUnavailableRef.current) {
+        onWebGLUnavailableRef.current();
+      } else {
+        setWebGLError(true);
+      }
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
@@ -819,10 +842,22 @@ export default function Graph3D({
 
     // -- B. Nodes (Start exactly at center)
     // Starting them at center prevents them from getting stuck outside initially
-    const nodeOrigIdById = new Map<string, string>();
+    const nodeOrigIdById = new Map<
+      string,
+      {
+        origId: string;
+        nodeTitle?: string;
+        sourceType?: "chat" | "markdown" | "notion";
+      }
+    >();
     data.nodes.forEach((node) => {
-      nodeOrigIdById.set(String(node.id), node.origId);
-      nodeOrigIdMapRef.current.set(String(node.id), node.origId);
+      const entry = {
+        origId: node.origId,
+        nodeTitle: node.nodeTitle,
+        sourceType: node.sourceType,
+      };
+      nodeOrigIdById.set(String(node.id), entry);
+      nodeOrigIdMapRef.current.set(String(node.id), entry);
       const id = String(node.id);
       const cid = (node.clusterId ?? "default") as string;
       const cluster = clusters.get(cid)!;
@@ -852,7 +887,8 @@ export default function Graph3D({
         }),
       );
       mesh.position.set(x, y, z);
-      mesh.userData = { id, clusterId: cid, radius };
+      const nodeTitle = node.nodeTitle ?? node.origId ?? id;
+      mesh.userData = { id, clusterId: cid, radius, nodeTitle };
 
       scene.add(mesh);
       nodeMeshes.push(mesh);
@@ -945,48 +981,11 @@ export default function Graph3D({
         isFocusModeRef.current && focusedClusterIdRef.current === clusterId;
     };
 
-    const ensureNodeLabel = async (nodeId: string, clusterId: string) => {
-      const cached = nodeTitleCacheRef.current.get(nodeId);
-      if (cached) {
-        setNodeLabel(nodeId, cached, clusterId);
-        return;
-      }
-      if (labelFetchInFlightRef.current.has(nodeId)) return;
-      labelFetchInFlightRef.current.add(nodeId);
-
-      const origId = nodeOrigIdById.get(nodeId);
-      const fallback = origId ?? nodeId;
-      try {
-        if (origId) {
-          const thread = await threadRepo.getThreadById(origId);
-          const title = thread?.title || fallback;
-          nodeTitleCacheRef.current.set(nodeId, title);
-          if (
-            isFocusModeRef.current &&
-            focusedClusterIdRef.current === clusterId
-          ) {
-            setNodeLabel(nodeId, title, clusterId);
-          }
-        } else {
-          nodeTitleCacheRef.current.set(nodeId, fallback);
-          if (
-            isFocusModeRef.current &&
-            focusedClusterIdRef.current === clusterId
-          ) {
-            setNodeLabel(nodeId, fallback, clusterId);
-          }
-        }
-      } catch {
-        nodeTitleCacheRef.current.set(nodeId, fallback);
-        if (
-          isFocusModeRef.current &&
-          focusedClusterIdRef.current === clusterId
-        ) {
-          setNodeLabel(nodeId, fallback, clusterId);
-        }
-      } finally {
-        labelFetchInFlightRef.current.delete(nodeId);
-      }
+    const ensureNodeLabel = (nodeId: string, clusterId: string) => {
+      const nodeEntry = nodeOrigIdById.get(nodeId);
+      const title =
+        nodeEntry?.nodeTitle ?? nodeEntry?.origId ?? nodeId;
+      setNodeLabel(nodeId, title, clusterId);
     };
 
     const updateFocusLabels = (clusterId: string) => {
@@ -1310,7 +1309,8 @@ export default function Graph3D({
       }
 
       if (tooltipRef.current) {
-        tooltipRef.current.textContent = mesh.userData.id;
+        tooltipRef.current.textContent =
+          mesh.userData.nodeTitle ?? mesh.userData.id;
         tooltipRef.current.style.left = `${e.clientX + 10}px`;
         tooltipRef.current.style.top = `${e.clientY + 10}px`;
         tooltipRef.current.style.opacity = "1";
@@ -1338,14 +1338,14 @@ export default function Graph3D({
         const id = obj.userData.id;
         focusedNodeId = focusedNodeId === id ? null : id;
 
-        // 노드 클릭 시 채팅 미리보기 표시
+        // 노드 클릭 시 미리보기 표시
         if (focusedNodeId) {
-          const origId = nodeOrigIdById.get(focusedNodeId);
-          if (origId) {
-            setSelectedNodeIdRef.current(origId);
+          const nodeEntry = nodeOrigIdById.get(focusedNodeId);
+          if (nodeEntry) {
+            setSelectedNodeRef.current(nodeEntry);
           }
         } else {
-          setSelectedNodeIdRef.current(null);
+          setSelectedNodeRef.current(null);
         }
       } else {
         if (isFocusModeRef.current) {
@@ -1356,7 +1356,7 @@ export default function Graph3D({
           return;
         }
         focusedNodeId = null;
-        setSelectedNodeIdRef.current(null);
+        setSelectedNodeRef.current(null);
       }
       resetNodeColors();
       resetEdgeStyles();
@@ -1406,8 +1406,6 @@ export default function Graph3D({
       });
       nodeLabelsRef.current.clear();
       nodeLabelTextRef.current.clear();
-      nodeTitleCacheRef.current.clear();
-      labelFetchInFlightRef.current.clear();
       focusLabelUpdaterRef.current = null;
       isFocusModeRef.current = false;
       focusedClusterIdRef.current = null;
@@ -1417,6 +1415,14 @@ export default function Graph3D({
       updateSceneRef.current = null;
       simulation.stop();
       clusterSim.stop();
+      // forceContextLoss는 WebGL 컨텍스트가 정상 생성된 경우에만 유효.
+      // SwiftShader 등 소프트웨어 렌더러에서 컨텍스트 생성이 실패하면
+      // renderer.gl이 null이므로 내부에서 throw → React 렌더 상태 오염 방지를 위해 guard.
+      try {
+        renderer.forceContextLoss();
+      } catch (_) {
+        // context가 생성되지 않은 경우 무시
+      }
       renderer.dispose();
       scene.clear();
     };
@@ -1426,6 +1432,31 @@ export default function Graph3D({
     if (!zoomToClusterId) return;
     zoomToCluster(zoomToClusterId, true);
   }, [zoomToClusterId, zoomToCluster]);
+
+  if (webGLError) {
+    return (
+      <div
+        data-testid="visualize-3d-webgl-error"
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+        className="text-text-secondary"
+      >
+        <p className="text-sm font-medium text-text-primary">
+          3D 그래프를 사용할 수 없습니다
+        </p>
+        <p className="text-xs">
+          이 환경에서는 WebGL을 지원하지 않습니다. 2D 모드를 사용해 주세요.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1455,12 +1486,13 @@ export default function Graph3D({
         onZoomOut={handleZoomOut}
         onReset={handleZoomReset}
       />
-      {/* 노드 클릭 시 채팅 미리보기 */}
-      {selectedNodeId && (
-        <NodeChatPreview
-          threadId={selectedNodeId}
-          onClose={() => setSelectedNodeId(null)}
-          onExpand={() => setSelectedNodeId(null)}
+      {/* 노드 클릭 시 미리보기 */}
+      {selectedNode && (
+        <NodePreview
+          nodeId={selectedNode.origId}
+          sourceType={selectedNode.sourceType}
+          onClose={() => setSelectedNode(null)}
+          onExpand={() => setSelectedNode(null)}
         />
       )}
     </div>

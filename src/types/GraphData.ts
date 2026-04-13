@@ -30,6 +30,7 @@ export type PositionedNode = {
   id: number;
   userId: string;
   origId: string;
+  nodeTitle?: string;
   clusterId: string;
   clusterName: string;
   timestamp: number | null;

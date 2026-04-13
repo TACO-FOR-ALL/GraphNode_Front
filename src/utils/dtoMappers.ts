@@ -40,6 +40,7 @@ export function mapGraphNode(dto: GraphNodeDto): PositionedNode {
     id: dto.id,
     userId: dto.userId,
     origId: dto.origId,
+    nodeTitle: dto.nodeTitle,
     clusterId: dto.clusterId,
     clusterName: dto.clusterName,
     timestamp: toTimestamp(dto.timestamp),
