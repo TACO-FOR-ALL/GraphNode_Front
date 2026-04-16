@@ -45,6 +45,7 @@
   },
   "onboarding": {
     "skip": "スキップ",
+    "back": "戻る",
     "next": "次へ",
     "complete": "完了",
     "intro": {

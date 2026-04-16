@@ -45,6 +45,7 @@
   },
   "onboarding": {
     "skip": "Skip",
+    "back": "Back",
     "next": "Next",
     "complete": "Complete",
     "intro": {

@@ -35,6 +35,7 @@ interface OnboardingState {
 
   startOnboarding: () => void;
   nextStep: () => void;
+  prevStep: () => void;
   skipOnboarding: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
@@ -90,6 +91,15 @@ export const useOnboardingStore = create<OnboardingState>()(
           } else {
             set({ currentStep: nextStep });
           }
+        }
+      },
+
+      prevStep: () => {
+        const { currentStep } = get();
+        const currentIndex = STEP_ORDER.indexOf(currentStep);
+        const prevIndex = currentIndex - 1;
+        if (prevIndex >= 0) {
+          set({ currentStep: STEP_ORDER[prevIndex] });
         }
       },
 
