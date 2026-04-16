@@ -8,6 +8,7 @@ import { toMarkdownFromUnknown } from "../../utils/toMarkdown";
 import { ChatMessage } from "../../types/Chat";
 import type { Status } from "../../types/FileUploadStatus";
 import readJsonWithProgress from "@/utils/readJsonWithProgress";
+import { readZipConversations } from "@/utils/readZipConversations";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
 import useDragDrop from "@/hooks/useDragDrop";
@@ -16,7 +17,6 @@ import {
   IoCloudUpload,
   IoCheckmarkCircle,
   IoAlertCircle,
-  IoFolderOpen,
 } from "react-icons/io5";
 
 export default function DropJsonZone() {
@@ -27,46 +27,106 @@ export default function DropJsonZone() {
 
   const [progress, setProgress] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
+  const [zipFileCount, setZipFileCount] = useState<number | null>(null);
   const latestProgress = useRef(0);
   latestProgress.current = progress;
 
   const {
-    mutate: importJson,
+    mutate: importFile,
     isPending,
     isSuccess,
     isError,
     error,
     reset,
   } = useMutation<void, Error, File>({
-    // 리턴 값이 있다면 void 대신 리턴 값 타입 사용 + return data
     mutationKey: ["import-conversations"],
     mutationFn: async (file) => {
-      // 1) 확장자 체크
-      if (!file.name?.toLowerCase().endsWith(".json")) {
+      setProgress(0);
+      setZipFileCount(null);
+
+      const isZip = file.name.toLowerCase().endsWith(".zip");
+      const isJson = file.name.toLowerCase().endsWith(".json");
+
+      if (!isZip && !isJson) {
         throw new Error(t("settings.dropJsonZone.errorMessage.notJson"));
       }
-      setProgress(0);
 
-      // 2) 읽기
+      // ── ZIP 처리 ─────────────────────────────────────────────────
+      if (isZip) {
+        const entries = await readZipConversations(file, (p) => setProgress(p));
+
+        if (entries.length === 0) {
+          throw new Error(
+            t("settings.dropJsonZone.errorMessage.noConversationJson"),
+          );
+        }
+
+        setZipFileCount(entries.length);
+        setIsParsing(true);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // 모든 매칭 파일 파싱 → 스레드 합산
+        const allThreads = entries.flatMap(({ text }) => {
+          try {
+            return parseConversations(JSON.parse(text)) ?? [];
+          } catch {
+            return [];
+          }
+        });
+
+        const normalized = allThreads.map((th) => ({
+          ...th,
+          messages: th.messages.map((m: ChatMessage) => ({
+            ...m,
+            content:
+              typeof m.content === "string"
+                ? m.content
+                : toMarkdownFromUnknown(m.content),
+          })),
+        }));
+
+        if (normalized.length) {
+          const ids = normalized.map((n) => n.id);
+          await threadRepo.upsertMany(normalized);
+          try {
+            unwrapResponse(
+              await api.conversations.bulkCreate({
+                conversations: normalized.map((n) => ({
+                  id: n.id,
+                  title: n.title,
+                  messages: n.messages.map((m) => ({
+                    id: m.id,
+                    role: m.role,
+                    content: m.content,
+                    createdAt: new Date(m.ts).toISOString(),
+                  })),
+                })),
+              }),
+            );
+          } catch (e) {
+            await threadRepo.deleteMany(ids);
+            throw e;
+          }
+        }
+        return;
+      }
+
+      // ── JSON 처리 (기존 로직) ────────────────────────────────────
       const text = await readJsonWithProgress(
         file as any,
         (p: number) => setProgress(p),
         t,
       );
 
-      // 3) 파싱(UX를 위해 미세 딜레이 유지)
       setIsParsing(true);
       await new Promise((r) => setTimeout(r, 50));
       const data = JSON.parse(text);
 
-      // 4) 변환
       const threads = parseConversations(data);
       if (!threads?.length) {
-        // 비정상/빈 데이터 경고이지만 실패로 보진 않음
         console.warn("parsed threads = 0, JSON shape might differ");
       }
 
-      // 5) content 강제 정규화
       const normalized = (threads || []).map((th) => ({
         ...th,
         messages: th.messages.map((m: ChatMessage) => ({
@@ -78,7 +138,6 @@ export default function DropJsonZone() {
         })),
       }));
 
-      // 6) 로컬 저장 후 서버 저장 - 서버 실패 시 로컬 롤백
       if (normalized.length) {
         const ids = normalized.map((n) => n.id);
         await threadRepo.upsertMany(normalized);
@@ -126,7 +185,6 @@ export default function DropJsonZone() {
     },
   });
 
-  // 상태 라벨(기존 status 대체)
   const status: Status = isPending
     ? "reading"
     : isSuccess
@@ -138,7 +196,7 @@ export default function DropJsonZone() {
   const handleFiles = (files: File[]) => {
     setProgress(0);
     reset();
-    importJson(files[0]);
+    importFile(files[0]);
   };
 
   const { dragProps, isOver } = useDragDrop({ onFileDrop: handleFiles });
@@ -162,7 +220,7 @@ export default function DropJsonZone() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json"
+        accept=".json,.zip"
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
@@ -209,10 +267,20 @@ export default function DropJsonZone() {
           </p>
           <p className="text-xs text-text-secondary">
             {status === "idle" && t("settings.dropJsonZone.maxSize")}
-            {status === "reading" &&
-              !isParsing &&
-              t("settings.dropJsonZone.uploading", { progress })}
-            {isParsing && t("settings.dropJsonZone.parsing")}
+            {status === "reading" && !isParsing && (
+              <>
+                {zipFileCount !== null
+                  ? t("settings.dropJsonZone.uploadingZip", { progress })
+                  : t("settings.dropJsonZone.uploading", { progress })}
+              </>
+            )}
+            {isParsing && (
+              <>
+                {zipFileCount !== null
+                  ? t("settings.dropJsonZone.parsingZip", { count: zipFileCount })
+                  : t("settings.dropJsonZone.parsing")}
+              </>
+            )}
             {status === "error" && error?.message}
           </p>
         </div>
@@ -229,10 +297,13 @@ export default function DropJsonZone() {
           </div>
         )}
 
-        {/* File Type Badge */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-tertiary rounded-full">
-          <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wide">
+        {/* File Type Badges */}
+        <div className="flex items-center gap-1.5">
+          <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-[10px] font-medium text-text-secondary uppercase tracking-wide">
             JSON
+          </span>
+          <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-[10px] font-medium text-text-secondary uppercase tracking-wide">
+            ZIP
           </span>
         </div>
       </div>
