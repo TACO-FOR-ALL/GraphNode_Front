@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useOnboardingStore } from "@/store/useOnboardingStore";
 import OnboardingModal from "./OnboardingModal";
+import { api } from "@/apiClient";
+import { unwrapResponse } from "@/utils/httpResponse";
 import {
   FiBell,
   FiHardDrive,
@@ -18,7 +20,8 @@ const isMac = () =>
 
 export default function OnboardingPermissions() {
   const { t } = useTranslation();
-  const { nextStep } = useOnboardingStore();
+  const { nextStep, selectedUserType, selectedInterests, selectedTone } = useOnboardingStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [notifStatus, setNotifStatus] = useState<PermStatus>("idle");
   const [fdaStatus, setFdaStatus] = useState<PermStatus>("idle");
@@ -148,10 +151,36 @@ export default function OnboardingPermissions() {
 
         {/* 계속 버튼 (권한 없어도 계속 가능) */}
         <button
-          onClick={nextStep}
-          className="w-full px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
+          onClick={async () => {
+            setIsSubmitting(true);
+            try {
+              if (selectedUserType && selectedTone) {
+                unwrapResponse(
+                  await api.me.updateOnboarding({
+                    occupation: selectedUserType,
+                    interests: selectedInterests,
+                    agentMode: selectedTone,
+                  }),
+                );
+              }
+            } catch {
+              // 실패해도 온보딩은 계속 진행
+            } finally {
+              setIsSubmitting(false);
+            }
+            nextStep();
+          }}
+          disabled={isSubmitting}
+          className="w-full px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
-          {t("onboarding.next")}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <FiLoader className="w-4 h-4 animate-spin" />
+              {t("onboarding.next")}
+            </span>
+          ) : (
+            t("onboarding.next")
+          )}
         </button>
 
         <p className="text-xs text-text-tertiary text-center mt-3">

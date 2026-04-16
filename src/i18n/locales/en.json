@@ -45,6 +45,7 @@
   },
   "onboarding": {
     "skip": "Skip",
+    "back": "Back",
     "next": "Next",
     "complete": "Complete",
     "intro": {
@@ -468,16 +469,19 @@
     "terms": "Terms of Service",
     "logout": "Logout",
     "dropJsonZone": {
-      "title": "Drag & Drop JSON File Upload",
-      "description": "Drop your conversations.json file here",
-      "maxSize": "Only one file can be dropped (maximum 512MB recommended)",
+      "title": "Drag & Drop JSON or ZIP File",
+      "description": "Drop your conversations.json file or a ZIP containing it",
+      "maxSize": "JSON or ZIP file only (max 512MB recommended)",
       "uploading": "Uploading (reading)… {progress}%",
-      "parsing": "Parsing (parsing)…",
+      "uploadingZip": "Processing ZIP… {progress}%",
+      "parsing": "Parsing…",
+      "parsingZip": "Parsing {count} file(s)…",
       "done": "Done",
       "error": "Error",
       "fileName": "File Name",
       "errorMessage": {
-        "notJson": "Only JSON files can be uploaded (.json)",
+        "notJson": "Only JSON or ZIP files can be uploaded (.json, .zip)",
+        "noConversationJson": "No conversation*.json file found inside the ZIP",
         "readFailed": "File read failed",
         "parseFailed": "JSON parsing failed",
         "processingFailed": "Processing failed"
