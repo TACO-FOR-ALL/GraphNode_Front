@@ -570,16 +570,9 @@ export default function ChatWindow({
       className="h-full min-h-0 overflow-y-auto overscroll-contain"
       style={{
         position: "relative",
-        scrollbarWidth: "none",
-        msOverflowStyle: "none",
         overflowAnchor: "none",
       }}
     >
-      <style>{`
-        div::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
       <div className="p-4">
         <div ref={topSentinelRef} className="h-px" />
 

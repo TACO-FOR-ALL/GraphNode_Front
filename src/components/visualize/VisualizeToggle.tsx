@@ -268,6 +268,7 @@ export default function VisualizeToggle({
             avatarUrl={avatarUrl}
             width={dimensions.width}
             height={dimensions.height}
+            onWebGLUnavailable={() => setMode("2d")}
           />
         ))}
     </div>

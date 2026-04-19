@@ -51,6 +51,7 @@ export default ({ noteId }: { noteId: string | null }) => {
   const initTimerRef = useRef<number | null>(null);
   const lastEditedNoteIdRef = useRef<string | null>(null);
   const isDirtyRef = useRef(false);
+  const tableReparseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { currentHighlight } = useCurrentHightlightStore();
   const { compressImage, isCompressing } = useImageCompression();
@@ -188,6 +189,12 @@ export default ({ noteId }: { noteId: string | null }) => {
       isInitializingRef.current = true;
 
       try {
+        // 다른 노트로 이동 시 대기 중인 테이블 재파싱 취소
+        if (tableReparseTimeoutRef.current) {
+          clearTimeout(tableReparseTimeoutRef.current);
+          tableReparseTimeoutRef.current = null;
+        }
+
         if (noteId) {
           const note = await noteRepo.getNoteById(noteId);
 
@@ -286,6 +293,54 @@ export default ({ noteId }: { noteId: string | null }) => {
       latestMarkdownRef.current = markdown;
       lastEditedNoteIdRef.current = currentNoteId;
 
+      // 변환되지 않은 마크다운 테이블(단락으로 저장된 파이프 행) 감지
+      let hasPotentialTable = false;
+      editor.state.doc.forEach((node) => {
+        if (node.type.name === "paragraph" && /^\|.+\|/.test(node.textContent)) {
+          hasPotentialTable = true;
+        }
+      });
+
+      if (hasPotentialTable) {
+        if (tableReparseTimeoutRef.current) {
+          clearTimeout(tableReparseTimeoutRef.current);
+        }
+        tableReparseTimeoutRef.current = setTimeout(() => {
+          tableReparseTimeoutRef.current = null;
+          if (isInitializingRef.current) return;
+
+          let currentMarkdown = "";
+          try {
+            currentMarkdown = editor.getMarkdown();
+          } catch {
+            return;
+          }
+
+          const normalized = normalizeTableMarkdown(currentMarkdown);
+          if (normalized === currentMarkdown) return;
+
+          const selectionFrom = editor.state.selection.from;
+
+          isInitializingRef.current = true;
+          editor.commands.setContent(normalized, { contentType: "markdown" });
+          latestMarkdownRef.current = normalized;
+
+          const docSize = editor.state.doc.content.size;
+          try {
+            editor.commands.setTextSelection(Math.min(selectionFrom, docSize));
+          } catch {
+            // ignore
+          }
+
+          setTimeout(() => {
+            isInitializingRef.current = false;
+          }, 100);
+        }, 300);
+      } else if (tableReparseTimeoutRef.current) {
+        clearTimeout(tableReparseTimeoutRef.current);
+        tableReparseTimeoutRef.current = null;
+      }
+
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
@@ -340,6 +395,10 @@ export default ({ noteId }: { noteId: string | null }) => {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
+      // 테이블 재파싱 타임아웃은 여기서 취소하지 않음.
+      // currentNoteId가 null→newId로 바뀌면(새 노트 저장) 이 cleanup이 실행되는데,
+      // 그 시점에 취소하면 400ms 재파싱이 소멸돼 테이블 변환이 안 됨.
+      // 대신 loadNote(noteId 변경 시)에서 취소한다.
 
       void flushSave();
     };
