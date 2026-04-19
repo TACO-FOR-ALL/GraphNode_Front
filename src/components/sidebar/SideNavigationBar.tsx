@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import profile from "@/assets/icons/logo.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
@@ -70,6 +71,7 @@ export default function SideNavigationBar({
   firstLetter: string;
   avatarUrl: string | null;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
@@ -85,16 +87,23 @@ export default function SideNavigationBar({
       <div className="flex flex-col items-center justify-center gap-2">
         <div
           key="logo"
-          className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
+          className={`relative flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
           onClick={() => navigate(`/`)}
+          onMouseEnter={() => setHoveredItem("home")}
+          onMouseLeave={() => setHoveredItem(null)}
         >
           <img src={LogoIcon} alt="logo" className="w-4 h-4" />
+          {hoveredItem === "home" && (
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
+              {t("nav.home")}
+            </div>
+          )}
         </div>
         {NAVIGATION_ITEMS.map((item) => (
           <div
             key={item.id}
             data-testid={`nav-${item.id}`}
-            className={`flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
+            className={`relative flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
             onClick={
               item.id === "search"
                 ? () => setOpenSearch(true)
@@ -117,6 +126,11 @@ export default function SideNavigationBar({
                 alt={item.label}
                 className="w-4 h-4"
               />
+            )}
+            {hoveredItem === item.id && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
+                {t(`nav.${item.id}`)}
+              </div>
             )}
           </div>
         ))}
@@ -156,19 +170,29 @@ export default function SideNavigationBar({
           {unreadCount > 0 && (
             <div className="absolute top-[5px] right-[5px]  bg-red-400 flex items-center justify-center rounded-full w-1 h-1" />
           )}
+          {hoveredItem === "notification" && (
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
+              {t("nav.notification")}
+            </div>
+          )}
         </div>
         <div
           key="graph-lab"
-          className={`flex items-center justify-center rounded-[6px] p-[6px] ${path === "graph-lab" ? "bg-sidebar-tab-selected text-white" : "text-[#6B7280]"} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 cursor-pointer`}
+          className={`relative flex items-center justify-center rounded-[6px] p-[6px] ${path === "graph-lab" ? "bg-sidebar-tab-selected text-white" : "text-[#6B7280]"} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 cursor-pointer`}
           onClick={() => navigate("/graph-lab")}
           onMouseEnter={() => setHoveredItem("graph-lab")}
           onMouseLeave={() => setHoveredItem(null)}
         >
           <IoFlaskOutline className="w-4 h-4" />
+          {hoveredItem === "graph-lab" && (
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
+              {t("nav.graphLab")}
+            </div>
+          )}
         </div>
         <div
           key="settings"
-          className={`flex items-center justify-center rounded-[6px] p-[6px] ${path === "settings" ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300`}
+          className={`relative flex items-center justify-center rounded-[6px] p-[6px] ${path === "settings" ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300`}
           onClick={() => navigate("/settings")}
           onMouseEnter={() => setHoveredItem("settings")}
           onMouseLeave={() => setHoveredItem(null)}
@@ -182,6 +206,11 @@ export default function SideNavigationBar({
             alt="settings"
             className="w-[16px] h-[16px]"
           />
+          {hoveredItem === "settings" && (
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
+              {t("nav.settings")}
+            </div>
+          )}
         </div>
       </div>
     </div>

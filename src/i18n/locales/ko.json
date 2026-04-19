@@ -179,6 +179,17 @@
     "apiKeyRequired": "API 키를 먼저 등록해주세요.",
     "goToSettings": "설정으로 이동"
   },
+  "nav": {
+    "home": "홈 열기",
+    "chat": "채팅 열기",
+    "notes": "노트 열기",
+    "visualize": "그래프 열기",
+    "microscope": "마이크로스코프 열기",
+    "search": "검색 열기",
+    "notification": "알림",
+    "graphLab": "그래프 랩",
+    "settings": "설정"
+  },
   "sideTabBar": {
     "home": "메인 페이지",
     "visualize": "시각화 페이지",

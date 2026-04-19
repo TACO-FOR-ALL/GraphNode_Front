@@ -184,6 +184,17 @@
     "visualize": "Visualize",
     "settings": "Settings"
   },
+  "nav": {
+    "home": "Open Home",
+    "chat": "Open Chat",
+    "notes": "Open Notes",
+    "visualize": "Open Graph",
+    "microscope": "Open Microscope",
+    "search": "Open Search",
+    "notification": "Notifications",
+    "graphLab": "Graph Lab",
+    "settings": "Settings"
+  },
   "aiAgentChatBox": {
     "title": "HI!",
     "subtitle": "How can I help you today?",

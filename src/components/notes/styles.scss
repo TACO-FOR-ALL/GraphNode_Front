@@ -515,6 +515,15 @@
   border-left: 1px solid var(--color-table-action-border);
 }
 
+.tiptap .note-table__controls--column .note-table__action + .note-table__action,
+.ProseMirror
+  .note-table__controls--column
+  .note-table__action
+  + .note-table__action {
+  border-left: none;
+  border-top: 1px solid var(--color-table-action-border);
+}
+
 .tiptap .note-table__action span,
 .ProseMirror .note-table__action span {
   transform: translateY(-0.02em);
@@ -525,6 +534,10 @@
   top: 50%;
   right: 0;
   transform: translate(50%, -50%) scale(0.94);
+  flex-direction: column;
+  height: auto;
+  width: 1.45rem;
+  min-width: 1.45rem;
 }
 
 .tiptap .note-table__controls--row,
@@ -535,7 +548,9 @@
 }
 
 .tiptap .note-table[data-hover-edge="column"] .note-table__controls--column,
-.ProseMirror .note-table[data-hover-edge="column"] .note-table__controls--column,
+.ProseMirror
+  .note-table[data-hover-edge="column"]
+  .note-table__controls--column,
 .tiptap .note-table[data-hover-edge="row"] .note-table__controls--row,
 .ProseMirror .note-table[data-hover-edge="row"] .note-table__controls--row {
   opacity: 1;
@@ -543,8 +558,11 @@
 }
 
 .tiptap .note-table[data-hover-edge="column"] .note-table__controls--column,
-.ProseMirror .note-table[data-hover-edge="column"] .note-table__controls--column {
+.ProseMirror
+  .note-table[data-hover-edge="column"]
+  .note-table__controls--column {
   transform: translate(50%, -50%) scale(1);
+  height: auto;
 }
 
 .tiptap .note-table[data-hover-edge="row"] .note-table__controls--row,
@@ -578,6 +596,44 @@
 .tiptap .note-table[data-table-editable="false"] .note-table__controls,
 .ProseMirror .note-table[data-table-editable="false"] .note-table__controls {
   display: none;
+}
+
+/* 테이블 전체 삭제 버튼 — 우상단 모서리 (테이블 내부) */
+.tiptap .note-table__controls--delete,
+.ProseMirror .note-table__controls--delete {
+  top: 4px;
+  right: 4px;
+  transform: scale(0.88);
+  transform-origin: top right;
+  min-width: 1.1rem;
+  height: 1.1rem;
+}
+
+.tiptap .note-table:hover .note-table__controls--delete,
+.ProseMirror .note-table:hover .note-table__controls--delete {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+  transform-origin: top right;
+}
+
+.tiptap .note-table__action--delete,
+.ProseMirror .note-table__action--delete {
+  color: var(--color-table-action-text);
+
+  svg {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+}
+
+.tiptap .note-table__action--delete:hover,
+.tiptap .note-table__action--delete:focus-visible,
+.ProseMirror .note-table__action--delete:hover,
+.ProseMirror .note-table__action--delete:focus-visible {
+  background: var(--color-error, #ef4444);
+  color: #fff;
+  outline: none;
 }
 
 /* Custom React Component styling */

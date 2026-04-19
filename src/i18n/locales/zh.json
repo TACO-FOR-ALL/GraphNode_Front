@@ -179,6 +179,17 @@
     "apiKeyRequired": "请先注册您的 API 密钥。",
     "goToSettings": "前往设置"
   },
+  "nav": {
+    "home": "打开主页",
+    "chat": "打开聊天",
+    "notes": "打开笔记",
+    "visualize": "打开图谱",
+    "microscope": "打开显微镜",
+    "search": "打开搜索",
+    "notification": "通知",
+    "graphLab": "图谱实验室",
+    "settings": "设置"
+  },
   "sideTabBar": {
     "home": "首页",
     "visualize": "可视化",

@@ -179,6 +179,17 @@
     "apiKeyRequired": "まずAPIキーを登録してください。",
     "goToSettings": "設定へ移動"
   },
+  "nav": {
+    "home": "ホームを開く",
+    "chat": "チャットを開く",
+    "notes": "ノートを開く",
+    "visualize": "グラフを開く",
+    "microscope": "マイクロスコープを開く",
+    "search": "検索を開く",
+    "notification": "通知",
+    "graphLab": "グラフラボ",
+    "settings": "設定"
+  },
   "sideTabBar": {
     "home": "ホーム",
     "visualize": "可視化",

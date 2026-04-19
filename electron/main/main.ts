@@ -39,6 +39,17 @@ function applyHardwareAccelerationSetting() {
 // 앱 시작 전에 설정 적용
 applyHardwareAccelerationSetting();
 
+// WebGL 백엔드 설정 (app.whenReady() 전에 호출해야 함)
+// Chromium GPU 블랙리스트 업데이트 이후 SwiftShader Vulkan 경로에서
+// "BindToCurrentSequence failed" 오류가 발생하는 문제를 방지한다.
+// - macOS: Metal 백엔드를 명시적으로 사용해 SwiftShader 폴백을 우회
+// - Windows: D3D11 백엔드를 사용해 동일한 문제를 방지
+if (process.platform === "darwin") {
+  app.commandLine.appendSwitch("use-angle", "metal");
+} else if (process.platform === "win32") {
+  app.commandLine.appendSwitch("use-angle", "d3d11");
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
