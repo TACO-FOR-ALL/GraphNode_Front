@@ -295,6 +295,38 @@
       "generating": "生成中...",
       "generatingNotice": "生成が完了したら通知します。アプリを閉じないでください。",
       "generatingHelp": "グラフ生成開始の通知を受け取れませんでしたか？または生成に時間がかかりすぎていますか？データ量によって通常10〜30分かかります。100MB以上のチャット履歴の場合は1時間以上かかることがあります。",
+      "progress": {
+        "currentStage": "現在のステージ",
+        "stageProgress": "現在のステージ進行率",
+        "eta": "残り時間の目安",
+        "etaValue": "あと約{{minutes}}分",
+        "etaPending": "計算中",
+        "pendingStage": "リクエストは受け付けられ、処理の準備を進めています。",
+        "stepCounter": "{{current}} / {{total}} ステップ",
+        "status": {
+          "pending": "処理準備中",
+          "started": "ステージ開始",
+          "running": "ステージ進行中",
+          "completed": "ステージ完了"
+        },
+        "steps": {
+          "featureExtraction": {
+            "title": "埋め込み・キーワード抽出"
+          },
+          "clustering": {
+            "title": "トピックのクラスタリング"
+          },
+          "edgeGeneration": {
+            "title": "関係エッジ生成"
+          },
+          "graphMerging": {
+            "title": "グラフ統合"
+          },
+          "clusterOptimization": {
+            "title": "クラスタ最適化"
+          }
+        }
+      },
       "checkStatus": "グラフの状態を確認",
       "retryGenerate": "再リクエスト",
       "status": {
@@ -345,7 +377,7 @@
       "requestedTitle": "グラフ生成開始",
       "requestedBody": "グラフの生成が開始されました。しばらくお待ちください。",
       "completedTitle": "グラフ生成完了",
-      "completedBody": "グラフが正常に生成されました。（ノード: {{nodeCount}}、エッジ: {{edgeCount}}）"
+      "completedBody": "グラフが正常に生成されました。"
     },
     "graphGenerationFailed": {
       "title": "グラフ生成失敗",

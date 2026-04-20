@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import i18n from "@/i18n";
 import type {
+  GraphGenerationProgressPayload,
   NotificationEvent,
   NotificationType,
 } from "@/managers/notificationClient";
@@ -45,7 +46,26 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     // 그래프 생성 상태 업데이트
     if (event.type === "GRAPH_GENERATION_REQUESTED") {
-      useGraphGenerationStore.getState().setGenerating(true);
+      useGraphGenerationStore.getState().markRequested({
+        taskId: getPayloadString(event.payload, "taskId"),
+        timestamp: event.timestamp,
+      });
+    }
+
+    if (event.type === "GRAPH_GENERATION_PROGRESS_UPDATED") {
+      const progressPayload = getGraphGenerationProgressPayload(event);
+
+      if (progressPayload) {
+        useGraphGenerationStore.getState().updateProgress({
+          taskId: progressPayload.taskId,
+          currentStage: progressPayload.currentStage,
+          progressPercent: progressPayload.progressPercent,
+          etaSeconds: progressPayload.etaSeconds,
+          timestamp: event.timestamp,
+        });
+      }
+
+      return;
     }
 
     if (
@@ -53,7 +73,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       event.type === "GRAPH_GENERATION_FAILED" ||
       event.type === "GRAPH_GENERATION_REQUEST_FAILED"
     ) {
-      useGraphGenerationStore.getState().setGenerating(false);
+      useGraphGenerationStore.getState().resetGeneration({
+        taskId: getPayloadString(event.payload, "taskId"),
+        timestamp: event.timestamp,
+      });
+    }
+
+    if (event.type === "GRAPH_GENERATION_COMPLETED") {
+      queryClient.invalidateQueries({ queryKey: ["graphData"] });
     }
 
     if (event.type === "ADD_CONVERSATION_REQUESTED") {
@@ -203,11 +230,10 @@ function getNotificationContent(notification: Notification): {
     case "GRAPH_GENERATION_COMPLETED":
       return {
         title: t("notification.graphGeneration.completedTitle", "Graph Generation Complete"),
-        body: t("notification.graphGeneration.completedBody", {
-          defaultValue: "Graph has been successfully generated. (Nodes: {{nodeCount}}, Edges: {{edgeCount}})",
-          nodeCount: notification.payload.nodeCount,
-          edgeCount: notification.payload.edgeCount,
-        }),
+        body: t(
+          "notification.graphGeneration.completedBody",
+          "Graph has been successfully generated.",
+        ),
       };
     case "GRAPH_GENERATION_FAILED":
       return {
@@ -296,4 +322,41 @@ function getNotificationContent(notification: Notification): {
         body: t("notification.default.body", "You have a new notification."),
       };
   }
+}
+
+function getPayloadString(
+  payload: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = payload[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function getGraphGenerationProgressPayload(
+  event: NotificationEvent,
+): GraphGenerationProgressPayload | null {
+  const taskId = getPayloadString(event.payload, "taskId");
+  const currentStage = getPayloadString(event.payload, "currentStage");
+  const progressPercent = event.payload.progressPercent;
+  const etaSeconds = event.payload.etaSeconds;
+
+  if (
+    !taskId ||
+    !currentStage ||
+    typeof progressPercent !== "number" ||
+    !Number.isFinite(progressPercent)
+  ) {
+    return null;
+  }
+
+  return {
+    taskId,
+    timestamp: event.timestamp,
+    currentStage,
+    progressPercent,
+    etaSeconds:
+      typeof etaSeconds === "number" && Number.isFinite(etaSeconds)
+        ? etaSeconds
+        : null,
+  };
 }

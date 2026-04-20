@@ -156,7 +156,12 @@ export default function DeveloperToolsPanel() {
             conversations: localThreads.map((thread) => ({
               id: thread.id,
               title: thread.title,
-              messages: thread.messages,
+              messages: thread.messages.map((msg) => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                createdAt: new Date(msg.ts).toISOString(),
+              })),
             })),
           }),
         );

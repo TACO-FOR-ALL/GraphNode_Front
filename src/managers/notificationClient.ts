@@ -30,6 +30,7 @@ export type NotificationType =
   | "GRAPH_GENERATION_REQUEST_FAILED" // 그래프 생성 요청 실패
   | "GRAPH_GENERATION_COMPLETED" // 그래프 생성 완료
   | "GRAPH_GENERATION_FAILED" // 그래프 생성 실패
+  | "GRAPH_GENERATION_PROGRESS_UPDATED" // 그래프 생성 진행률 갱신
   | "GRAPH_SUMMARY_REQUESTED" // 그래프 요약 요청됨
   | "GRAPH_SUMMARY_REQUEST_FAILED" // 그래프 요약 요청 실패
   | "GRAPH_SUMMARY_COMPLETED" // 그래프 요약 완료
@@ -44,6 +45,17 @@ export type NotificationType =
   | "MICROSCOPE_DOCUMENT_FAILED" // 마이크로스코프 문서 분석 실패
   | "MICROSCOPE_WORKSPACE_COMPLETED" // 마이크로스코프 워크스페이스 완료
   | "TEST_NOTIFICATION"; // 테스트 알림
+
+export interface BaseNotificationPayload {
+  taskId: string;
+  timestamp: string;
+}
+
+export interface GraphGenerationProgressPayload extends BaseNotificationPayload {
+  currentStage: string;
+  progressPercent: number;
+  etaSeconds: number | null;
+}
 
 // 서버에서 전송하는 알림 이벤트 구조
 export interface NotificationEvent {
