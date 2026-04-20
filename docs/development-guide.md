@@ -41,6 +41,85 @@ npm run dist
 - `npm run dist:mac:all`
 - `npm run dist:windows`
 
+### Sentry 소스맵 업로드
+
+- 빌드 시 `@sentry/vite-plugin`으로 소스맵 업로드를 수행합니다.
+- 업로드는 아래 환경 변수가 모두 준비된 경우에만 활성화됩니다.
+  - `SENTRY_AUTH_TOKEN`
+  - `SENTRY_ORG`
+  - `SENTRY_PROJECT_WEB`
+  - `SENTRY_PROJECT_ELECTRON`
+- 선택:
+  - `SENTRY_RELEASE`
+  - `SENTRY_DEBUG`
+  - `VITE_SENTRY_ENABLED`
+  - `VITE_SENTRY_DSN_WEB`
+  - `VITE_SENTRY_DSN_ELECTRON`
+- 권장 토큰 scope:
+  - `project:releases`
+  - `org:read`
+
+동작 방식:
+
+- `dist/**/*` 렌더러 번들은 웹과 Electron renderer가 함께 사용하므로 `SENTRY_PROJECT_WEB`과 `SENTRY_PROJECT_ELECTRON` 양쪽으로 업로드됩니다.
+- `dist-electron/**/*`의 Electron `main/preload` 번들은 `SENTRY_PROJECT_ELECTRON`으로만 업로드됩니다.
+- 업로드가 성공하면 `.map` 파일은 산출물에서 삭제되어 배포물에 포함되지 않습니다.
+- 런타임 이벤트 전송은 기본적으로 production build 또는 packaged app에서만 활성화됩니다.
+- 로컬에서 강제로 테스트하고 싶으면 `VITE_SENTRY_ENABLED=true`를 주입합니다.
+
+업데이트 규칙:
+
+- 소스맵 업로드는 "한 번만" 하는 작업이 아니라 배포 빌드마다 다시 수행해야 합니다.
+- 이유는 release와 번들 파일명이 빌드 결과물마다 달라질 수 있고, Sentry는 해당 배포본과 일치하는 소스맵이 있어야 스택트레이스를 원본 코드로 복원할 수 있기 때문입니다.
+- SDK 설치/초기화 코드는 한 번 설정하면 되지만, 소스맵 업로드는 새 코드를 배포할 때마다 다시 필요합니다.
+- 코드 변경 없이 Sentry UI 설정만 바꾸는 경우에는 소스맵 재업로드가 필요하지 않습니다.
+
+배포 시 포함되는 명령:
+
+- 웹 배포용 production build:
+
+```bash
+infisical run --env=prod -- npm run build
+```
+
+- Electron 설치 파일 생성:
+
+```bash
+infisical run --env=prod -- npm run dist
+```
+
+- 위 명령들은 `SENTRY_*` 환경 변수가 준비되어 있으면 빌드 과정에서 release 생성과 소스맵 업로드를 함께 수행합니다.
+- 웹은 원격 renderer를 사용하므로 웹 재배포 때 renderer 소스맵이 다시 업로드됩니다.
+- Electron `main/preload` 변경은 설치 파일 안에 포함되므로 앱 배포 전 `npm run dist`로 새 설치본을 다시 빌드해야 합니다.
+
+운영 체크포인트:
+
+- CI/CD 또는 배포 환경(Vercel, Infisical, GitHub Actions 등)에도 동일한 `SENTRY_*` 값을 넣어야 합니다.
+- 로컬에서 한 번 업로드에 성공했더라도 실제 배포 환경에서 다시 빌드하면 그 배포에 맞는 release/소스맵이 다시 생성됩니다.
+- 배포 후에는 Sentry에서 해당 release가 생성되었는지와 source map artifact bundle이 올라갔는지 확인합니다.
+
+프로덕션 검증:
+
+- 환경 변수 점검:
+
+```bash
+infisical run --env=prod -- npm run sentry:check
+```
+
+- 웹/앱 배포 후 DevTools 콘솔에서 아래 명령으로 테스트 이벤트를 보낼 수 있습니다.
+
+```js
+await window.__graphnodeSentry?.smokeTestRenderer();
+await window.__graphnodeSentry?.smokeTestPreload();
+await window.__graphnodeSentry?.smokeTestMain();
+await window.__graphnodeSentry?.smokeTestAll();
+```
+
+- 확인할 항목:
+  - 이벤트가 웹/Electron 프로젝트 각각에 들어오는지
+  - 스택트레이스가 `src/*`, `electron/*` 원본 파일 기준으로 보이는지
+  - release 값이 웹/앱 빌드에서 동일하게 잡히는지
+
 CLI 관련:
 
 - `npm run graphnode -- help`

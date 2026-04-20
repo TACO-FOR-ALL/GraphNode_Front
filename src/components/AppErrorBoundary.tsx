@@ -1,6 +1,7 @@
 import React from "react";
 import { FiAlertTriangle, FiRefreshCw, FiHome } from "react-icons/fi";
 import i18n from "../i18n";
+import { captureRendererException } from "../sentry/renderer";
 
 type AppErrorBoundaryProps = {
   children: React.ReactNode;
@@ -28,6 +29,12 @@ export default class AppErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: unknown, errorInfo: React.ErrorInfo) {
+    captureRendererException(error, {
+      componentStack: errorInfo.componentStack ?? undefined,
+      tags: {
+        error_boundary: "AppErrorBoundary",
+      },
+    });
     console.error("[AppErrorBoundary] Renderer crashed:", error, errorInfo);
   }
 

@@ -388,7 +388,7 @@ export default function VisualizeSidebar({
                         <p className="text-[13px] text-text-tertiary truncate">
                           {t("visualize.style")}
                         </p>
-                        <p className="text-[12px] font-medium text-text-primary break-words whitespace-normal">
+                        <p className="text-[12px] font-medium text-text-primary line-clamp-2">
                           {graphSummary.overview.conversation_style}
                         </p>
                       </div>
@@ -408,7 +408,7 @@ export default function VisualizeSidebar({
                           (interest, idx) => (
                             <span
                               key={idx}
-                              className="text-[12px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full"
+                              className="text-[12px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full max-w-[120px] truncate"
                             >
                               {interest}
                             </span>

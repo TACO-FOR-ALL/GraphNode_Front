@@ -27,6 +27,7 @@ type SQLiteOutboxOp = {
 
 declare global {
   const __APP_VERSION__: string;
+  const __SENTRY_RELEASE__: string;
   interface File {
     path?: string;
   }
@@ -57,6 +58,22 @@ declare global {
       restartApp: () => Promise<void>;
       checkFullDiskAccess: () => Promise<"granted" | "denied">;
       openSystemSettings: (type: "notifications" | "fullDiskAccess") => Promise<void>;
+    };
+    sentryAPI?: {
+      smokeTestPreload: () => Promise<string | null>;
+      smokeTestMain: () => Promise<string | null>;
+    };
+    __graphnodeSentry?: {
+      release: string;
+      runtime: "web" | "electron";
+      smokeTestRenderer: () => Promise<string | null>;
+      smokeTestPreload: () => Promise<string | null>;
+      smokeTestMain: () => Promise<string | null>;
+      smokeTestAll: () => Promise<{
+        renderer: string | null;
+        preload: string | null;
+        main: string | null;
+      }>;
     };
     graphnodeAPI: {
       getPaths: () => Promise<{

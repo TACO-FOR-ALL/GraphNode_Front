@@ -11,9 +11,12 @@ import path from "node:path";
 import fs from "node:fs";
 import ipc from "./ipc";
 import { config, isAllowedOrigin } from "./config";
+import { initMainSentry } from "./sentry";
 
 // CommonJS 모듈을 ES module에서 로드 (import 사용하면 npm run dist에서 오류 발생 함)
 const require = createRequire(import.meta.url);
+
+initMainSentry();
 
 // 앱 시작 전에 하드웨어 가속 설정 적용 (app.whenReady() 전에 호출해야 함)
 function applyHardwareAccelerationSetting() {
