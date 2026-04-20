@@ -1633,6 +1633,41 @@ export default function Graph2D({
       const isCurrentlyCollapsed = collapsedSubclusters.has(subclusterId);
 
       if (isCurrentlyCollapsed) {
+        // 다른 서브클러스터가 펼쳐지는 중이라면, 현재 시뮬레이션 위치를 먼저 커밋
+        // (setPositionedNodes + setExpandingSubcluster가 같은 배치로 처리되어 effect 재실행 1회만 발생)
+        if (simulationRef.current) {
+          const currentNodes = simulationRef.current.nodes() as Array<{
+            isGroup: boolean;
+            scId?: string;
+            nodeId?: number;
+            x?: number;
+            y?: number;
+          }>;
+          setPositionedNodes((prev) => {
+            const nodeMap = new Map(prev.map((n) => [n.id, n]));
+            currentNodes.forEach((en) => {
+              if (!en.isGroup && en.nodeId !== undefined && en.x != null && en.y != null) {
+                const existing = nodeMap.get(en.nodeId);
+                if (existing)
+                  nodeMap.set(en.nodeId, { ...existing, x: en.x, y: en.y });
+              }
+            });
+            return Array.from(nodeMap.values());
+          });
+          setGroupNodePositions((prev) => {
+            const next = new Map(prev);
+            currentNodes.forEach((en) => {
+              if (en.isGroup && en.scId && en.x != null && en.y != null)
+                next.set(en.scId, { x: en.x, y: en.y });
+            });
+            return next;
+          });
+          simulationRef.current.stop();
+          simulationRef.current = null;
+          setAnimatedPositions(new Map());
+          setAnimatedGroupPositions(new Map());
+        }
+
         // 펼치기: groupNodePositions에서 force sim 위치를 ref에 저장 후 live sim 시작
         const sc = subclusters.find((s) => s.id === subclusterId);
         if (!sc) return;
