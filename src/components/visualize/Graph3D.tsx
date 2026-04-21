@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 import NodePreview from "./NodePreview";
-import ZoomControls from "./ZoomControls";
 
 import {
   forceSimulation,
@@ -139,6 +138,9 @@ export default function Graph3D({
   width,
   height,
   onWebGLUnavailable,
+  minEdgeWeight = 0.6,
+  onZoomReady,
+  onScaleChange,
 }: {
   data: GraphSnapshot;
   zoomToClusterId?: string | null;
@@ -148,6 +150,9 @@ export default function Graph3D({
   width: number;
   height: number;
   onWebGLUnavailable?: () => void;
+  minEdgeWeight?: number;
+  onZoomReady?: (fns: { zoomIn: () => void; zoomOut: () => void }) => void;
+  onScaleChange?: (scale: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [webGLError, setWebGLError] = useState(false);
@@ -158,6 +163,8 @@ export default function Graph3D({
     sourceType?: "chat" | "markdown" | "notion";
   } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const minEdgeWeightRef = useRef(minEdgeWeight);
+  minEdgeWeightRef.current = minEdgeWeight;
   const nodeOrigIdMapRef = useRef<
     Map<string, { origId: string; sourceType?: "chat" | "markdown" | "notion" }>
   >(new Map());
@@ -183,6 +190,7 @@ export default function Graph3D({
       targetId: string;
       isIntra: boolean;
       clusterId?: string;
+      weight: number;
     }>
   >([]);
   const clusterObjectsRef = useRef<THREE.Object3D[]>([]);
@@ -415,6 +423,20 @@ export default function Graph3D({
     controls.update();
     setZoomLevel(1);
   }, []);
+
+  useEffect(() => {
+    onZoomReady?.({ zoomIn: handleZoomIn, zoomOut: handleZoomOut });
+  }, [onZoomReady, handleZoomIn, handleZoomOut]);
+
+  useEffect(() => {
+    onScaleChange?.(zoomLevel);
+  }, [onScaleChange, zoomLevel]);
+
+  useEffect(() => {
+    edgeObjsRef.current.forEach((e) => {
+      e.line.visible = e.weight >= minEdgeWeight;
+    });
+  }, [minEdgeWeight]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -912,6 +934,7 @@ export default function Graph3D({
       targetId: string;
       isIntra: boolean;
       clusterId?: string;
+      weight: number;
     };
     const edgeObjs: EdgeObj[] = [];
 
@@ -943,10 +966,14 @@ export default function Graph3D({
         targetId: tId,
         isIntra,
         clusterId: isIntra ? sNode.clusterId : undefined,
+        weight: edge.weight,
       });
     });
 
     edgeObjsRef.current = edgeObjs;
+    edgeObjs.forEach((e) => {
+      e.line.visible = e.weight >= minEdgeWeightRef.current;
+    });
 
     const setNodeLabel = (nodeId: string, text: string, clusterId: string) => {
       const trimmed = truncateLabel(text, 10);
@@ -1478,13 +1505,6 @@ export default function Graph3D({
           transition: "opacity 0.2s",
           zIndex: 10,
         }}
-      />
-      {/* 줌 컨트롤 */}
-      <ZoomControls
-        scale={zoomLevel}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onReset={handleZoomReset}
       />
       {/* 노드 클릭 시 미리보기 */}
       {selectedNode && (

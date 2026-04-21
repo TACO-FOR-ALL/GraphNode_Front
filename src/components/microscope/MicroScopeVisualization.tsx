@@ -1246,10 +1246,6 @@ export default function MicroScopeVisualization({
             scale={scale}
             onZoomIn={() => setScale((s) => Math.min(s * 1.2, 3))}
             onZoomOut={() => setScale((s) => Math.max(s / 1.2, 0.3))}
-            onReset={() => {
-              setScale(1);
-              setOffset({ x: 0, y: 0 });
-            }}
           />
 
           {/* 엣지 클릭 팝업 */}

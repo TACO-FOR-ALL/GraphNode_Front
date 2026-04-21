@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Graph3D from "./Graph3D";
 import Graph2D from "./Graph2D";
+import ZoomControls from "./ZoomControls";
+import EdgeWeightSlider from "./EdgeWeightSlider";
 import ChevronsDown from "@/assets/icons/ChevronsDown.svg";
 import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
 import {
@@ -36,6 +38,23 @@ export default function VisualizeToggle({
   const [nodes, setNodes] = useState<DisplayNode[]>([]);
   const [edges, setEdges] = useState<PositionedEdge[]>([]);
   const [zoomToClusterId, setZoomToClusterId] = useState<string | null>(null);
+
+  const [displayScale, setDisplayScale] = useState(1);
+  const [minEdgeWeight, setMinEdgeWeight] = useState(0.6);
+  const zoomControlsRef = useRef<{ zoomIn: () => void; zoomOut: () => void }>({
+    zoomIn: () => {},
+    zoomOut: () => {},
+  });
+  const handleZoomReady = useCallback(
+    (fns: { zoomIn: () => void; zoomOut: () => void }) => {
+      zoomControlsRef.current = fns;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setDisplayScale(1);
+  }, [mode]);
 
   // 컨테이너 크기 측정
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,9 +238,10 @@ export default function VisualizeToggle({
         </>
       )}
 
-      {/* 2D/3D 모드 토글 패널 */}
-      <div className="absolute z-20 top-6 right-6 flex flex-col gap-2">
-        <div className="flex gap-1 w-[170px] h-[32px] p-[2px] relative bg-bg-tertiary rounded-md">
+      {/* 통합 컨트롤 패널 (2D/3D 토글 + 줌 + 유사도 슬라이더) */}
+      <div className="absolute z-20 top-6 right-6 w-[220px] flex flex-col bg-bg-secondary/90 backdrop-blur rounded-xl shadow-lg border border-text-tertiary/10 overflow-hidden">
+        {/* 2D/3D 모드 토글 */}
+        <div className="flex gap-1 h-[32px] p-[2px] relative bg-bg-tertiary">
           <div
             onClick={() => setMode("2d")}
             data-testid="visualize-mode-2d"
@@ -234,18 +254,35 @@ export default function VisualizeToggle({
           <div
             onClick={() => setMode("3d")}
             data-testid="visualize-mode-3d"
-            className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200  ${
+            className={`flex-1 flex items-center justify-center text-sm font-medium cursor-pointer relative z-10 transition-colors duration-200 ${
               mode === "3d" ? "text-primary" : "text-text-secondary"
             }`}
           >
             3D
           </div>
           <div
-            className={`absolute top-[2px] h-[28px] bg-bg-primary border-base-border border-solid border-[1px] rounded-md w-[81px] transition-all duration-300 ease-in-out ${
-              mode === "3d" ? "left-[87px]" : "left-[2px]"
+            className={`absolute top-[2px] h-[28px] bg-bg-primary border-base-border border-solid border-[1px] rounded-md w-[106px] transition-all duration-300 ease-in-out ${
+              mode === "3d" ? "left-[112px]" : "left-[2px]"
             }`}
-          ></div>
+          />
         </div>
+
+        <div className="h-px bg-text-tertiary/20" />
+
+        {/* 줌 컨트롤 */}
+        <ZoomControls
+          scale={displayScale}
+          onZoomIn={() => zoomControlsRef.current.zoomIn()}
+          onZoomOut={() => zoomControlsRef.current.zoomOut()}
+        />
+
+        <div className="h-px bg-text-tertiary/20" />
+
+        {/* 유사도 슬라이더 */}
+        <EdgeWeightSlider
+          value={minEdgeWeight}
+          onChange={setMinEdgeWeight}
+        />
       </div>
 
       {/* 그래프 렌더링 */}
@@ -261,6 +298,9 @@ export default function VisualizeToggle({
             avatarUrl={avatarUrl}
             onClustersReady={handleClustersReady}
             zoomToClusterId={zoomToClusterId}
+            minEdgeWeight={minEdgeWeight}
+            onZoomReady={handleZoomReady}
+            onScaleChange={setDisplayScale}
           />
         ) : (
           <Graph3D
@@ -269,6 +309,9 @@ export default function VisualizeToggle({
             width={dimensions.width}
             height={dimensions.height}
             onWebGLUnavailable={() => setMode("2d")}
+            minEdgeWeight={minEdgeWeight}
+            onZoomReady={handleZoomReady}
+            onScaleChange={setDisplayScale}
           />
         ))}
     </div>
