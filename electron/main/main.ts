@@ -546,13 +546,17 @@ function createLoginWindow() {
 
   // 팝업(window.open()) 허용 설정 - 도메인 검증 추가
   loginWindow.webContents.setWindowOpenHandler(({ url }) => {
+    const popupOptions = {
+      action: "allow" as const,
+      overrideBrowserWindowOptions: { alwaysOnTop: true },
+    };
     // 개발 모드에서는 모두 허용
     if (!app.isPackaged) {
-      return { action: "allow" };
+      return popupOptions;
     }
     // 배포 모드에서는 허용된 도메인만 허용
     if (isAllowedOrigin(url)) {
-      return { action: "allow" };
+      return popupOptions;
     }
     return { action: "deny" };
   });

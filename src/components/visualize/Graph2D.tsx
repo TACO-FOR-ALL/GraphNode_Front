@@ -13,7 +13,6 @@ import React, {
   useState,
 } from "react";
 import NodePreview from "./NodePreview";
-import ZoomControls from "./ZoomControls";
 
 // Graph2D에서 사용하는 노드 타입 (PositionedNode 기반)
 type GraphNode = {
@@ -621,6 +620,9 @@ type GraphProps = {
     edges: PositionedEdge[],
   ) => void;
   zoomToClusterId?: string | null;
+  minEdgeWeight?: number;
+  onZoomReady?: (fns: { zoomIn: () => void; zoomOut: () => void }) => void;
+  onScaleChange?: (scale: number) => void;
 };
 
 const EMPTY_SUBCLUSTERS: GraphSubcluster[] = [];
@@ -634,6 +636,9 @@ export default function Graph2D({
   avatarUrl,
   onClustersReady,
   zoomToClusterId,
+  minEdgeWeight = 0.6,
+  onZoomReady,
+  onScaleChange,
 }: GraphProps) {
   const subclustersInput = rawSubclusters ?? EMPTY_SUBCLUSTERS;
   const subclusters = subclustersInput;
@@ -672,6 +677,17 @@ export default function Graph2D({
   const [scale, setScale] = useState(1);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
+
+  const zoomIn = useCallback(() => setScale((s) => Math.min(s * 1.2, 5)), []);
+  const zoomOut = useCallback(() => setScale((s) => Math.max(s / 1.2, 0.1)), []);
+
+  useEffect(() => {
+    onZoomReady?.({ zoomIn, zoomOut });
+  }, [onZoomReady, zoomIn, zoomOut]);
+
+  useEffect(() => {
+    onScaleChange?.(scale);
+  }, [onScaleChange, scale]);
 
   const [draggingNodeId, setDraggingNodeId] = useState<number | null>(null);
   const dragNodeOffset = useRef<{ dx: number; dy: number } | null>(null);
@@ -953,9 +969,12 @@ export default function Graph2D({
 
   useEffect(() => {
     if (positionedNodes.length === 0) return;
+    const weightFilteredEdges = rawEdges.filter(
+      (e) => e.weight >= minEdgeWeight,
+    );
     const { visibleNodes, visibleEdges } = getVisibleGraph(
       positionedNodes,
-      rawEdges,
+      weightFilteredEdges,
       subclusters,
       collapsedSubclusters,
       groupNodePositions,
@@ -968,6 +987,7 @@ export default function Graph2D({
   }, [
     positionedNodes,
     rawEdges,
+    minEdgeWeight,
     subclusters,
     collapsedSubclusters,
     groupNodePositions,
@@ -2261,16 +2281,6 @@ export default function Graph2D({
         </g>
       </svg>
 
-      {/* 줌 컨트롤 */}
-      <ZoomControls
-        scale={scale}
-        onZoomIn={() => setScale((s) => Math.min(s * 1.2, 5))}
-        onZoomOut={() => setScale((s) => Math.max(s / 1.2, 0.1))}
-        onReset={() => {
-          setScale(1);
-          setOffset({ x: 0, y: 0 });
-        }}
-      />
 
       {/* 노드 클릭 시 미리보기 */}
       {selectedNode && (
