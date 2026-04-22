@@ -233,3 +233,41 @@ export function mapConversation(dto: ConversationDto): ChatThread {
     updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
   };
 }
+
+// 웹 검색 API 결과 타입 (SDK index에서 미노출이라 로컬 정의)
+type NoteSearchResultDto = {
+  id: string;
+  title: string;
+  snippet: string;
+  folderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ConversationSearchResultDto = {
+  id: string;
+  title: string;
+  snippet: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function mapNoteSearchResult(dto: NoteSearchResultDto): Note {
+  return {
+    id: dto.id,
+    title: dto.title,
+    content: dto.snippet,
+    folderId: dto.folderId,
+    createdAt: toTimestampRequired(dto.createdAt),
+    updatedAt: toTimestampRequired(dto.updatedAt),
+  };
+}
+
+export function mapConversationSearchResult(dto: ConversationSearchResultDto): ChatThread {
+  return {
+    id: dto.id,
+    title: dto.title,
+    messages: [{ id: "0", role: "assistant" as const, content: dto.snippet, ts: 0 }],
+    updatedAt: toTimestampRequired(dto.updatedAt),
+  };
+}

@@ -1,5 +1,4 @@
 import { useState } from "react";
-// import { getEmbedding } from "@/managers/embeddingModelManager";
 import { IoClose, IoSearch } from "react-icons/io5";
 import LogoIcon from "@/assets/icons/logo.svg";
 import { noteRepo } from "@/managers/noteRepo";
@@ -12,6 +11,11 @@ import SearchResult from "./SearchResult";
 import useDebounce from "@/hooks/useDebounce";
 import { useKeybindsStore } from "@/store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
+import { api } from "@/apiClient";
+import { isElectron } from "@/utils/platform";
+import { mapNoteSearchResult, mapConversationSearchResult } from "@/utils/dtoMappers";
+
+type SearchResults = { notes: Note[]; chatThreads: ChatThread[] };
 
 export default function SearchModal({
   setOpenSearch,
@@ -23,11 +27,6 @@ export default function SearchModal({
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const { keybinds } = useKeybindsStore();
 
-  // useEffect(() => {
-  //   if (!debouncedSearchQuery.trim()) return;
-  //   getEmbedding(debouncedSearchQuery);
-  // }, [debouncedSearchQuery]);
-
   const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const searchKeybind = keybinds.search;
   const modifierSymbols = searchKeybind.modifiers.map((mod) => {
@@ -38,16 +37,27 @@ export default function SearchModal({
     return mod;
   });
 
-  const { data: notes } = useQuery<Note[]>({
-    queryKey: ["notes", debouncedSearchQuery],
-    queryFn: () => noteRepo.getNoteByQuery(debouncedSearchQuery),
-    enabled: searchQuery.length > 1,
-  });
+  const { data } = useQuery<SearchResults>({
+    queryKey: ["search", debouncedSearchQuery],
+    queryFn: async () => {
+      const q = debouncedSearchQuery;
 
-  const { data: chatThreads } = useQuery<ChatThread[]>({
-    queryKey: ["chatThreads", debouncedSearchQuery],
-    queryFn: () => threadRepo.getThreadByQuery(debouncedSearchQuery),
-    enabled: searchQuery.length > 1,
+      if (isElectron()) {
+        const [notes, chatThreads] = await Promise.all([
+          noteRepo.getNoteByQuery(q),
+          threadRepo.getThreadByQuery(q),
+        ]);
+        return { notes, chatThreads };
+      }
+
+      const result = await api.search.integratedSearchByKeyword(q);
+      if (!result.isSuccess) return { notes: [], chatThreads: [] };
+      return {
+        notes: result.data.notes.map(mapNoteSearchResult),
+        chatThreads: result.data.chatThreads.map(mapConversationSearchResult),
+      };
+    },
+    enabled: debouncedSearchQuery.length > 1,
   });
 
   return (
@@ -79,14 +89,14 @@ export default function SearchModal({
         <SearchResult
           type="chat"
           title={t("search.chats")}
-          data={chatThreads}
+          data={data?.chatThreads}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
         />
         <SearchResult
           type="note"
           title={t("search.notes")}
-          data={notes}
+          data={data?.notes}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
         />
