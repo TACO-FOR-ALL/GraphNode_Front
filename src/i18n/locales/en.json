@@ -177,7 +177,9 @@
   },
   "toast": {
     "apiKeyRequired": "Please register your API key first.",
-    "goToSettings": "Go to Settings"
+    "goToSettings": "Go to Settings",
+    "freeTierLimitReached": "You've reached the free tier message limit. Register an API key to keep chatting.",
+    "apiKeyRateLimitReached": "Your API key has reached its rate limit. Please try again later."
   },
   "sideTabBar": {
     "home": "Home",
@@ -310,20 +312,23 @@
           "completed": "Stage completed"
         },
         "steps": {
-          "featureExtraction": {
+          "embeddingGeneration": {
             "title": "Embedding"
+          },
+          "keywordExtraction": {
+            "title": "Keyword Extraction"
           },
           "clustering": {
             "title": "Clustering"
           },
-          "edgeGeneration": {
-            "title": "Edge Generation"
+          "similarityCalculation": {
+            "title": "Similarity Calculation"
           },
-          "graphMerging": {
-            "title": "Merging"
+          "graphCorrection": {
+            "title": "Graph Correction"
           },
-          "clusterOptimization": {
-            "title": "Optimization"
+          "metadataGeneration": {
+            "title": "Metadata Generation"
           }
         }
       },
@@ -357,7 +362,8 @@
       "low": "Low"
     },
     "zoomControls": {
-      "reset": "Reset"
+      "reset": "Reset",
+      "edgeWeight": "Similarity"
     }
   },
   "search": {

@@ -296,6 +296,63 @@ export default function ChatSendBox({
                   return;
                 }
 
+                // 프리티어 한도 초과 (429) 처리
+                if (
+                  event.data.statusCode === 429 ||
+                  event.data.status === 429
+                ) {
+                  addToast({
+                    message: t("toast.freeTierLimitReached"),
+                    type: "error",
+                    action: {
+                      label: t("toast.goToSettings"),
+                      onClick: () => navigate("/settings"),
+                    },
+                  });
+
+                  const cleaned429 = await cleanupNewThreadOnError();
+                  if (!cleaned429) {
+                    await threadRepo.deleteMessageFromThreadById(
+                      targetThreadId,
+                      id,
+                    );
+                    await threadRepo.deleteMessageFromThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                    );
+                  }
+
+                  setIsTyping(false);
+                  setSending(false);
+                  sendingRef.current = false;
+                  return;
+                }
+
+                // 등록된 API 키 한도 초과 (503) 처리
+                if (
+                  event.data.statusCode === 503 ||
+                  event.data.status === 503
+                ) {
+                  addToast({
+                    message: t("toast.apiKeyRateLimitReached"),
+                    type: "error",
+                  });
+
+                  const cleaned503 = await cleanupNewThreadOnError();
+                  if (!cleaned503) {
+                    await threadRepo.updateMessageInThreadById(
+                      targetThreadId,
+                      assistantMessageId,
+                      NETWORK_ERROR_CONTENT,
+                    );
+                  }
+
+                  setIsTyping(false);
+                  setSending(false);
+                  sendingRef.current = false;
+                  break;
+                }
+
                 // 네트워크 오류 처리
                 if (isNetworkErrorMessage(event.data.message || "")) {
                   const cleaned = await cleanupNewThreadOnError();
@@ -375,6 +432,16 @@ export default function ChatSendBox({
           errorString.includes("403") ||
           errorString.includes("forbidden");
 
+        const is429Error =
+          streamError?.status === 429 ||
+          streamError?.statusCode === 429 ||
+          errorString.includes("429");
+
+        const is503Error =
+          streamError?.status === 503 ||
+          streamError?.statusCode === 503 ||
+          errorString.includes("503");
+
         console.log("Is 403 error:", is403Error);
 
         if (is403Error) {
@@ -393,6 +460,38 @@ export default function ChatSendBox({
             await threadRepo.deleteMessageFromThreadById(
               targetThreadId,
               assistantMessageId,
+            );
+          }
+        } else if (is429Error) {
+          addToast({
+            message: t("toast.freeTierLimitReached"),
+            type: "error",
+            action: {
+              label: t("toast.goToSettings"),
+              onClick: () => navigate("/settings"),
+            },
+          });
+
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.deleteMessageFromThreadById(targetThreadId, id);
+            await threadRepo.deleteMessageFromThreadById(
+              targetThreadId,
+              assistantMessageId,
+            );
+          }
+        } else if (is503Error) {
+          addToast({
+            message: t("toast.apiKeyRateLimitReached"),
+            type: "error",
+          });
+
+          const cleaned = await cleanupNewThreadOnError();
+          if (!cleaned) {
+            await threadRepo.updateMessageInThreadById(
+              targetThreadId,
+              assistantMessageId,
+              NETWORK_ERROR_CONTENT,
             );
           }
         } else if (isNetworkErrorMessage(streamError?.message || "")) {

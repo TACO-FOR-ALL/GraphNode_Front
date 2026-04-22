@@ -177,7 +177,9 @@
   },
   "toast": {
     "apiKeyRequired": "API 키를 먼저 등록해주세요.",
-    "goToSettings": "설정으로 이동"
+    "goToSettings": "설정으로 이동",
+    "freeTierLimitReached": "무료 플랜 메시지 한도에 도달했습니다. API 키를 등록하면 계속 대화할 수 있어요.",
+    "apiKeyRateLimitReached": "API 키의 사용량 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
   },
   "nav": {
     "home": "홈 열기",
@@ -310,20 +312,23 @@
           "completed": "단계 완료"
         },
         "steps": {
-          "featureExtraction": {
-            "title": "임베딩 및 키워드 추출"
+          "embeddingGeneration": {
+            "title": "임베딩 생성"
+          },
+          "keywordExtraction": {
+            "title": "키워드 추출"
           },
           "clustering": {
-            "title": "주제 클러스터링"
+            "title": "클러스터링"
           },
-          "edgeGeneration": {
-            "title": "관계 엣지 생성"
+          "similarityCalculation": {
+            "title": "유사도 계산"
           },
-          "graphMerging": {
-            "title": "그래프 병합"
+          "graphCorrection": {
+            "title": "그래프 보정"
           },
-          "clusterOptimization": {
-            "title": "클러스터 최적화"
+          "metadataGeneration": {
+            "title": "메타데이터 생성"
           }
         }
       },
@@ -357,7 +362,8 @@
       "low": "낮음"
     },
     "zoomControls": {
-      "reset": "초기화"
+      "reset": "초기화",
+      "edgeWeight": "유사도"
     }
   },
   "search": {

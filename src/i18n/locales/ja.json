@@ -177,7 +177,9 @@
   },
   "toast": {
     "apiKeyRequired": "まずAPIキーを登録してください。",
-    "goToSettings": "設定へ移動"
+    "goToSettings": "設定へ移動",
+    "freeTierLimitReached": "無料プランのメッセージ上限に達しました。APIキーを登録すると引き続きご利用いただけます。",
+    "apiKeyRateLimitReached": "APIキーの使用量の上限に達しました。しばらくしてからもう一度お試しください。"
   },
   "nav": {
     "home": "ホームを開く",
@@ -310,20 +312,23 @@
           "completed": "ステージ完了"
         },
         "steps": {
-          "featureExtraction": {
-            "title": "埋め込み・キーワード抽出"
+          "embeddingGeneration": {
+            "title": "埋め込み生成"
+          },
+          "keywordExtraction": {
+            "title": "キーワード抽出"
           },
           "clustering": {
-            "title": "トピックのクラスタリング"
+            "title": "クラスタリング"
           },
-          "edgeGeneration": {
-            "title": "関係エッジ生成"
+          "similarityCalculation": {
+            "title": "類似度計算"
           },
-          "graphMerging": {
-            "title": "グラフ統合"
+          "graphCorrection": {
+            "title": "グラフ補正"
           },
-          "clusterOptimization": {
-            "title": "クラスタ最適化"
+          "metadataGeneration": {
+            "title": "メタデータ生成"
           }
         }
       },
@@ -357,7 +362,8 @@
       "low": "低"
     },
     "zoomControls": {
-      "reset": "リセット"
+      "reset": "リセット",
+      "edgeWeight": "類似度"
     }
   },
   "search": {

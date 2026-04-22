@@ -177,7 +177,9 @@
   },
   "toast": {
     "apiKeyRequired": "请先注册您的 API 密钥。",
-    "goToSettings": "前往设置"
+    "goToSettings": "前往设置",
+    "freeTierLimitReached": "您已达到免费套餐的消息限制。注册 API 密钥即可继续对话。",
+    "apiKeyRateLimitReached": "您的 API 密钥已达到使用限制。请稍后再试。"
   },
   "nav": {
     "home": "打开主页",
@@ -310,20 +312,23 @@
           "completed": "阶段完成"
         },
         "steps": {
-          "featureExtraction": {
-            "title": "嵌入与关键词提取"
+          "embeddingGeneration": {
+            "title": "生成嵌入"
+          },
+          "keywordExtraction": {
+            "title": "提取关键词"
           },
           "clustering": {
-            "title": "主题聚类"
+            "title": "聚类"
           },
-          "edgeGeneration": {
-            "title": "关系边生成"
+          "similarityCalculation": {
+            "title": "相似度计算"
           },
-          "graphMerging": {
-            "title": "图结构合并"
+          "graphCorrection": {
+            "title": "图谱校正"
           },
-          "clusterOptimization": {
-            "title": "聚类优化"
+          "metadataGeneration": {
+            "title": "生成元数据"
           }
         }
       },
@@ -357,7 +362,8 @@
       "low": "低"
     },
     "zoomControls": {
-      "reset": "重置"
+      "reset": "重置",
+      "edgeWeight": "相似度"
     }
   },
   "search": {
