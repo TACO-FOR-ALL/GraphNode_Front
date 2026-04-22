@@ -34,10 +34,21 @@ import { useTranslation } from "react-i18next";
 import normalizeMathMarkdown from "@/utils/normalizeMathMarkdown";
 import normalizeTableMarkdown from "@/utils/normalizeTableMarkdown";
 import { NoteTable } from "./NoteTable";
+import { NoteLinkExtension } from "./NoteLinkExtension";
+import { NoteLinkSuggestionPortal } from "./NoteLinkSuggestionPortal";
+import { noteLinkStore } from "./noteLinkStore";
 
 const lowlight = createLowlight(common);
 
-export default ({ noteId }: { noteId: string | null }) => {
+export default ({
+  noteId,
+  scrollToHeading,
+  onNavigateToNote,
+}: {
+  noteId: string | null;
+  scrollToHeading?: string | null;
+  onNavigateToNote?: (noteId: string, headingText?: string | null) => void;
+}) => {
   const { t } = useTranslation();
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -119,6 +130,7 @@ export default ({ noteId }: { noteId: string | null }) => {
         autolink: true,
         linkOnPaste: true,
         openOnClick: false,
+        protocols: ["note"],
         HTMLAttributes: {
           target: "_blank",
           rel: "noopener noreferrer nofollow",
@@ -168,6 +180,7 @@ export default ({ noteId }: { noteId: string | null }) => {
       }),
       Mathematics,
       CustomReactNode,
+      NoteLinkExtension,
       Markdown,
     ],
     content: "",
@@ -404,6 +417,30 @@ export default ({ noteId }: { noteId: string | null }) => {
     };
   }, [editor, currentNoteId]);
 
+  // 현재 노트 ID를 store에 동기화 (자기 자신 제외 필터링용)
+  useEffect(() => {
+    noteLinkStore.setCurrentNoteId(currentNoteId);
+  }, [currentNoteId]);
+
+  // scrollToHeading: 노트 로드 후 해당 제목으로 스크롤
+  useEffect(() => {
+    if (!scrollToHeading || !editor) return;
+    const timer = setTimeout(() => {
+      const editorEl = editor.view?.dom;
+      if (!editorEl) return;
+      const headings = Array.from(
+        editorEl.querySelectorAll("h1, h2, h3, h4, h5, h6"),
+      );
+      for (const h of headings) {
+        if (h.textContent?.trim() === scrollToHeading) {
+          h.scrollIntoView({ behavior: "smooth", block: "start" });
+          break;
+        }
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [editor, scrollToHeading, noteId]);
+
   useEffect(() => {
     const onPageHide = () => {
       if (saveTimeoutRef.current) {
@@ -533,6 +570,53 @@ export default ({ noteId }: { noteId: string | null }) => {
     };
   }, [editor, compressImage, addToast, t]);
 
+  // onNavigateToNote ref - stale closure 방지
+  const onNavigateToNoteRef = useRef(onNavigateToNote);
+  useEffect(() => {
+    onNavigateToNoteRef.current = onNavigateToNote;
+  }, [onNavigateToNote]);
+
+  // 캡처 페이즈로 ProseMirror의 커서 이동보다 먼저 링크 클릭을 처리
+  useEffect(() => {
+    if (!editor) return;
+    let editorEl: HTMLElement | null = null;
+    try {
+      editorEl = editor.view?.dom ?? null;
+    } catch {
+      return;
+    }
+    if (!editorEl) return;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest("a");
+      if (!link) return;
+
+      const href = link.getAttribute("href") || "";
+
+      if (href.startsWith("note://")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const withoutScheme = href.slice("note://".length);
+        const qIdx = withoutScheme.indexOf("?");
+        const targetNoteId =
+          qIdx >= 0 ? withoutScheme.slice(0, qIdx) : withoutScheme;
+        const queryStr = qIdx >= 0 ? withoutScheme.slice(qIdx + 1) : "";
+        const headingText = new URLSearchParams(queryStr).get("heading");
+        onNavigateToNoteRef.current?.(targetNoteId, headingText);
+      } else if (
+        href.startsWith("http://") ||
+        href.startsWith("https://")
+      ) {
+        e.preventDefault();
+        window.open(href, "_blank", "noopener noreferrer");
+      }
+    };
+
+    editorEl.addEventListener("click", handleClick, true);
+    return () => editorEl?.removeEventListener("click", handleClick, true);
+  }, [editor]);
+
   return (
     <div
       data-testid="note-editor"
@@ -568,6 +652,7 @@ export default ({ noteId }: { noteId: string | null }) => {
           <div>Loading editor…</div>
         )}
       </div>
+      <NoteLinkSuggestionPortal />
     </div>
   );
 };
