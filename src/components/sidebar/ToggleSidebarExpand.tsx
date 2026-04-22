@@ -1,4 +1,4 @@
-import SideExpandPanelIcon from "@/assets/icons/panel.svg";
+import { RiSidebarFoldLine, RiSidebarUnfoldLine } from "react-icons/ri";
 
 export default function ToggleSidebarExpand({
   isExpanded,
@@ -9,12 +9,17 @@ export default function ToggleSidebarExpand({
 }) {
   return (
     <div className="flex px-3 py-4">
-      <img
-        onClick={() => setIsExpanded(!isExpanded)}
-        src={SideExpandPanelIcon}
-        alt="side expand panel"
-        className="w-4 h-4 ml-auto"
-      />
+      {isExpanded ? (
+        <RiSidebarFoldLine
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-4 h-4 ml-auto cursor-pointer text-text-secondary hover:text-primary transition-colors"
+        />
+      ) : (
+        <RiSidebarUnfoldLine
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-4 h-4 ml-auto cursor-pointer text-text-secondary hover:text-primary transition-colors"
+        />
+      )}
     </div>
   );
 }

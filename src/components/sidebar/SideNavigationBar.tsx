@@ -1,63 +1,30 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import profile from "@/assets/icons/logo.svg";
 import LogoIcon from "@/assets/icons/logo.svg";
-import ChatIcon from "@/assets/icons/chat.svg";
-import NoteIcon from "@/assets/icons/note.svg";
-import VisualizeIcon from "@/assets/icons/share.svg";
-import SearchIcon from "@/assets/icons/search.svg";
-import ChatIconActive from "@/assets/icons/chat_active.svg";
-import NoteIconActive from "@/assets/icons/note_active.svg";
-import VisualizeIconActive from "@/assets/icons/share_active.svg";
-import SearchIconActive from "@/assets/icons/search_active.svg";
-import SettingsIcon from "@/assets/icons/settings.svg";
-import SettingsIconActive from "@/assets/icons/settings_active.svg";
+import { RiChatNewLine } from "react-icons/ri";
+import { FiFileText, FiSearch, FiSettings, FiShare2 } from "react-icons/fi";
 import {
   IoNotificationsOutline,
   IoNotificationsOffOutline,
   IoFlaskOutline,
 } from "react-icons/io5";
+import { IconType } from "react-icons/lib";
 import { TbMicroscope } from "react-icons/tb";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
-type NavItem =
-  | {
-      id: string;
-      icon: string;
-      iconAcitve: string;
-      label: string;
-      isReactIcon?: false;
-    }
-  | {
-      id: string;
-      ReactIcon: React.ComponentType<{ className?: string }>;
-      label: string;
-      isReactIcon: true;
-    };
+type NavItem = {
+  id: string;
+  Icon: IconType;
+};
 
 const NAVIGATION_ITEMS: NavItem[] = [
-  { id: "chat", icon: ChatIcon, iconAcitve: ChatIconActive, label: "chat" },
-  { id: "notes", icon: NoteIcon, iconAcitve: NoteIconActive, label: "notes" },
-  {
-    id: "visualize",
-    icon: VisualizeIcon,
-    iconAcitve: VisualizeIconActive,
-    label: "visualize",
-  },
-  {
-    id: "microscope",
-    ReactIcon: TbMicroscope,
-    label: "microscope",
-    isReactIcon: true,
-  },
-  {
-    id: "search",
-    icon: SearchIcon,
-    iconAcitve: SearchIconActive,
-    label: "search",
-  },
+  { id: "chat", Icon: RiChatNewLine },
+  { id: "notes", Icon: FiFileText },
+  { id: "visualize", Icon: FiShare2 },
+  { id: "microscope", Icon: TbMicroscope },
+  { id: "search", Icon: FiSearch },
 ];
 
 export default function SideNavigationBar({
@@ -79,6 +46,8 @@ export default function SideNavigationBar({
   const desktopNotification = useSettingsStore(
     (state) => state.desktopNotification,
   );
+  const getIconClassName = (isHighlighted: boolean) =>
+    `w-4 h-4 ${isHighlighted ? "text-white" : "text-text-secondary"}`;
 
   return (
     <div
@@ -99,37 +68,25 @@ export default function SideNavigationBar({
             </div>
           )}
         </div>
-        {NAVIGATION_ITEMS.map((item) => (
+        {NAVIGATION_ITEMS.map(({ id, Icon }) => (
           <div
-            key={item.id}
-            data-testid={`nav-${item.id}`}
-            className={`relative flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${item.id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
+            key={id}
+            data-testid={`nav-${id}`}
+            className={`relative flex items-center justify-center text-text-secondary text-[16px] p-[6px] rounded-[6px] ${id === path ? "bg-sidebar-tab-selected text-white" : ""} hover:bg-sidebar-tab-selected hover:text-white transition-colors duration-300 w-[28px] h-[28px]`}
             onClick={
-              item.id === "search"
+              id === "search"
                 ? () => setOpenSearch(true)
-                : () => navigate(`/${item.id}`)
+                : () => navigate(`/${id}`)
             }
-            onMouseEnter={() => setHoveredItem(item.id)}
+            onMouseEnter={() => setHoveredItem(id)}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            {item.isReactIcon ? (
-              <item.ReactIcon
-                className={`w-4 h-4 ${item.id === path || hoveredItem === item.id ? "text-white" : "text-text-secondary"}`}
-              />
-            ) : (
-              <img
-                src={
-                  item.id === path || hoveredItem === item.id
-                    ? item.iconAcitve
-                    : item.icon
-                }
-                alt={item.label}
-                className="w-4 h-4"
-              />
-            )}
-            {hoveredItem === item.id && (
+            <Icon
+              className={getIconClassName(id === path || hoveredItem === id)}
+            />
+            {hoveredItem === id && (
               <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
-                {t(`nav.${item.id}`)}
+                {t(`nav.${id}`)}
               </div>
             )}
           </div>
@@ -146,7 +103,7 @@ export default function SideNavigationBar({
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"
               onError={(e) => {
-                e.currentTarget.src = profile;
+                e.currentTarget.src = LogoIcon;
               }}
             />
           ) : (
@@ -197,14 +154,10 @@ export default function SideNavigationBar({
           onMouseEnter={() => setHoveredItem("settings")}
           onMouseLeave={() => setHoveredItem(null)}
         >
-          <img
-            src={
-              path === "settings" || hoveredItem === "settings"
-                ? SettingsIconActive
-                : SettingsIcon
-            }
-            alt="settings"
-            className="w-[16px] h-[16px]"
+          <FiSettings
+            className={getIconClassName(
+              path === "settings" || hoveredItem === "settings",
+            )}
           />
           {hoveredItem === "settings" && (
             <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-gray-800 border border-gray-200 shadow-md dark:bg-[#2a2a2e] dark:text-white dark:border-transparent text-xs px-2 py-1 rounded-md whitespace-nowrap z-50 pointer-events-none">
