@@ -1,11 +1,12 @@
-export const GRAPH_GENERATION_TOTAL_STEPS = 5;
+export const GRAPH_GENERATION_TOTAL_STEPS = 6;
 
 export type GraphGenerationStepKey =
-  | "featureExtraction"
+  | "embeddingGeneration"
+  | "keywordExtraction"
   | "clustering"
-  | "edgeGeneration"
-  | "graphMerging"
-  | "clusterOptimization";
+  | "similarityCalculation"
+  | "graphCorrection"
+  | "metadataGeneration";
 
 export type GraphGenerationStageStatus =
   | "pending"
@@ -22,11 +23,12 @@ export interface ParsedGraphGenerationStage {
 }
 
 const STEP_KEY_BY_NUMBER: Record<number, GraphGenerationStepKey> = {
-  1: "featureExtraction",
-  2: "clustering",
-  3: "edgeGeneration",
-  4: "graphMerging",
-  5: "clusterOptimization",
+  1: "embeddingGeneration",
+  2: "keywordExtraction",
+  3: "clustering",
+  4: "similarityCalculation",
+  5: "graphCorrection",
+  6: "metadataGeneration",
 };
 
 const STEP_PATTERNS: Array<{
@@ -34,24 +36,28 @@ const STEP_PATTERNS: Array<{
   pattern: RegExp;
 }> = [
   {
-    key: "featureExtraction",
-    pattern: /(embedding|keyword|임베딩|키워드)/i,
+    key: "embeddingGeneration",
+    pattern: /(embedding|embedding generation|임베딩|임베딩 생성)/i,
+  },
+  {
+    key: "keywordExtraction",
+    pattern: /(keyword extraction|keywords|keyword|키워드 추출|키워드)/i,
   },
   {
     key: "clustering",
     pattern: /(llm-based clustering|topic clustering|clustering|cluster assignment|클러스터링|클러스터 배정)/i,
   },
   {
-    key: "edgeGeneration",
-    pattern: /(edge generation|edge building|edges|relationships|엣지 생성|관계 생성)/i,
+    key: "similarityCalculation",
+    pattern: /(similarity calculation|similarity|cosine similarity|유사도 계산|유사도)/i,
   },
   {
-    key: "graphMerging",
-    pattern: /(graph merging|merging final graph|merge|병합)/i,
+    key: "graphCorrection",
+    pattern: /(graph correction|graph refinement|graph calibration|보정|그래프 보정|교정)/i,
   },
   {
-    key: "clusterOptimization",
-    pattern: /(post-processing|post process|optimizing clusters|optimi[sz]ation|후처리|최적화|sub-cluster|subcluster|서브클러스터)/i,
+    key: "metadataGeneration",
+    pattern: /(metadata generation|metadata creation|metadata|메타데이터 생성|메타데이터)/i,
   },
 ];
 

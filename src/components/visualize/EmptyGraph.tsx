@@ -14,12 +14,17 @@ import {
 } from "@/utils/graphGenerationProgress";
 
 const GRAPH_GENERATION_STEP_KEYS: GraphGenerationStepKey[] = [
-  "featureExtraction",
+  "embeddingGeneration",
+  "keywordExtraction",
   "clustering",
-  "edgeGeneration",
-  "graphMerging",
-  "clusterOptimization",
+  "similarityCalculation",
+  "graphCorrection",
+  "metadataGeneration",
 ];
+
+const GRAPH_GENERATION_STEP_GRID_STYLE = {
+  gridTemplateColumns: `repeat(${GRAPH_GENERATION_STEP_KEYS.length * 2 - 1}, minmax(0, 1fr))`,
+};
 
 export default function EmptyGraph() {
   const { t } = useTranslation();
@@ -45,6 +50,13 @@ export default function EmptyGraph() {
 
         if (status === "CREATING") {
           setGenerating(true);
+          return;
+        }
+
+        // SSE가 이미 생성 중 상태를 감지했다면 API 결과로 덮어쓰지 않음.
+        // (API와 SSE 간 경쟁 조건 방지: SSE에서 PROGRESS_UPDATED를 받은 직후
+        //  API가 아직 "CREATING"을 반환하지 않는 타이밍이 존재할 수 있음)
+        if (useGraphGenerationStore.getState().isGenerating) {
           return;
         }
 
@@ -183,7 +195,10 @@ export default function EmptyGraph() {
               </div>
 
               <div className="mt-5 space-y-2">
-                <div className="grid grid-cols-9 items-end gap-x-1">
+                <div
+                  className="grid items-end gap-x-1"
+                  style={GRAPH_GENERATION_STEP_GRID_STYLE}
+                >
                   {GRAPH_GENERATION_STEP_KEYS.flatMap((stepKey, index) => {
                     const stepNumber = index + 1;
                     const isCompleted =
@@ -219,7 +234,10 @@ export default function EmptyGraph() {
                   })}
                 </div>
 
-                <div className="grid grid-cols-9 items-center gap-x-1">
+                <div
+                  className="grid items-center gap-x-1"
+                  style={GRAPH_GENERATION_STEP_GRID_STYLE}
+                >
                   {GRAPH_GENERATION_STEP_KEYS.flatMap((stepKey, index) => {
                     const stepNumber = index + 1;
                     const isCompleted =
@@ -263,7 +281,10 @@ export default function EmptyGraph() {
                   })}
                 </div>
 
-                <div className="grid grid-cols-9 items-start gap-x-1">
+                <div
+                  className="grid items-start gap-x-1"
+                  style={GRAPH_GENERATION_STEP_GRID_STYLE}
+                >
                   {GRAPH_GENERATION_STEP_KEYS.flatMap((stepKey, index) => {
                     const stepNumber = index + 1;
                     const isCompleted =

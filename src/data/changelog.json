@@ -1,4 +1,49 @@
 {
+  "1.0.1": {
+    "date": "2026-04-22",
+    "title": {
+      "ko": "GraphNode 1.0.1 업데이트",
+      "en": "GraphNode 1.0.1 Update",
+      "ja": "GraphNode 1.0.1 アップデート",
+      "zh": "GraphNode 1.0.1 更新"
+    },
+    "features": {
+      "ko": [
+        "그래프 엣지 유사도 필터링 기능 추가",
+        "테이블에서 링크 기능 추가"
+      ],
+      "en": [
+        "Added graph edge similarity filtering",
+        "Added link support in tables"
+      ],
+      "ja": [
+        "グラフエッジの類似度フィルタリング機能を追加",
+        "テーブルでリンク機能を追加"
+      ],
+      "zh": [
+        "添加图边相似度过滤功能",
+        "在表格中添加链接功能"
+      ]
+    },
+    "improvements": {
+      "ko": [
+        "그래프 중분류 클러스터 노드 렌더링 오류 수정",
+        "전체적인 안정성 개선 및 오류 수정"
+      ],
+      "en": [
+        "Fixed a rendering issue with graph mid-category cluster nodes",
+        "Improved overall stability and fixed various bugs"
+      ],
+      "ja": [
+        "グラフの中分類クラスターノードのレンダリング不具合を修正",
+        "全体的な安定性を改善し、各種バグを修正"
+      ],
+      "zh": [
+        "修复图中分类聚类节点渲染错误",
+        "提升整体稳定性并修复多项错误"
+      ]
+    }
+  },
   "1.0.0": {
     "date": "2025-03-04",
     "model": "Xenova/paraphrase-multilingual-MiniLM-L12-v2",

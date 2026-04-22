@@ -9,30 +9,30 @@ describe("parseGraphGenerationStage", () => {
       rawStage: "[1단계] 임베딩 생성 중",
       stepNumber: 1,
       displayStepNumber: 1,
-      stepKey: "featureExtraction",
+      stepKey: "embeddingGeneration",
       status: "running",
     });
   });
 
   test("영문 단계 문자열도 인식한다", () => {
-    expect(parseGraphGenerationStage("Step 3: Edge Generation completed")).toEqual(
+    expect(parseGraphGenerationStage("Step 4: Similarity Calculation completed")).toEqual(
       {
-        rawStage: "Step 3: Edge Generation completed",
-        stepNumber: 3,
-        displayStepNumber: 3,
-        stepKey: "edgeGeneration",
+        rawStage: "Step 4: Similarity Calculation completed",
+        stepNumber: 4,
+        displayStepNumber: 4,
+        stepKey: "similarityCalculation",
         status: "completed",
       },
     );
   });
 
   test("단계 번호가 없어도 키워드로 추론한다", () => {
-    expect(parseGraphGenerationStage("Post-processing and optimizing clusters")).toEqual(
+    expect(parseGraphGenerationStage("Metadata generation in progress")).toEqual(
       {
-        rawStage: "Post-processing and optimizing clusters",
-        stepNumber: 5,
-        displayStepNumber: 5,
-        stepKey: "clusterOptimization",
+        rawStage: "Metadata generation in progress",
+        stepNumber: 6,
+        displayStepNumber: 6,
+        stepKey: "metadataGeneration",
         status: "running",
       },
     );

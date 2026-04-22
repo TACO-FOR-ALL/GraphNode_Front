@@ -103,6 +103,15 @@ To add images, simply **drag and drop images into the editor**!
 - Or copy an image from clipboard and paste it
 - Images are automatically compressed and saved as Base64
 
+### Note Links
+
+Type \`/note\` anywhere in the editor to link to another note!
+
+- A list of your notes appears — select one to insert a link
+- Hover over a note to preview its headings in the side panel
+- Select a heading to link directly to that section
+- Use ↑↓ to navigate the list, → to move to headings, Enter to insert
+
 ### Custom React Component
 
 :::react {content="This is a custom React node view with fenced syntax!"}
