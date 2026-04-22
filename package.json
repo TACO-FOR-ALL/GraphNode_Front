@@ -1,6 +1,6 @@
 {
   "name": "graphnode_front",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TACO 4기 GraphNode의 프론트앤드 코드입니다.",
   "private": true,
   "type": "module",

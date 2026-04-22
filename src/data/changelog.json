@@ -27,18 +27,22 @@
     },
     "improvements": {
       "ko": [
+        "UI/UX 개선",
         "그래프 중분류 클러스터 노드 렌더링 오류 수정",
         "전체적인 안정성 개선 및 오류 수정"
       ],
       "en": [
+        "Improved UI/UX",
         "Fixed a rendering issue with graph mid-category cluster nodes",
         "Improved overall stability and fixed various bugs"
       ],
       "ja": [
+        "UI/UXを改善",
         "グラフの中分類クラスターノードのレンダリング不具合を修正",
         "全体的な安定性を改善し、各種バグを修正"
       ],
       "zh": [
+        "改进 UI/UX",
         "修复图中分类聚类节点渲染错误",
         "提升整体稳定性并修复多项错误"
       ]

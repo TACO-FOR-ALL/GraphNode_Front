@@ -11,11 +11,8 @@ import { buildFolderTree } from "@/utils/buildFolderTree";
 import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 import { FaTrash } from "react-icons/fa";
+import { FiEdit3, FiFolderPlus } from "react-icons/fi";
 import { IoChevronDown, IoChevronForward } from "react-icons/io5";
-
-import NoteIcon from "@/assets/icons/note.svg";
-import NoteActiveIcon from "@/assets/icons/note_active_primary.svg";
-import FolderPlusIconActive from "@/assets/icons/folderplus_active.svg";
 import { useTranslation } from "react-i18next";
 import SidebarSkeletonList from "./SidebarSkeletonList";
 
@@ -234,15 +231,10 @@ export default function SideExpandBarNote({
     <div className="flex flex-col flex-1 min-h-0 pl-3 pr-0.5 pb-13">
       {/* 새 노트 혹 폴더 생성*/}
       <div
-        className="cursor-pointer mb-2 mx-3 flex items-center gap-1 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer mb-2 flex items-center gap-x-1.5 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/note")}
       >
-        <img src={NoteIcon} alt="note" className="w-4 h-4 group-hover:hidden" />
-        <img
-          src={NoteActiveIcon}
-          alt="note active"
-          className="w-4 h-4 hidden group-hover:block"
-        />
+        <FiEdit3 className="w-4 h-4 shrink-0" />
         <p className="text-[14px] font-normal font-noto-sans-kr">
           {t("notes.newNote")}
         </p>
@@ -284,11 +276,7 @@ export default function SideExpandBarNote({
                     onClick={() => handleStartCreateFolder(null)} // 무조건 ROOT에 생성
                     className="gap-1 p-[1px] hover:bg-[rgba(var(--color-sidebar-folder-plus-hover),0.2)] rounded-[4px] hidden group-hover:block cursor-pointer"
                   >
-                    <img
-                      src={FolderPlusIconActive}
-                      alt="folder plus"
-                      className="w-4 h-4"
-                    />
+                    <FiFolderPlus className="w-4 h-4 text-primary" />
                   </div>
                 </div>
               )}

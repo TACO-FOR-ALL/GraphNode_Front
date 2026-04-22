@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { FiChevronsDown, FiChevronsUp } from "react-icons/fi";
 import Graph3D from "./Graph3D";
 import Graph2D from "./Graph2D";
 import ZoomControls from "./ZoomControls";
 import EdgeWeightSlider from "./EdgeWeightSlider";
-import ChevronsDown from "@/assets/icons/ChevronsDown.svg";
-import ChevronsUp from "@/assets/icons/ChevronsUp.svg";
 import {
   ClusterCircle,
   PositionedEdge,
@@ -114,9 +113,9 @@ export default function VisualizeToggle({
             onClick={() => setToggleTopClutserPanel(!toggleTopClutserPanel)}
           >
             {toggleTopClutserPanel ? (
-              <img src={ChevronsUp} alt="ChevronsUp" />
+              <FiChevronsUp className="w-6 h-6 text-[#2B89F8]" />
             ) : (
-              <img src={ChevronsDown} alt="ChevronsDown" />
+              <FiChevronsDown className="w-6 h-6 text-[#2B89F8]" />
             )}
           </div>
           <div
@@ -279,10 +278,7 @@ export default function VisualizeToggle({
         <div className="h-px bg-text-tertiary/20" />
 
         {/* 유사도 슬라이더 */}
-        <EdgeWeightSlider
-          value={minEdgeWeight}
-          onChange={setMinEdgeWeight}
-        />
+        <EdgeWeightSlider value={minEdgeWeight} onChange={setMinEdgeWeight} />
       </div>
 
       {/* 그래프 렌더링 */}

@@ -1,6 +1,5 @@
 import { Folder } from "@/types/Folder";
-import FolderIcon from "@/assets/icons/folder.svg";
-import FolderActiveIcon from "@/assets/icons/folder_active.svg";
+import { FiFolder } from "react-icons/fi";
 import { MdDeleteOutline, MdEdit } from "react-icons/md";
 import { FaPlus } from "react-icons/fa6";
 import { FolderItemContextValue } from "@/hooks/useFolderItemContext";
@@ -97,16 +96,7 @@ export default function FolderItem({
         }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0 group">
-          <img
-            src={FolderIcon}
-            alt="folder"
-            className="w-4 h-4 group-hover:hidden"
-          />
-          <img
-            src={FolderActiveIcon}
-            alt="folder active"
-            className="w-4 h-4 hidden group-hover:block"
-          />
+          <FiFolder className="w-4 h-4 shrink-0 transition-colors group-hover:text-primary" />
           {isEditing ? (
             <input
               type="text"
