@@ -28,6 +28,7 @@ import AiAgentChatBox from "./components/layout/AiAgentChatBox";
 import { useThemeStore } from "./store/useThemeStore";
 import { isElectron } from "./utils/platform";
 import WebLoginModal from "./components/auth/WebLoginModal";
+import MobileBlockOverlay from "./components/MobileBlockOverlay";
 import { getDefaultNoteContent } from "./constants/defaultNotes";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
@@ -54,13 +55,16 @@ import Onboarding from "./components/onboarding/Onboarding";
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/setup" element={<Setup />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/*" element={<MainLayout />} />
-      </Routes>
-    </Router>
+    <>
+      <MobileBlockOverlay />
+      <Router>
+        <Routes>
+          <Route path="/setup" element={<Setup />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/*" element={<MainLayout />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
 
