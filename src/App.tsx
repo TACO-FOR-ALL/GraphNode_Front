@@ -29,8 +29,6 @@ import { useThemeStore } from "./store/useThemeStore";
 import { isElectron } from "./utils/platform";
 import WebLoginModal from "./components/auth/WebLoginModal";
 import { getDefaultNoteContent } from "./constants/defaultNotes";
-import uuid from "./utils/uuid";
-import extractTitleFromMarkdown from "./utils/extractTitleFromMarkdown";
 import { useKeybindsStore, matchesKeybind } from "./store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import Toaster from "./components/Toaster";
@@ -174,33 +172,25 @@ function MainLayout() {
   const { t } = useTranslation();
 
   // 최초 가입 유저 기본 노트 생성
-  // - 서버 노트 목록 기준으로 판단 → 앱/웹 어디서 먼저 시작해도 중복 생성 없음
+  // - 전체 노트(루트 + 폴더)를 기준으로 판단 → 앱/웹 어디서 먼저 시작해도 중복 생성 없음
   // - 웹은 인증 완료 후 실행, 앱은 즉시 실행
   useEffect(() => {
     if (!isElectron() && webAuthenticated !== true) return;
 
     (async () => {
-      const result = await api.note.listNotes();
-      if (!result.isSuccess || result.data.length > 0) return;
+      if (isElectron()) {
+        const notes = await noteRepo.getAllNotes();
+        if (notes.length > 0) return;
+      } else {
+        const result = await api.sync.pullNotes();
+        if (!result.isSuccess || result.data.notes.length > 0) return;
+      }
 
       const defaultContent = getDefaultNoteContent(i18n.language || "en");
 
-      if (isElectron()) {
-        noteRepo.create(defaultContent).catch((err) => {
-          console.error("Failed to create default note:", err);
-        });
-      } else {
-        api.note
-          .createNote({
-            id: uuid(),
-            title: extractTitleFromMarkdown(defaultContent),
-            content: defaultContent,
-            folderId: null,
-          })
-          .catch((err) => {
-            console.error("Failed to create default note:", err);
-          });
-      }
+      noteRepo.create(defaultContent).catch((err) => {
+        console.error("Failed to create default note:", err);
+      });
     })();
   }, [webAuthenticated]);
 

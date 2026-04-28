@@ -7,6 +7,7 @@ export type Folder = {
 };
 
 export type FolderCreate = {
+  id?: string;
   name: string;
   parentId?: string | null;
 };

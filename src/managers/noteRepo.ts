@@ -77,19 +77,22 @@ export const noteRepo = {
     noteId: string,
     folderId: string | null,
   ): Promise<Note | null> {
-    const note = await this.getNoteById(noteId);
-    if (!note) return null;
+    if (isElectron()) {
+      // Electron: 노트 존재 확인 (SQLite 로컬 조회)
+      const note = await this.getNoteById(noteId);
+      if (!note) return null;
 
-    // Electron: folderId가 SQLite에 없으면 서버에서 가져와 저장 (FOREIGN KEY 방지)
-    if (folderId && isElectron()) {
-      const exists = await window.graphnodeAPI.getSQLiteFolderById(folderId);
-      if (!exists) {
-        const result = await api.note.getFolder(folderId);
-        if (result.isSuccess) {
-          await window.graphnodeAPI.upsertSQLiteFolder(mapFolder(result.data));
+      // Electron: folderId가 SQLite에 없으면 서버에서 가져와 저장 (FOREIGN KEY 방지)
+      if (folderId) {
+        const exists = await window.graphnodeAPI.getSQLiteFolderById(folderId);
+        if (!exists) {
+          const result = await api.note.getFolder(folderId);
+          if (result.isSuccess) {
+            await window.graphnodeAPI.upsertSQLiteFolder(mapFolder(result.data));
+          }
+          // Server 404: folder may be pending outbox sync (just created locally).
+          // Proceed — if folder truly missing from SQLite, moveNoteRecord will fail naturally.
         }
-        // Server 404: folder may be pending outbox sync (just created locally).
-        // Proceed — if folder truly missing from SQLite, moveNoteRecord will fail naturally.
       }
     }
 
@@ -105,7 +108,7 @@ export const noteRepo = {
       }
     });
 
-    return await this.getNoteById(noteId);
+    return isElectron() ? await this.getNoteById(noteId) : null;
   },
 
   async deleteNoteById(id: string): Promise<string | null> {

@@ -46,6 +46,7 @@ export default function SideExpandBarNote({
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isRootExpanded, setIsRootExpanded] = useState<boolean>(true);
   const isCreatingFolderRef = useRef(false);
+  const draggingNoteRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
 
   // 트리 구조로 폴더와 노트 구성
@@ -152,13 +153,15 @@ export default function SideExpandBarNote({
 
   // 노트 드래그 시작
   const handleNoteDragStart = (noteId: string, e: React.DragEvent) => {
+    draggingNoteRef.current = noteId;
     setDraggedNoteId(noteId);
-    e.dataTransfer.effectAllowed = "move"; // 이동만 허용 (드래그 시작) => HTML5 Drag and Drop API
-    // e.dataTransfer.setData("text/plain", noteId); => e.dataTransfer.getData("text/plain") 으로 데이터 가져오기 가능
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", noteId);
   };
 
   // 노트 드래그 종료
   const handleNoteDragEnd = () => {
+    draggingNoteRef.current = null;
     setDraggedNoteId(null);
     setDragOverFolderId(null);
   };
@@ -179,12 +182,26 @@ export default function SideExpandBarNote({
     e: React.DragEvent,
   ) => {
     e.preventDefault();
-    if (!draggedNoteId) return;
+    const fromDataTransfer = e.dataTransfer.getData("text/plain");
+    const noteId = fromDataTransfer || draggingNoteRef.current || draggedNoteId;
+    if (!noteId) return;
 
-    await noteRepo.moveNoteToFolder(draggedNoteId, folderId);
-    queryClient.invalidateQueries({ queryKey: ["notes"] });
+    draggingNoteRef.current = null;
     setDraggedNoteId(null);
     setDragOverFolderId(null);
+
+    try {
+      await noteRepo.moveNoteToFolder(noteId, folderId);
+      queryClient.setQueryData<Note[]>(["notes"], (old) =>
+        old ? old.map((n) => (n.id === noteId ? { ...n, folderId } : n)) : old,
+      );
+      if (folderId) {
+        setExpandedFolders((prev) => new Set(prev).add(folderId));
+      }
+    } catch (err) {
+      console.error("[drop] move failed:", err);
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    }
   };
 
   // 드래그 리브
@@ -293,7 +310,7 @@ export default function SideExpandBarNote({
             <div
               className="flex flex-col gap-[6px] min-h-[100px]"
               onDragOver={(e) => {
-                if (draggedNoteId) {
+                if (e.dataTransfer.types.includes("text/plain")) {
                   e.preventDefault();
                   e.stopPropagation();
                   e.dataTransfer.dropEffect = "move";
@@ -301,7 +318,7 @@ export default function SideExpandBarNote({
                 }
               }}
               onDrop={(e) => {
-                if (draggedNoteId) {
+                if (e.dataTransfer.types.includes("text/plain")) {
                   e.preventDefault();
                   e.stopPropagation();
                   handleFolderDrop(null, e);
@@ -345,10 +362,11 @@ export default function SideExpandBarNote({
                     return (
                       <div
                         key={note.id}
+                        data-note-id={note.id}
                         draggable
                         onDragStart={(e) => handleNoteDragStart(note.id, e)}
                         onDragEnd={handleNoteDragEnd}
-                        className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
+                        className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
                           isSelected
                             ? "bg-sidebar-button-hover text-chatbox-active"
                             : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
