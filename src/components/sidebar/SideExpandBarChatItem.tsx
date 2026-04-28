@@ -37,7 +37,7 @@ export default function SideExpandBarChatItem({
 }: SideExpandBarChatItemProps) {
   return (
     <div
-      className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[5.5px] h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 group ${
+      className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-2 h-[32px] px-[6px] rounded-[6px] transition-colors duration-300 group ${
         isSelected
           ? "bg-sidebar-button-hover text-chatbox-active"
           : " hover:bg-sidebar-button-hover text-text-secondary hover:text-chatbox-active"

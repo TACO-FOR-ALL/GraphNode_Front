@@ -27,7 +27,6 @@ export default function NodePreview({
   onClose: () => void;
   onExpand: () => void;
 }) {
-  console.log(sourceType);
   const { t } = useTranslation();
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);

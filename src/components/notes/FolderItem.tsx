@@ -1,10 +1,9 @@
 import { Folder } from "@/types/Folder";
-import { FiFolder } from "react-icons/fi";
 import { MdDeleteOutline, MdEdit } from "react-icons/md";
 import { FaPlus } from "react-icons/fa6";
 import { FolderItemContextValue } from "@/hooks/useFolderItemContext";
 import NewFolderField from "../NewFolderField";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaFolder, FaFolderOpen } from "react-icons/fa";
 
 type FolderItemProps = {
   folder: Folder; // 현재 폴더
@@ -58,14 +57,11 @@ export default function FolderItem({
     <div>
       <div
         data-folder-id={folder.id}
-        className={`flex items-center gap-1 px-[6px] py-[5.5px] h-[32px] rounded-[6px] transition-colors duration-300 text-text-secondary hover:bg-sidebar-button-hover group ${
-          depth > 0 ? "ml-4" : ""
+        className={`flex items-center mr-2 gap-1 px-[6px] py-[5.5px] h-[32px] rounded-[6px] transition-colors duration-300 text-text-secondary hover:bg-sidebar-button-hover group ${
+          depth > 0 ? "ml-2" : ""
         } ${isDragOver ? "bg-blue-100 border-2 border-blue-400 border-dashed" : ""}`}
         onClick={() => {
-          // 드래그 중이 아닐 때만 토글
-          if (!draggedNoteId) {
-            onToggle(folder.id);
-          }
+          onToggle(folder.id);
         }}
         onDragOver={(e) => {
           e.preventDefault();
@@ -96,7 +92,11 @@ export default function FolderItem({
         }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0 group">
-          <FiFolder className="w-4 h-4 shrink-0 transition-colors group-hover:text-primary" />
+          {isExpanded ? (
+            <FaFolderOpen className="w-4 h-4 shrink-0 transition-colors group-hover:text-primary" />
+          ) : (
+            <FaFolder className="w-4 h-4 shrink-0 transition-colors group-hover:text-primary" />
+          )}
           {isEditing ? (
             <input
               type="text"
@@ -142,7 +142,22 @@ export default function FolderItem({
       </div>
       {/* 하위 폴더 목록 */}
       {isExpanded && (
-        <div className="ml-2">
+        <div
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes("text/plain")) {
+              e.preventDefault();
+              e.stopPropagation();
+              onFolderDragOver(folder.id, e);
+            }
+          }}
+          onDrop={(e) => {
+            if (e.dataTransfer.types.includes("text/plain")) {
+              e.preventDefault();
+              e.stopPropagation();
+              onFolderDrop(folder.id, e);
+            }
+          }}
+        >
           {children.map((child) => (
             <FolderItem
               key={child.id}
@@ -168,10 +183,11 @@ export default function FolderItem({
             return (
               <div
                 key={note.id}
+                data-note-id={note.id}
                 draggable
                 onDragStart={(e) => onNoteDragStart(note.id, e)}
                 onDragEnd={onNoteDragEnd}
-                className={`text-[14px] font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group ${
+                className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group ${
                   isSelected
                     ? "bg-sidebar-button-hover text-chatbox-active"
                     : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
