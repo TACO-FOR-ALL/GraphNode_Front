@@ -35,19 +35,25 @@ export default function DeveloperToolsPanel() {
   const { resetLastSeenVersion, setModalOpen } = useChangelogStore();
   const { addToast } = useToastStore();
 
+  const getAllServerNotesAndFolders = async () => {
+    const syncNotes = unwrapResponse(await api.sync.pullNotes());
+    return {
+      notes: syncNotes.notes.map(mapNote),
+      folders: syncNotes.folders.map(mapFolder),
+    };
+  };
+
   const handleReconcileNotes = async () => {
     setIsReconcilingNotes(true);
     try {
-      const [localNotes, localFolders, serverNotesDto, serverFoldersDto] =
-        await Promise.all([
-          noteRepo.getAllNotes(),
-          folderRepo.getFolderList(),
-          api.note.listNotes().then(unwrapResponse),
-          api.note.listFolders().then(unwrapResponse),
-        ]);
+      const [localNotes, localFolders, serverData] = await Promise.all([
+        noteRepo.getAllNotes(),
+        folderRepo.getFolderList(),
+        getAllServerNotesAndFolders(),
+      ]);
 
-      const serverNotes = serverNotesDto.map(mapNote);
-      const serverFolders = serverFoldersDto.map(mapFolder);
+      const serverNotes = serverData.notes;
+      const serverFolders = serverData.folders;
 
       const localNoteIds = new Set(localNotes.map((note) => note.id));
       const serverNoteIds = new Set(serverNotes.map((note) => note.id));
@@ -302,8 +308,8 @@ export default function DeveloperToolsPanel() {
             </button>
             <button
               onClick={async () => {
-                const result = await api.note.listNotes();
-                console.log(result);
+                const result = await getAllServerNotesAndFolders();
+                console.log(result.notes);
               }}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
             >
