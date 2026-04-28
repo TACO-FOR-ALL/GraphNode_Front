@@ -20,11 +20,32 @@ function toFolder(dto: {
   };
 }
 
+async function listAllFolders(): Promise<Folder[]> {
+  const allFolders = new Map<string, Folder>();
+  const pendingParents: Array<string | null> = [null];
+
+  while (pendingParents.length > 0) {
+    const parentId = pendingParents.shift() ?? null;
+    const result = await api.note.listFolders(parentId ?? undefined);
+    if (!result.isSuccess) {
+      continue;
+    }
+
+    for (const folder of result.data) {
+      if (allFolders.has(folder.id)) {
+        continue;
+      }
+      allFolders.set(folder.id, toFolder(folder));
+      pendingParents.push(folder.id);
+    }
+  }
+
+  return Array.from(allFolders.values());
+}
+
 export const apiFolderStorage: FolderStorageAdapter = {
   async listFolders(): Promise<Folder[]> {
-    const result = await api.note.listFolders();
-    if (!result.isSuccess) return [];
-    return result.data.map(toFolder);
+    return listAllFolders();
   },
 
   async getFolder(id: string): Promise<Folder | null> {

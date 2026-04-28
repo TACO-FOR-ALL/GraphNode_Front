@@ -47,7 +47,58 @@ export default function SideExpandBarNote({
   const [isRootExpanded, setIsRootExpanded] = useState<boolean>(true);
   const isCreatingFolderRef = useRef(false);
   const draggingNoteRef = useRef<string | null>(null);
+  const lastDraggedNoteIdRef = useRef<string | null>(null);
+  const lastDragStartedAtRef = useRef(0);
+  const dragHoverFolderRef = useRef<string | "ROOT" | null>(null);
+  const dropHandledRef = useRef(false);
   const queryClient = useQueryClient();
+
+  const resolveNoteIdFromEventTarget = (target: EventTarget | null) => {
+    const targetElement =
+      target instanceof Element
+        ? target
+        : target instanceof Node
+          ? target.parentElement
+          : null;
+
+    return targetElement
+      ?.closest("[data-note-id]")
+      ?.getAttribute("data-note-id") ?? null;
+  };
+
+  const beginDragTracking = (noteId: string) => {
+    draggingNoteRef.current = noteId;
+    lastDraggedNoteIdRef.current = noteId;
+    lastDragStartedAtRef.current = Date.now();
+    dragHoverFolderRef.current = null;
+    dropHandledRef.current = false;
+    setDraggedNoteId(noteId);
+  };
+
+  // React 합성 이벤트가 웹 브라우저에서 dragstart를 누락하는 경우를 방지하기 위해
+  // document 레벨에서 직접 리스닝합니다.
+  useEffect(() => {
+    const onNativeDragStart = (e: DragEvent) => {
+      const noteId =
+        (e.target as Element)
+          ?.closest("[data-note-id]")
+          ?.getAttribute("data-note-id") ?? null;
+      if (!noteId) return;
+      draggingNoteRef.current = noteId;
+      lastDraggedNoteIdRef.current = noteId;
+      lastDragStartedAtRef.current = Date.now();
+      dragHoverFolderRef.current = null;
+      dropHandledRef.current = false;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", noteId);
+        e.dataTransfer.setData("text", noteId);
+      }
+      setDraggedNoteId(noteId);
+    };
+    document.addEventListener("dragstart", onNativeDragStart, true);
+    return () => document.removeEventListener("dragstart", onNativeDragStart, true);
+  }, []);
 
   // 트리 구조로 폴더와 노트 구성
   const buildTree = useMemo(() => {
@@ -153,15 +204,52 @@ export default function SideExpandBarNote({
 
   // 노트 드래그 시작
   const handleNoteDragStart = (noteId: string, e: React.DragEvent) => {
-    draggingNoteRef.current = noteId;
-    setDraggedNoteId(noteId);
+    beginDragTracking(noteId);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", noteId);
+    // Safari/legacy 브라우저 호환용
+    e.dataTransfer.setData("text", noteId);
   };
 
   // 노트 드래그 종료
   const handleNoteDragEnd = () => {
+    if (
+      !dropHandledRef.current &&
+      lastDraggedNoteIdRef.current &&
+      dragHoverFolderRef.current !== null
+    ) {
+      const noteId = lastDraggedNoteIdRef.current;
+      const targetFolderId =
+        dragHoverFolderRef.current === "ROOT" ? null : dragHoverFolderRef.current;
+      void (async () => {
+        try {
+          dropHandledRef.current = true;
+          await noteRepo.moveNoteToFolder(noteId, targetFolderId);
+          queryClient.setQueryData<Note[]>(["notes"], (old) =>
+            old
+              ? old.map((n) =>
+                  n.id === noteId ? { ...n, folderId: targetFolderId } : n,
+                )
+              : old,
+          );
+          if (targetFolderId) {
+            setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
+          }
+        } catch (err) {
+          console.error("[dragend-fallback] move failed:", err);
+          queryClient.invalidateQueries({ queryKey: ["notes"] });
+        }
+      })();
+    }
+
     draggingNoteRef.current = null;
+    dragHoverFolderRef.current = null;
+    window.setTimeout(() => {
+      // Safari 계열에서 dragend -> drop 순서가 뒤집힐 수 있어, 즉시 초기화하지 않습니다.
+      if (!dropHandledRef.current) return;
+      lastDraggedNoteIdRef.current = null;
+      dropHandledRef.current = false;
+    }, 0);
     setDraggedNoteId(null);
     setDragOverFolderId(null);
   };
@@ -173,6 +261,7 @@ export default function SideExpandBarNote({
   ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move"; // (드롭 대상 위에서, 이동 커서)
+    dragHoverFolderRef.current = folderId;
     setDragOverFolderId(folderId);
   };
 
@@ -182,11 +271,21 @@ export default function SideExpandBarNote({
     e: React.DragEvent,
   ) => {
     e.preventDefault();
-    const fromDataTransfer = e.dataTransfer.getData("text/plain");
-    const noteId = fromDataTransfer || draggingNoteRef.current || draggedNoteId;
+    const fromDataTransfer =
+      e.dataTransfer.getData("text/plain") ||
+      e.dataTransfer.getData("text") ||
+      e.dataTransfer.getData("Text");
+    const isRecentOwnDrag = Date.now() - lastDragStartedAtRef.current < 5000;
+    const noteId =
+      fromDataTransfer ||
+      draggingNoteRef.current ||
+      draggedNoteId ||
+      (isRecentOwnDrag ? lastDraggedNoteIdRef.current : null);
     if (!noteId) return;
+    dropHandledRef.current = true;
 
     draggingNoteRef.current = null;
+    dragHoverFolderRef.current = null;
     setDraggedNoteId(null);
     setDragOverFolderId(null);
 
@@ -206,6 +305,7 @@ export default function SideExpandBarNote({
 
   // 드래그 리브
   const handleDragLeave = () => {
+    dragHoverFolderRef.current = null;
     setDragOverFolderId(null);
   };
 
@@ -309,20 +409,28 @@ export default function SideExpandBarNote({
             )}
             <div
               className="flex flex-col gap-[6px] min-h-[100px]"
+              onDragStartCapture={(e) => {
+                const noteId = resolveNoteIdFromEventTarget(e.target);
+                if (!noteId) return;
+                beginDragTracking(noteId);
+                e.dataTransfer.setData("text/plain", noteId);
+                e.dataTransfer.setData("text", noteId);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragEndCapture={() => {
+                handleNoteDragEnd();
+              }}
               onDragOver={(e) => {
-                if (e.dataTransfer.types.includes("text/plain")) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = "move";
-                  setDragOverFolderId("ROOT");
-                }
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+                dragHoverFolderRef.current = "ROOT";
+                setDragOverFolderId("ROOT");
               }}
               onDrop={(e) => {
-                if (e.dataTransfer.types.includes("text/plain")) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleFolderDrop(null, e);
-                }
+                e.preventDefault();
+                e.stopPropagation();
+                handleFolderDrop(null, e);
               }}
               onDragLeave={(e) => {
                 // 자식 요소로 이동하는 경우가 아니면 리셋
@@ -335,6 +443,7 @@ export default function SideExpandBarNote({
                   )
                 ) {
                   if (dragOverFolderId === "ROOT") {
+                    dragHoverFolderRef.current = null;
                     setDragOverFolderId(null);
                   }
                 }
@@ -363,7 +472,8 @@ export default function SideExpandBarNote({
                       <div
                         key={note.id}
                         data-note-id={note.id}
-                        draggable
+                        draggable={true}
+                        style={{ WebkitUserDrag: "element" } as React.CSSProperties}
                         onDragStart={(e) => handleNoteDragStart(note.id, e)}
                         onDragEnd={handleNoteDragEnd}
                         className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${

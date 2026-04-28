@@ -123,11 +123,7 @@ export const apiNoteStorage: NoteStorageAdapter = {
   },
 
   async moveNoteRecord(id: string, input: MoveNoteRecordInput): Promise<void> {
-    const noteResult = await api.note.getNote(id);
-    if (!noteResult.isSuccess) throw new Error("Note not found");
     const result = await api.note.updateNote(id, {
-      title: noteResult.data.title,
-      content: noteResult.data.content,
       folderId: input.folderId,
     });
     if (!result.isSuccess) throw new Error(result.error.message);

@@ -1,3 +1,4 @@
+import React from "react";
 import { Folder } from "@/types/Folder";
 import { MdDeleteOutline, MdEdit } from "react-icons/md";
 import { FaPlus } from "react-icons/fa6";
@@ -144,18 +145,14 @@ export default function FolderItem({
       {isExpanded && (
         <div
           onDragOver={(e) => {
-            if (e.dataTransfer.types.includes("text/plain")) {
-              e.preventDefault();
-              e.stopPropagation();
-              onFolderDragOver(folder.id, e);
-            }
+            e.preventDefault();
+            e.stopPropagation();
+            onFolderDragOver(folder.id, e);
           }}
           onDrop={(e) => {
-            if (e.dataTransfer.types.includes("text/plain")) {
-              e.preventDefault();
-              e.stopPropagation();
-              onFolderDrop(folder.id, e);
-            }
+            e.preventDefault();
+            e.stopPropagation();
+            onFolderDrop(folder.id, e);
           }}
         >
           {children.map((child) => (
@@ -184,7 +181,8 @@ export default function FolderItem({
               <div
                 key={note.id}
                 data-note-id={note.id}
-                draggable
+                draggable={true}
+                style={{ WebkitUserDrag: "element" } as React.CSSProperties}
                 onDragStart={(e) => onNoteDragStart(note.id, e)}
                 onDragEnd={onNoteDragEnd}
                 className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group ${
