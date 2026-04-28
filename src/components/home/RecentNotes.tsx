@@ -6,8 +6,6 @@ import { Note } from "@/types/Note";
 import { useNavigate } from "react-router-dom";
 import { seperateTitleAndContentFromMarkdown } from "@/utils/extractTitleFromMarkdown";
 import { useTranslation } from "react-i18next";
-import { isElectron } from "@/utils/platform";
-import { api } from "@/apiClient";
 
 export default function RecentNotes() {
   const navigate = useNavigate();
@@ -15,19 +13,7 @@ export default function RecentNotes() {
 
   const { data: notes } = useQuery<Note[]>({
     queryKey: ["recent-notes"],
-    queryFn: async () => {
-      if (isElectron()) {
-        return noteRepo.getAllNotes();
-      }
-      const result = await api.note.listNotes();
-
-      if (!result.isSuccess) return [];
-      return result.data.map((dto) => ({
-        ...dto,
-        createdAt: new Date(dto.createdAt).getTime(),
-        updatedAt: new Date(dto.updatedAt).getTime(),
-      }));
-    },
+    queryFn: () => noteRepo.getAllNotes(),
   });
 
   return (

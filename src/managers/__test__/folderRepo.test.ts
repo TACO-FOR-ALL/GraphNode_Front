@@ -95,6 +95,7 @@ describe("folderRepo", () => {
       parentId: "parent-1",
     });
     expect(mockEnqueueFolderCreate).toHaveBeenCalledWith("folder-1", {
+      id: "folder-1",
       name: "Inbox",
       parentId: "parent-1",
     });

@@ -1,5 +1,5 @@
 import { api } from "@/apiClient";
-import type { Folder } from "@/types/Folder";
+import type { Folder, FolderCreate } from "@/types/Folder";
 import type {
   FolderStorageAdapter,
   CreateFolderRecordInput,
@@ -40,10 +40,12 @@ export const apiFolderStorage: FolderStorageAdapter = {
   },
 
   async createFolderRecord(input: CreateFolderRecordInput): Promise<Folder> {
-    const result = await api.note.createFolder({
+    const payload: FolderCreate = {
+      id: input.id,
       name: input.name,
       parentId: input.parentId,
-    });
+    };
+    const result = await api.note.createFolder(payload);
     if (!result.isSuccess) throw new Error("Failed to create folder");
     return toFolder(result.data);
   },

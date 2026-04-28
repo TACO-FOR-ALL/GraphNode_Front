@@ -311,6 +311,24 @@ export default function DeveloperToolsPanel() {
             </button>
             <button
               onClick={async () => {
+                const result = await folderRepo.getFolderList();
+                console.log(result);
+              }}
+              className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
+            >
+              get client folders
+            </button>
+            <button
+              onClick={async () => {
+                const result = await api.note.listFolders();
+                console.log(result);
+              }}
+              className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary bg-bg-tertiary hover:bg-bg-primary rounded transition-colors"
+            >
+              get server folders
+            </button>
+            <button
+              onClick={async () => {
                 await noteRepo.clearAll();
                 await folderRepo.clearAll();
                 await trashRepo.clearNotesAndFoldersTrash();

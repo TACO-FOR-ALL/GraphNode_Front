@@ -22,7 +22,11 @@ export const folderRepo = {
     await writeStorage.runFolderWriteTransaction(async () => {
       await writeStorage.createFolderRecord(newFolder);
       if (isElectron()) {
-        await outboxRepo.enqueueFolderCreate(newFolder.id, { name, parentId });
+        await outboxRepo.enqueueFolderCreate(newFolder.id, {
+          id: newFolder.id,
+          name,
+          parentId,
+        });
       }
     });
 

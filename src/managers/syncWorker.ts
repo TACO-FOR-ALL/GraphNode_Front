@@ -46,17 +46,23 @@ async function processOp(op: OutboxOp) {
         await api.note.createNote(op.payload);
         break;
 
+      // 업데이트와 이동은 동일 로직으로 처리
       case "note.update":
-        await api.note.updateNote(op.entityId, op.payload);
+      case "note.move": {
+        const updateResult = await api.note.updateNote(op.entityId, op.payload);
+        if (!updateResult.isSuccess) {
+          throw new Error(updateResult.error.message);
+        }
         break;
+      }
 
-      case "note.move":
-        await api.note.updateNote(op.entityId, op.payload);
+      case "note.delete": {
+        const deleteResult = await api.note.softDeleteNote(op.entityId);
+        if (!deleteResult.isSuccess && deleteResult.error.statusCode !== 404) {
+          throw new Error(deleteResult.error.message);
+        }
         break;
-
-      case "note.delete":
-        await api.note.softDeleteNote(op.entityId);
-        break;
+      }
 
       case "thread.update":
         await api.conversations.update(op.entityId, op.payload);
@@ -73,8 +79,8 @@ async function processOp(op: OutboxOp) {
         const serverId = result.data.id;
         const localId = op.entityId;
 
-        // TODO: 엔드 노트랑 폴더랑 스레드 아이디 다 프론트에서 만들어진 uuid 사용할 경우 제거합니다
-        // 서버가 다른 ID를 할당한 경우 로컬 DB를 서버 ID로 교체합니다
+        // 호환성 보호: 구버전에서 folder.create payload에 id가 없으면
+        // 서버가 다른 ID를 할당할 수 있으므로 로컬 참조를 서버 ID로 치환합니다.
         if (serverId !== localId) {
           const localFolder =
             await window.graphnodeAPI.getSQLiteFolderById(localId);
