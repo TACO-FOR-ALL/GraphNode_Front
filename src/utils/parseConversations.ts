@@ -16,14 +16,36 @@ const toMs = (v: any): number | undefined => {
   return n > 1e12 ? Math.round(n) : Math.round(n * 1000);
 };
 
+// Claude 데이터의 created_at/updated_at는 ISO 문자열일 수 있어 문자열이면 Date.parse로 처리
+const toTimestampMs = (v: any): number | undefined => {
+  if (v == null) return;
+
+  if (typeof v === "string") {
+    const parsed = Date.parse(v);
+    if (isFinite(parsed)) return parsed;
+  }
+
+  return toMs(v);
+};
+
+// Claude 데이터의 일부 메시지는 text가 비어있거나 구조가 달라 content/message/delta fallback이 필요
+const extractMessageText = (m: any): string => {
+  const text = typeof m?.text === "string" ? m.text.trim() : "";
+  if (text) return text;
+
+  const raw = m?.content ?? m?.message ?? m?.delta ?? "";
+  return toMarkdownFromUnknown(raw).trim();
+};
+
 const toMsg = (m: any): ChatMessage | null => {
   const role = mapRole(m.role ?? m.author ?? m.speaker);
-  const raw = m.content ?? m.text ?? m.message ?? m.delta ?? "";
-  const content = toMarkdownFromUnknown(raw);
+  const content = extractMessageText(m);
   if (!content) return null;
 
-  const ts = Number(m.ts ?? m.time ?? m.create_time ?? Date.now());
-  return { id: uuid(), role, content, ts: isFinite(ts) ? ts : Date.now() };
+  const ts =
+    toTimestampMs(m.ts ?? m.time ?? m.create_time ?? m.created_at) ??
+    Date.now();
+  return { id: uuid(), role, content, ts };
 };
 
 // OpenAI conversations.json의 `mapping`은 메시지들을 배열이 아니라
@@ -69,7 +91,12 @@ export function parseConversations(json: any): ChatThread[] {
         .map(toMsg)
         .filter(isMsg);
       if (!msgs.length) continue;
-      threads.push({ id: uuid(), title: String(th?.title), messages: msgs, updatedAt: Date.now() });
+      threads.push({
+        id: uuid(),
+        title: String(th?.title),
+        messages: msgs,
+        updatedAt: Date.now(),
+      });
     }
     return threads;
   }
@@ -77,11 +104,75 @@ export function parseConversations(json: any): ChatThread[] {
   if (Array.isArray(json?.messages)) {
     const msgs = json.messages.map(toMsg).filter(isMsg);
     if (msgs.length)
-      threads.push({ id: uuid(), title: String(json?.title), messages: msgs, updatedAt: Date.now() });
+      threads.push({
+        id: uuid(),
+        title: String(json?.title),
+        messages: msgs,
+        updatedAt: Date.now(),
+      });
     return threads;
   }
 
   if (Array.isArray(json)) {
+    // 클로드 데이터를 GraphNode의 ChatThread 형식으로 변환
+    const looksLikeClaude = json.some(
+      (it) =>
+        it &&
+        typeof it === "object" &&
+        Array.isArray((it as any).chat_messages),
+    );
+
+    if (looksLikeClaude) {
+      for (const conv of json) {
+        const messages = Array.isArray(conv?.chat_messages)
+          ? conv.chat_messages
+          : [];
+
+        const msgs: ChatMessage[] = messages
+          .map((m: any) => {
+            const content = extractMessageText(m);
+            if (!content) return null;
+
+            const role = mapRole(
+              m?.sender ?? m?.role ?? m?.author ?? m?.speaker,
+            );
+
+            const ts =
+              toTimestampMs(
+                m?.updated_at ??
+                  m?.created_at ??
+                  m?.create_time ??
+                  m?.time ??
+                  m?.ts,
+              ) ??
+              toTimestampMs(conv?.updated_at) ??
+              toTimestampMs(conv?.created_at) ??
+              Date.now();
+
+            return { id: uuid(), role, content, ts } as ChatMessage;
+          })
+          .filter((m: ChatMessage | null): m is ChatMessage => m != null);
+
+        if (!msgs.length) continue;
+
+        const maxMsgTs = Math.max(...msgs.map((m) => m.ts));
+        const updatedAt =
+          (isFinite(maxMsgTs) ? maxMsgTs : 0) ||
+          toTimestampMs(conv?.updated_at) ||
+          toTimestampMs(conv?.created_at) ||
+          Date.now();
+
+        threads.push({
+          id: uuid(),
+          title: String(conv?.name ?? conv?.title ?? "Imported Conversation"),
+          messages: msgs,
+          updatedAt,
+        });
+      }
+      return threads;
+    }
+
+    // OpenAI 데이터를 GraphNode의 ChatThread 형식으로 변환
     const looksLikeOpenAI = json.some(
       (it) =>
         it &&
@@ -108,9 +199,9 @@ export function parseConversations(json: any): ChatThread[] {
             if (hidden || !content.trim()) return null;
 
             const ts =
-              toMs(msg?.create_time) ??
-              toMs(n?.create_time) ??
-              toMs(conv?.create_time) ??
+              toTimestampMs(msg?.create_time) ??
+              toTimestampMs(n?.create_time) ??
+              toTimestampMs(conv?.create_time) ??
               Date.now();
 
             return { id: uuid(), role, content, ts } as ChatMessage;
@@ -123,8 +214,8 @@ export function parseConversations(json: any): ChatThread[] {
           const maxMsgTs = Math.max(...msgs.map((m) => m.ts));
           const updatedAt =
             (isFinite(maxMsgTs) ? maxMsgTs : 0) ||
-            toMs(conv?.update_time) ||
-            toMs(conv?.create_time) ||
+            toTimestampMs(conv?.update_time) ||
+            toTimestampMs(conv?.create_time) ||
             Date.now();
 
           threads.push({ id: uuid(), title, messages: msgs, updatedAt });
@@ -135,7 +226,12 @@ export function parseConversations(json: any): ChatThread[] {
 
     const maybeMsgs = json.map(toMsg).filter(isMsg);
     if (maybeMsgs.length)
-      threads.push({ id: uuid(), title: String(json[0]?.title), messages: maybeMsgs, updatedAt: Date.now() });
+      threads.push({
+        id: uuid(),
+        title: String(json[0]?.title),
+        messages: maybeMsgs,
+        updatedAt: Date.now(),
+      });
     return threads;
   }
 
