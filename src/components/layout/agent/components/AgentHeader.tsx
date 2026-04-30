@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { IoListOutline } from "react-icons/io5";
 import { IoIosClose } from "react-icons/io";
+import { RxEnterFullScreen, RxExitFullScreen } from "react-icons/rx";
 import logo from "@/assets/icons/logo.svg";
 import ChatHistoryDropdown from "./ChatHistoryDropdown";
 import type { ChatSession } from "../types";
@@ -12,6 +13,8 @@ interface AgentHeaderProps {
   onDeleteSession: (sessionId: string) => void;
   onStartNewChat: () => void;
   onClose: () => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 export default function AgentHeader({
@@ -21,6 +24,8 @@ export default function AgentHeader({
   onDeleteSession,
   onStartNewChat,
   onClose,
+  isExpanded,
+  onToggleExpand,
 }: AgentHeaderProps) {
   const [showHistoryList, setShowHistoryList] = useState(false);
   const historyListRef = useRef<HTMLDivElement>(null);
@@ -65,6 +70,17 @@ export default function AgentHeader({
         </span>
       </div>
       <div className="flex items-center gap-2">
+        {isExpanded ? (
+          <RxExitFullScreen
+            onClick={onToggleExpand}
+            className="text-base text-text-secondary hover:text-text-primary cursor-pointer"
+          />
+        ) : (
+          <RxEnterFullScreen
+            onClick={onToggleExpand}
+            className="text-base text-text-secondary hover:text-text-primary cursor-pointer"
+          />
+        )}
         <div className="relative" ref={historyListRef}>
           <IoListOutline
             onClick={() => setShowHistoryList(!showHistoryList)}

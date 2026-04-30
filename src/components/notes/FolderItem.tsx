@@ -26,6 +26,7 @@ export default function FolderItem({
     newFolderName,
     creatingFolderParentId,
     draggedNoteId,
+    draggedFolderId,
     dragOverFolderId,
     selectedId,
     buildTree,
@@ -51,6 +52,7 @@ export default function FolderItem({
   const isExpanded = expandedFolders.has(folder.id);
   const isEditing = editingFolderId === folder.id;
   const isDragOver = dragOverFolderId === folder.id;
+  const isDraggingThis = draggedFolderId === folder.id;
   const children = buildTree?.folderChildren.get(folder.id) || [];
   const notes = buildTree?.folderNotes.get(folder.id) || [];
 
@@ -58,9 +60,11 @@ export default function FolderItem({
     <div>
       <div
         data-folder-id={folder.id}
+        draggable={true}
+        style={{ WebkitUserDrag: "element" } as React.CSSProperties}
         className={`flex items-center mr-2 gap-1 px-[6px] py-[5.5px] h-[32px] rounded-[6px] transition-colors duration-300 text-text-secondary hover:bg-sidebar-button-hover group ${
           depth > 0 ? "ml-2" : ""
-        } ${isDragOver ? "bg-blue-100 border-2 border-blue-400 border-dashed" : ""}`}
+        } ${isDragOver ? "bg-sidebar-button-hover border-2 border-primary border-dashed" : ""} ${isDraggingThis ? "opacity-50" : ""}`}
         onClick={() => {
           onToggle(folder.id);
         }}
@@ -144,6 +148,7 @@ export default function FolderItem({
       {/* 하위 폴더 목록 */}
       {isExpanded && (
         <div
+          className="ml-3 border-l border-sidebar-button-border"
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();

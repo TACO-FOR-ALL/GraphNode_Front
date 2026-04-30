@@ -20,8 +20,10 @@ interface AiAgentChatBoxProps {
 
 export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
   const { t } = useTranslation();
-  const { response, microscopeNodes, setMicroscopeNodes } = useAgentToolBoxStore();
+  const { response, microscopeNodes, setMicroscopeNodes } =
+    useAgentToolBoxStore();
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Custom hooks
   const {
@@ -97,26 +99,34 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
           : `Make a note of: ${sourceNames}`;
       sendMessage(message);
     },
-    [selectedSources, sendMessage, t]
+    [selectedSources, sendMessage, t],
   );
 
   const handleMicroscopeAction = useCallback(
     (action: "relationship" | "importance") => {
-      const nodeNames =
-        microscopeNodes?.map((n) => n.name).join(", ") ?? "";
+      const nodeNames = microscopeNodes?.map((n) => n.name).join(", ") ?? "";
       const message =
         action === "relationship"
           ? `${t("graphVisualization.agent.suggestRelationInput")}${nodeNames ? ` (${nodeNames})` : ""}`
           : `${t("graphVisualization.agent.suggestImportanceInput")}${nodeNames ? ` (${nodeNames})` : ""}`;
       sendMessage(message);
     },
-    [microscopeNodes, sendMessage, t]
+    [microscopeNodes, sendMessage, t],
   );
 
   const hasMessages = messages.length > 0;
 
+  const expandedWidth = 384 + 50;
+  const expandedHeight = window.innerHeight - 100;
+  const containerStyle = isExpanded
+    ? { width: `${expandedWidth}px`, height: `${expandedHeight}px` }
+    : { width: "384px", height: "520px" };
+
   return (
-    <div className="absolute bottom-9 right-9 z-50 w-96 h-[520px] bg-bg-primary rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden p-4">
+    <div
+      className="absolute bottom-9 right-8 z-50 bg-bg-primary rounded-xl shadow-[0_2px_20px_0_#badaff] border-[1px] border-[rgba(var(--color-chatbox-border-rgb),0.2)] flex flex-col overflow-hidden p-4 transition-all duration-300"
+      style={containerStyle}
+    >
       <AgentHeader
         sessions={sessions}
         currentSessionId={currentSessionId}
@@ -124,6 +134,8 @@ export default function AiAgentChatBox({ setIsOpen }: AiAgentChatBoxProps) {
         onDeleteSession={deleteSession}
         onStartNewChat={handleStartNewChat}
         onClose={handleClose}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setIsExpanded((prev) => !prev)}
       />
 
       <section

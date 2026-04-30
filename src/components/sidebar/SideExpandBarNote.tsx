@@ -43,10 +43,12 @@ export default function SideExpandBarNote({
   >(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isRootExpanded, setIsRootExpanded] = useState<boolean>(true);
   const isCreatingFolderRef = useRef(false);
   const draggingNoteRef = useRef<string | null>(null);
+  const draggingFolderIdRef = useRef<string | null>(null);
   const lastDraggedNoteIdRef = useRef<string | null>(null);
   const lastDragStartedAtRef = useRef(0);
   const dragHoverFolderRef = useRef<string | "ROOT" | null>(null);
@@ -79,22 +81,36 @@ export default function SideExpandBarNote({
   // document 레벨에서 직접 리스닝합니다.
   useEffect(() => {
     const onNativeDragStart = (e: DragEvent) => {
-      const noteId =
-        (e.target as Element)
-          ?.closest("[data-note-id]")
-          ?.getAttribute("data-note-id") ?? null;
-      if (!noteId) return;
-      draggingNoteRef.current = noteId;
-      lastDraggedNoteIdRef.current = noteId;
-      lastDragStartedAtRef.current = Date.now();
-      dragHoverFolderRef.current = null;
-      dropHandledRef.current = false;
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", noteId);
-        e.dataTransfer.setData("text", noteId);
+      const target = e.target as Element;
+
+      // 노트 드래그 우선
+      const noteId = target.closest("[data-note-id]")?.getAttribute("data-note-id") ?? null;
+      if (noteId) {
+        draggingNoteRef.current = noteId;
+        lastDraggedNoteIdRef.current = noteId;
+        lastDragStartedAtRef.current = Date.now();
+        dragHoverFolderRef.current = null;
+        dropHandledRef.current = false;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", noteId);
+          e.dataTransfer.setData("text", noteId);
+        }
+        setDraggedNoteId(noteId);
+        return;
       }
-      setDraggedNoteId(noteId);
+
+      // 폴더 드래그
+      const folderId = target.closest("[data-folder-id]")?.getAttribute("data-folder-id") ?? null;
+      if (folderId) {
+        draggingFolderIdRef.current = folderId;
+        dragHoverFolderRef.current = null;
+        dropHandledRef.current = false;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+        }
+        setDraggedFolderId(folderId);
+      }
     };
     document.addEventListener("dragstart", onNativeDragStart, true);
     return () => document.removeEventListener("dragstart", onNativeDragStart, true);
@@ -243,6 +259,7 @@ export default function SideExpandBarNote({
     }
 
     draggingNoteRef.current = null;
+    draggingFolderIdRef.current = null;
     dragHoverFolderRef.current = null;
     window.setTimeout(() => {
       // Safari 계열에서 dragend -> drop 순서가 뒤집힐 수 있어, 즉시 초기화하지 않습니다.
@@ -251,6 +268,7 @@ export default function SideExpandBarNote({
       dropHandledRef.current = false;
     }, 0);
     setDraggedNoteId(null);
+    setDraggedFolderId(null);
     setDragOverFolderId(null);
   };
 
@@ -265,12 +283,48 @@ export default function SideExpandBarNote({
     setDragOverFolderId(folderId);
   };
 
+  // 폴더가 다른 폴더의 자손인지 확인 (순환 참조 방지)
+  const isDescendant = (candidateId: string, ancestorId: string): boolean => {
+    if (!buildTree) return false;
+    const children = buildTree.folderChildren.get(ancestorId) || [];
+    return children.some(
+      (child) => child.id === candidateId || isDescendant(candidateId, child.id),
+    );
+  };
+
   // 폴더로 드롭
   const handleFolderDrop = async (
-    folderId: string | null,
+    targetFolderId: string | null,
     e: React.DragEvent,
   ) => {
     e.preventDefault();
+
+    // 폴더 드래그인 경우
+    const draggingFolder = draggingFolderIdRef.current;
+    if (draggingFolder) {
+      draggingFolderIdRef.current = null;
+      setDraggedFolderId(null);
+      setDragOverFolderId(null);
+
+      // 자기 자신이나 자손에 드롭하면 무시
+      if (
+        draggingFolder === targetFolderId ||
+        (targetFolderId && isDescendant(targetFolderId, draggingFolder))
+      ) return;
+
+      try {
+        await folderRepo.updateFolderById(draggingFolder, { parentId: targetFolderId });
+        queryClient.invalidateQueries({ queryKey: ["folders"] });
+        if (targetFolderId) {
+          setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
+        }
+      } catch (err) {
+        console.error("[drop] folder move failed:", err);
+      }
+      return;
+    }
+
+    // 노트 드래그인 경우
     const fromDataTransfer =
       e.dataTransfer.getData("text/plain") ||
       e.dataTransfer.getData("text") ||
@@ -290,15 +344,15 @@ export default function SideExpandBarNote({
     setDragOverFolderId(null);
 
     try {
-      await noteRepo.moveNoteToFolder(noteId, folderId);
+      await noteRepo.moveNoteToFolder(noteId, targetFolderId);
       queryClient.setQueryData<Note[]>(["notes"], (old) =>
-        old ? old.map((n) => (n.id === noteId ? { ...n, folderId } : n)) : old,
+        old ? old.map((n) => (n.id === noteId ? { ...n, folderId: targetFolderId } : n)) : old,
       );
-      if (folderId) {
-        setExpandedFolders((prev) => new Set(prev).add(folderId));
+      if (targetFolderId) {
+        setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
       }
     } catch (err) {
-      console.error("[drop] move failed:", err);
+      console.error("[drop] note move failed:", err);
       queryClient.invalidateQueries({ queryKey: ["notes"] });
     }
   };
@@ -317,6 +371,7 @@ export default function SideExpandBarNote({
     newFolderName,
     creatingFolderParentId,
     draggedNoteId,
+    draggedFolderId,
     dragOverFolderId,
     selectedId,
     buildTree,
@@ -461,7 +516,7 @@ export default function SideExpandBarNote({
                     />
                   ))}
                   {dragOverFolderId === "ROOT" && (
-                    <div className="px-[6px] py-2 rounded-[6px] bg-blue-100 border-2 border-blue-400 border-dashed text-center text-[12px] text-blue-600">
+                    <div className="px-[6px] py-2 rounded-[6px] bg-sidebar-button-hover border-2 border-primary border-dashed text-center text-[12px] text-primary">
                       Drop here to move to root
                     </div>
                   )}
