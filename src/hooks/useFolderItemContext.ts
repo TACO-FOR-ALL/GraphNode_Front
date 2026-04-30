@@ -9,6 +9,7 @@ export type FolderItemContextValue = {
   newFolderName: string;
   creatingFolderParentId: string | null | "ROOT";
   draggedNoteId: string | null;
+  draggedFolderId: string | null;
   dragOverFolderId: string | null;
   selectedId: string;
   buildTree: FolderTree | null;
