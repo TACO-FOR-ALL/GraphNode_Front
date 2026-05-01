@@ -42,11 +42,23 @@ function applyHardwareAccelerationSetting() {
 // 앱 시작 전에 설정 적용
 applyHardwareAccelerationSetting();
 
-// WebGL 백엔드 설정 (app.whenReady() 전에 호출해야 함)
-// Chromium GPU 블랙리스트 업데이트 이후 SwiftShader Vulkan 경로에서
-// "BindToCurrentSequence failed" 오류가 발생하는 문제를 방지한다.
-// - macOS: Metal 백엔드를 명시적으로 사용해 SwiftShader 폴백을 우회
-// - Windows: D3D11 백엔드를 사용해 동일한 문제를 방지
+// WebGL 안정화 플래그 (app.whenReady() 전에 호출해야 함)
+//
+// in-process-gpu: GPU 코드를 브라우저 프로세스에 통합한다.
+//   Electron 기본 구성에서 GPU는 별도 프로세스로 분리되며, ReadPixels 등의
+//   동기 GPU 연산이 블로킹되면 GPU 워치독이 해당 프로세스를 종료 → Context Lost 발생.
+//   in-process-gpu는 별도 GPU 프로세스를 없애 워치독 타임아웃을 방지한다.
+//
+// ignore-gpu-blocklist: GPU 블랙리스트 우회 → Metal/D3D11 실제 사용 보장
+// enable-unsafe-swiftshader: Metal 폴백으로 SwiftShader를 샌드박스 내에서 허용
+// use-angle: macOS = Metal, Windows = D3D11 ANGLE 백엔드 지정
+app.commandLine.appendSwitch("in-process-gpu");
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+app.commandLine.appendSwitch("enable-unsafe-swiftshader");
+
+// WebGL은 브라우저가 OS의 그래픽 API를 직접 쓸 수 없어서 ANGLE이라는 변환 레이어를 거칩니다.
+// WebGL 코드 → ANGLE → OS 그래픽 API → GPU
+// ANGLE이 "어떤 OS 그래픽 API로 변환할지"를 use - angle로 지정하는 겁니다.
 if (process.platform === "darwin") {
   app.commandLine.appendSwitch("use-angle", "metal");
 } else if (process.platform === "win32") {
@@ -64,7 +76,10 @@ function logAppEvent(scope: string, message: string) {
   const line = `[${new Date().toISOString()}] [${scope}] ${message}\n`;
 
   try {
-    const logPath = path.join(app.getPath("userData"), "graphnode-electron.log");
+    const logPath = path.join(
+      app.getPath("userData"),
+      "graphnode-electron.log",
+    );
     fs.appendFileSync(logPath, line, "utf-8");
   } catch (error) {
     console.error("Failed to write app log:", error);
@@ -673,7 +688,9 @@ function createMainWindow() {
   if (!app.isPackaged) {
     // 개발 모드
     mainWindow.loadURL(mainUrl);
-    mainWindow.webContents.openDevTools();
+    // detach 모드: Elements 패널이 캔버스를 인라인 프리뷰할 때 발생하는
+    // ReadPixels GPU 스톨을 방지한다 (Context Lost 원인 제거).
+    mainWindow.webContents.openDevTools({ mode: "detach" });
     mainWindow.once("ready-to-show", () => {
       mainWindow?.show();
     });

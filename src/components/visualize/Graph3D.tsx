@@ -395,7 +395,9 @@ export default function Graph3D({
     const direction = camera.position.clone().sub(controls.target).normalize();
     const currentDistance = camera.position.distanceTo(controls.target);
     const newDistance = Math.max(20, currentDistance / 1.3);
-    camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+    camera.position
+      .copy(controls.target)
+      .add(direction.multiplyScalar(newDistance));
     controls.update();
     setZoomLevel((prev) => Math.min(prev * 1.3, 5));
   }, []);
@@ -408,7 +410,9 @@ export default function Graph3D({
     const direction = camera.position.clone().sub(controls.target).normalize();
     const currentDistance = camera.position.distanceTo(controls.target);
     const newDistance = Math.min(1000, currentDistance * 1.3);
-    camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+    camera.position
+      .copy(controls.target)
+      .add(direction.multiplyScalar(newDistance));
     controls.update();
     setZoomLevel((prev) => Math.max(prev / 1.3, 0.1));
   }, []);
@@ -446,12 +450,7 @@ export default function Graph3D({
     const scene = new THREE.Scene();
     const activeTheme = THEME_STYLES[theme];
     scene.background = new THREE.Color(activeTheme.background);
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      width / height,
-      0.1,
-      5000,
-    );
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
     camera.position.set(0, 0, 200);
 
     // Three.js v0.181.1 버그: catch(error) 블록에서 error 파라미터가 내부 error() 함수를
@@ -460,8 +459,9 @@ export default function Graph3D({
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: true, // 안티엘리어싱 (픽셀 경계의 계단 현상 부드럽게)
         canvas: canvasRef.current,
+        powerPreference: "high-performance",
       });
     } catch (_) {
       // 부모가 콜백을 제공한 경우 2D 등 대체 모드로 전환, 없으면 내부 fallback UI 표시
@@ -474,6 +474,24 @@ export default function Graph3D({
     }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+    // DevTools ReadPixels 스톨이나 GPU 워치독 타임아웃으로 컨텍스트가 소실될 경우
+    // animate RAF를 멈추고 fallback UI로 전환한다. raf는 클로저로 참조.
+    let raf = 0;
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      cancelAnimationFrame(raf);
+      if (onWebGLUnavailableRef.current) {
+        onWebGLUnavailableRef.current();
+      } else {
+        setWebGLError(true);
+      }
+    };
+    renderer.domElement.addEventListener(
+      "webglcontextlost",
+      onContextLost,
+      false,
+    );
 
     // 조명 추가 (입체감을 위해)
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1010,8 +1028,7 @@ export default function Graph3D({
 
     const ensureNodeLabel = (nodeId: string, clusterId: string) => {
       const nodeEntry = nodeOrigIdById.get(nodeId);
-      const title =
-        nodeEntry?.nodeTitle ?? nodeEntry?.origId ?? nodeId;
+      const title = nodeEntry?.nodeTitle ?? nodeEntry?.origId ?? nodeId;
       setNodeLabel(nodeId, title, clusterId);
     };
 
@@ -1401,7 +1418,6 @@ export default function Graph3D({
     };
     window.addEventListener("keydown", onKeyDown);
 
-    let raf = 0;
     const animate = () => {
       raf = requestAnimationFrame(animate);
       controls.update();
@@ -1411,6 +1427,11 @@ export default function Graph3D({
 
     return () => {
       cancelAnimationFrame(raf);
+      renderer.domElement.removeEventListener(
+        "webglcontextlost",
+        onContextLost,
+        false,
+      );
       renderer.domElement.removeEventListener("mousemove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKeyDown);
@@ -1442,14 +1463,13 @@ export default function Graph3D({
       updateSceneRef.current = null;
       simulation.stop();
       clusterSim.stop();
-      // forceContextLoss는 WebGL 컨텍스트가 정상 생성된 경우에만 유효.
-      // SwiftShader 등 소프트웨어 렌더러에서 컨텍스트 생성이 실패하면
-      // renderer.gl이 null이므로 내부에서 throw → React 렌더 상태 오염 방지를 위해 guard.
-      try {
-        renderer.forceContextLoss();
-      } catch (_) {
-        // context가 생성되지 않은 경우 무시
-      }
+      // forceContextLoss()를 호출하지 않는다.
+      // WebGL 스펙상 loseContext() 후 같은 캔버스에서 getContext()를 호출하면
+      // restoreContext() 없이는 동일한 lost 컨텍스트를 반환한다.
+      // React StrictMode는 effect를 mount→cleanup→mount 순으로 두 번 실행하므로,
+      // cleanup에서 forceContextLoss()를 호출하면 재마운트 시 즉시 Context Lost가 발생한다.
+      // renderer.dispose()가 이미 모든 GPU 리소스(버퍼, 텍스처, 프로그램)를 해제하므로
+      // 컨텍스트를 강제 종료할 필요가 없다.
       renderer.dispose();
       scene.clear();
     };
