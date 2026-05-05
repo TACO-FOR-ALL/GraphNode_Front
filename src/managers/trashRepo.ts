@@ -3,6 +3,7 @@ import type { TrashedFolder, TrashedNote, TrashedThread } from "@/types/Trash";
 import { unwrapResponse } from "@/utils/httpResponse";
 import { isElectron } from "@/utils/platform";
 import { mapNote, mapFolder, mapConversation } from "@/utils/dtoMappers";
+import { outboxRepo } from "./outboxRepo";
 import type {
   NoteDto,
   FolderDto,
@@ -79,12 +80,16 @@ export const trashRepo = {
     await requireGraphNodeAPI().bulkDeleteSQLiteNotes([noteId]);
     await requireGraphNodeAPI().upsertSQLiteTrashedNote(trashedNote);
 
-    try {
-      unwrapResponse(await api.note.softDeleteNote(noteId));
-    } catch (error) {
+    const deleteResult = await api.note.softDeleteNote(noteId);
+    if (!deleteResult.isSuccess) {
+      if (deleteResult.error?.statusCode === 404) {
+        // 노트가 서버에 없음 (note.create가 아직 sync 안 됨) → 로컬 삭제 유지, pending outbox 취소
+        await outboxRepo.cancelEntityOps(noteId);
+        return trashedNote;
+      }
       await requireGraphNodeAPI().deleteSQLiteTrashedNote(noteId);
       await requireGraphNodeAPI().upsertSQLiteNote(note);
-      throw error;
+      throw new Error(deleteResult.error?.message ?? "softDeleteNote failed");
     }
 
     return trashedNote;
@@ -224,31 +229,45 @@ export const trashRepo = {
       expiresAt: now + THIRTY_DAYS_MS,
     };
 
+    // 노트를 루트로 이동하는 대신 휴지통으로 이동
     if (notesInFolder.length > 0) {
-      await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
-        notesInFolder.map((note) => ({
-          ...note,
-          folderId: null,
-        })),
-      );
+      await requireGraphNodeAPI().bulkDeleteSQLiteNotes(noteIds);
+      for (const note of notesInFolder) {
+        await requireGraphNodeAPI().upsertSQLiteTrashedNote({
+          id: note.id,
+          originalNote: note,
+          deletedAt: now,
+          expiresAt: now + THIRTY_DAYS_MS,
+        });
+      }
     }
     await requireGraphNodeAPI().bulkDeleteSQLiteFolders([folderId]);
     await requireGraphNodeAPI().upsertSQLiteTrashedFolder(trashedFolder);
 
-    try {
-      unwrapResponse(await api.note.softDeleteFolder(folderId));
-    } catch (error) {
+    const deleteFolderResult = await api.note.softDeleteFolder(folderId);
+    if (!deleteFolderResult.isSuccess) {
+      // 롤백: 폴더와 노트 복원
       await requireGraphNodeAPI().deleteSQLiteTrashedFolder(folderId);
       await requireGraphNodeAPI().upsertSQLiteFolder(folder);
       if (notesInFolder.length > 0) {
-        await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
-          notesInFolder.map((note) => ({
-            ...note,
-            folderId,
-          })),
-        );
+        await requireGraphNodeAPI().bulkUpsertSQLiteNotes(notesInFolder);
+        for (const noteId of noteIds) {
+          await requireGraphNodeAPI().deleteSQLiteTrashedNote(noteId);
+        }
       }
-      throw error;
+      throw new Error(deleteFolderResult.error?.message ?? "softDeleteFolder failed");
+    }
+
+    // 노트 서버 소프트 딜리트 (폴더 삭제 확정 후, 개별 처리)
+    for (const note of notesInFolder) {
+      const noteResult = await api.note.softDeleteNote(note.id);
+      if (!noteResult.isSuccess) {
+        if (noteResult.error?.statusCode === 404) {
+          // 서버에 없는 노트 — pending outbox ops 취소
+          await outboxRepo.cancelEntityOps(note.id);
+        }
+        // 다른 오류는 로컬 상태가 정확하므로 계속 진행
+      }
     }
 
     return trashedFolder;
@@ -264,20 +283,30 @@ export const trashRepo = {
         trashedFolder.originalFolder,
       );
 
-      const notes = await requireGraphNodeAPI().listSQLiteNotes();
-      const notesToRestore = notes.filter((note) =>
-        trashedFolder.noteIds.includes(note.id),
-      );
-      if (notesToRestore.length > 0) {
-        await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
-          notesToRestore.map((note) => ({
-            ...note,
-            folderId: trashedFolderId,
-          })),
+      // 노트들을 활성 목록이 아닌 휴지통에서 복원
+      if (trashedFolder.noteIds.length > 0) {
+        const allTrashedNotes = await requireGraphNodeAPI().listSQLiteTrashedNotes();
+        const notesToRestore = allTrashedNotes.filter((tn) =>
+          trashedFolder.noteIds.includes(tn.id),
         );
+        if (notesToRestore.length > 0) {
+          await requireGraphNodeAPI().bulkUpsertSQLiteNotes(
+            notesToRestore.map((tn) => ({
+              ...tn.originalNote,
+              folderId: trashedFolderId,
+            })),
+          );
+          for (const tn of notesToRestore) {
+            await requireGraphNodeAPI().deleteSQLiteTrashedNote(tn.id);
+          }
+        }
       }
 
       await requireGraphNodeAPI().deleteSQLiteTrashedFolder(trashedFolderId);
+
+      // 서버에도 폴더(+노트) 복원
+      await api.note.restoreFolder(trashedFolderId);
+
       return true;
     }
 

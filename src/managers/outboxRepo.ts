@@ -126,6 +126,12 @@ export const outboxRepo = {
 
     return window.graphnodeAPI.listSQLiteOutboxByEntityIds(entityIds);
   },
+
+  async cancelEntityOps(entityId: string) {
+    const related = await listEntityOps(entityId);
+    const pendingOnly = related.filter((op) => op.status === "pending");
+    await deleteOps(pendingOnly.map((op) => op.opId));
+  },
 };
 
 async function enqueueWithCoalesce(
