@@ -26,14 +26,17 @@ export default function TrashPanel() {
   const loadTrash = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [notes, threads, folders] = await Promise.all([
+      const [notes, threads, folders] = await Promise.allSettled([
         trashRepo.getTrashedNotes(),
         trashRepo.getTrashedThreads(),
         trashRepo.getTrashedFolders(),
       ]);
-      setTrashedNotes(notes);
-      setTrashedThreads(threads);
-      setTrashedFolders(folders);
+      if (notes.status === "fulfilled") setTrashedNotes(notes.value);
+      else console.error("[TrashPanel] notes:", notes.reason);
+      if (threads.status === "fulfilled") setTrashedThreads(threads.value);
+      else console.error("[TrashPanel] threads:", threads.reason);
+      if (folders.status === "fulfilled") setTrashedFolders(folders.value);
+      else console.error("[TrashPanel] folders:", folders.reason);
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +108,8 @@ export default function TrashPanel() {
   return (
     <div className="flex flex-col gap-4">
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-bg-tertiary">
+      <div className="flex items-center justify-between border-b border-bg-tertiary">
+        <div className="flex gap-2">
         {(
           [
             {
@@ -142,6 +146,15 @@ export default function TrashPanel() {
             {label} ({count})
           </button>
         ))}
+        </div>
+        <button
+          onClick={loadTrash}
+          disabled={isLoading}
+          title={t("settings.dataPrivacy.trash.refresh", "Refresh")}
+          className="p-1.5 mb-1 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded transition-colors disabled:opacity-40"
+        >
+          <IoRefresh className={`text-base ${isLoading ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
       {/* Content */}

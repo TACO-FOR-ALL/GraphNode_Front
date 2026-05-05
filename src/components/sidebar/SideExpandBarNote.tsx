@@ -189,7 +189,7 @@ export default function SideExpandBarNote({
     e.stopPropagation();
     if (
       !confirm(
-        "Are you sure you want to delete this folder? All notes inside will be moved to the root.",
+        "Are you sure you want to delete this folder? All notes inside will also be moved to the trash.",
       )
     )
       return;

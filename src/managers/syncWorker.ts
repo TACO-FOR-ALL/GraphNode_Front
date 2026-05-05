@@ -42,9 +42,13 @@ async function processOp(op: OutboxOp) {
 
   try {
     switch (op.type) {
-      case "note.create":
-        await api.note.createNote(op.payload);
+      case "note.create": {
+        const createResult = await api.note.createNote(op.payload);
+        if (!createResult.isSuccess) {
+          throw new Error(createResult.error?.message ?? "note.create failed");
+        }
         break;
+      }
 
       // 업데이트와 이동은 동일 로직으로 처리
       case "note.update":
