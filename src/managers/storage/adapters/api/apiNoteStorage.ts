@@ -7,15 +7,14 @@ import type {
   MoveNoteRecordInput,
 } from "../../contracts/noteStorage";
 
-type FolderDto = {
+function toNote(dto: {
   id: string;
-  name: string;
-  parentId: string | null;
+  title: string;
+  content: string;
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-function toNote(dto: { id: string; title: string; content: string; folderId: string | null; createdAt: string; updatedAt: string }): Note {
+}): Note {
   return {
     ...dto,
     createdAt: new Date(dto.createdAt).getTime(),
@@ -23,72 +22,50 @@ function toNote(dto: { id: string; title: string; content: string; folderId: str
   };
 }
 
-async function listAllFolders(): Promise<FolderDto[]> {
-  const allFolders = new Map<string, FolderDto>();
-  const pendingParents: Array<string | null> = [null];
+async function fetchAllNotes(): Promise<Note[]> {
+  const folderResult = await api.note.listFolders(undefined);
+  const allFolderIds: Array<string | null> = [null];
 
-  while (pendingParents.length > 0) {
-    const parentId = pendingParents.shift() ?? null;
-    const result = await api.note.listFolders(parentId ?? undefined);
-    if (!result.isSuccess) {
-      continue;
-    }
-
-    for (const folder of result.data) {
-      if (allFolders.has(folder.id)) {
-        continue;
+  if (folderResult.isSuccess) {
+    const pendingParents: Array<string | null> = [null];
+    const seen = new Set<string>();
+    while (pendingParents.length > 0) {
+      const parentId = pendingParents.shift()!;
+      const result = await api.note.listFolders(parentId ?? undefined);
+      if (!result.isSuccess) continue;
+      for (const folder of result.data) {
+        if (seen.has(folder.id)) continue;
+        seen.add(folder.id);
+        allFolderIds.push(folder.id);
+        pendingParents.push(folder.id);
       }
-      allFolders.set(folder.id, folder);
-      pendingParents.push(folder.id);
     }
   }
 
-  return Array.from(allFolders.values());
-}
-
-async function listAllNotesAcrossFolders(): Promise<Array<{
-  id: string;
-  title: string;
-  content: string;
-  folderId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}>> {
-  const rootResult = await api.note.listNotes();
-  if (!rootResult.isSuccess) {
-    return [];
-  }
-
-  const allNotes = new Map(rootResult.data.map((note) => [note.id, note]));
-  const folders = await listAllFolders();
-
-  if (folders.length === 0) {
-    return Array.from(allNotes.values());
-  }
-
-  const folderResults = await Promise.all(
-    folders.map((folder) => api.note.listNotes(folder.id)),
+  const noteResults = await Promise.all(
+    allFolderIds.map((folderId) => api.note.listNotes(folderId ?? undefined)),
   );
 
-  for (const result of folderResults) {
-    if (!result.isSuccess) {
-      continue;
-    }
-    for (const note of result.data) {
-      allNotes.set(note.id, note);
+  const allNotes = new Map<string, Note>();
+  for (const result of noteResults) {
+    if (!result.isSuccess) continue;
+    for (const dto of result.data) {
+      allNotes.set(dto.id, toNote(dto));
     }
   }
 
-  return Array.from(allNotes.values()).sort(
-    (a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
+  return Array.from(allNotes.values()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export const apiNoteStorage: NoteStorageAdapter = {
   async listNotes(): Promise<Note[]> {
-    const allNotes = await listAllNotesAcrossFolders();
-    return allNotes.map(toNote);
+    return fetchAllNotes();
+  },
+
+  async listNotesByFolder(folderId: string | null): Promise<Note[]> {
+    const result = await api.note.listNotes(folderId ?? undefined);
+    if (!result.isSuccess) return [];
+    return result.data.map(toNote);
   },
 
   async getNote(id: string): Promise<Note | null> {
@@ -98,10 +75,10 @@ export const apiNoteStorage: NoteStorageAdapter = {
   },
 
   async searchNotes(query: string): Promise<Note[]> {
-    const allNotes = await listAllNotesAcrossFolders();
-    return allNotes
-      .filter((dto) => dto.title.includes(query) || dto.content.includes(query))
-      .map(toNote);
+    const allNotes = await fetchAllNotes();
+    return allNotes.filter(
+      (note) => note.title.includes(query) || note.content.includes(query),
+    );
   },
 
   async createNoteRecord(input: CreateNoteRecordInput): Promise<Note> {
@@ -115,7 +92,10 @@ export const apiNoteStorage: NoteStorageAdapter = {
     return toNote(result.data);
   },
 
-  async updateNoteRecord(id: string, input: UpdateNoteRecordInput): Promise<void> {
+  async updateNoteRecord(
+    id: string,
+    input: UpdateNoteRecordInput,
+  ): Promise<void> {
     await api.note.updateNote(id, {
       title: input.title,
       content: input.content,

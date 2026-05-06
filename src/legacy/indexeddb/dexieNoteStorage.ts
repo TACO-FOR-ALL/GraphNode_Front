@@ -18,6 +18,10 @@ export const dexieNoteStorage: NoteStorageAdapter = {
     return db.notes.toArray();
   },
 
+  async listNotesByFolder(folderId: string | null): Promise<Note[]> {
+    return db.notes.filter((n) => n.folderId === folderId).toArray();
+  },
+
   async getNote(id: string): Promise<Note | null> {
     return (await db.notes.get(id)) ?? null;
   },

@@ -23,6 +23,7 @@ export type MoveNoteRecordInput = {
 export interface NoteStorageAdapter {
   createNoteRecord(input: CreateNoteRecordInput): Promise<Note>;
   listNotes(): Promise<Note[]>;
+  listNotesByFolder(folderId: string | null): Promise<Note[]>;
   getNote(id: string): Promise<Note | null>;
   searchNotes(query: string): Promise<Note[]>;
   updateNoteRecord(id: string, input: UpdateNoteRecordInput): Promise<void>;

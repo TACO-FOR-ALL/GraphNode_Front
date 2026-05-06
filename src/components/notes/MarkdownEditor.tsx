@@ -24,6 +24,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { useState, useEffect, useRef } from "react";
 import { common, createLowlight } from "lowlight";
 import { noteRepo } from "@/managers/noteRepo";
+import type { Note } from "@/types/Note";
 import { CustomReactNode } from "./CustomReactComponent";
 import { useQueryClient } from "@tanstack/react-query";
 import { IoMdRefresh } from "react-icons/io";
@@ -209,7 +210,17 @@ export default ({
         }
 
         if (noteId) {
-          const note = await noteRepo.getNoteById(noteId);
+          // 사이드바 캐시에서 먼저 탐색 (content 포함) — 중복 API 호출 방지
+          const sidebarQueries = queryClient
+            .getQueryCache()
+            .findAll({ queryKey: ["sidebar-notes"] });
+          let cachedNote: Note | undefined;
+          for (const q of sidebarQueries) {
+            const data = q.state.data as Note[] | undefined;
+            cachedNote = data?.find((n) => n.id === noteId);
+            if (cachedNote) break;
+          }
+          const note = cachedNote ?? (await noteRepo.getNoteById(noteId));
 
           if (note) {
             const normalizedContent = normalizeTableMarkdown(
