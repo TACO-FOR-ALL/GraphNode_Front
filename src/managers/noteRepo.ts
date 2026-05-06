@@ -43,6 +43,10 @@ export const noteRepo = {
     return (await getPreferredNoteReadStorage()).listNotes();
   },
 
+  async getNotesByFolder(folderId: string | null): Promise<Note[]> {
+    return (await getPreferredNoteReadStorage()).listNotesByFolder(folderId);
+  },
+
   async getNoteById(id: string): Promise<Note | null> {
     return (await getPreferredNoteReadStorage()).getNote(id);
   },

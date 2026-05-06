@@ -17,6 +17,11 @@ export const sqliteRendererNoteStorage: NoteStorageAdapter = {
     return window.graphnodeAPI.listSQLiteNotes();
   },
 
+  async listNotesByFolder(folderId: string | null): Promise<Note[]> {
+    const all = await window.graphnodeAPI.listSQLiteNotes();
+    return all.filter((n) => n.folderId === folderId);
+  },
+
   async getNote(id: string): Promise<Note | null> {
     return window.graphnodeAPI.getSQLiteNoteById(id);
   },

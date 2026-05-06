@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Folder } from "@/types/Folder";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { folderRepo } from "@/managers/folderRepo";
 import { noteRepo } from "@/managers/noteRepo";
 import NewFolderField from "../NewFolderField";
@@ -18,16 +18,10 @@ import SidebarSkeletonList from "./SidebarSkeletonList";
 
 export default function SideExpandBarNote({
   path,
-  notes,
-  folders,
   selectedId,
-  isLoading,
 }: {
   path: string;
-  notes: Note[];
-  folders: Folder[];
   selectedId: string;
-  isLoading?: boolean;
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -54,6 +48,54 @@ export default function SideExpandBarNote({
   const dragHoverFolderRef = useRef<string | "ROOT" | null>(null);
   const dropHandledRef = useRef(false);
   const queryClient = useQueryClient();
+
+  // 루트 데이터만 초기 패칭
+  const { data: rootNotes, isLoading: isLoadingNotes } = useQuery<Note[]>({
+    queryKey: ["sidebar-notes", null],
+    queryFn: () => noteRepo.getNotesByFolder(null),
+  });
+
+  const { data: rootFolders, isLoading: isLoadingFolders } = useQuery<Folder[]>({
+    queryKey: ["sidebar-folders", null],
+    queryFn: () => folderRepo.getFoldersByParentId(null),
+  });
+
+  const isLoading = isLoadingNotes || isLoadingFolders;
+
+  // 펼쳐진 폴더의 자식 데이터 lazy 패칭
+  const expandedFolderIdsArray = useMemo(
+    () => Array.from(expandedFolders),
+    [expandedFolders],
+  );
+
+  const subNoteQueries = useQueries({
+    queries: expandedFolderIdsArray.map((folderId) => ({
+      queryKey: ["sidebar-notes", folderId],
+      queryFn: () => noteRepo.getNotesByFolder(folderId),
+      staleTime: 30_000,
+    })),
+  });
+
+  const subFolderQueries = useQueries({
+    queries: expandedFolderIdsArray.map((folderId) => ({
+      queryKey: ["sidebar-folders", folderId],
+      queryFn: () => folderRepo.getFoldersByParentId(folderId),
+      staleTime: 30_000,
+    })),
+  });
+
+  // 루트 + 로드된 하위 폴더 데이터 집계
+  const notes = useMemo(() => {
+    const result: Note[] = [...(rootNotes ?? [])];
+    subNoteQueries.forEach((q) => { if (q.data) result.push(...q.data); });
+    return result;
+  }, [rootNotes, subNoteQueries]);
+
+  const folders = useMemo(() => {
+    const result: Folder[] = [...(rootFolders ?? [])];
+    subFolderQueries.forEach((q) => { if (q.data) result.push(...q.data); });
+    return result;
+  }, [rootFolders, subFolderQueries]);
 
   const resolveNoteIdFromEventTarget = (target: EventTarget | null) => {
     const targetElement =
@@ -169,8 +211,7 @@ export default function SideExpandBarNote({
       const parentId =
         creatingFolderParentId === "ROOT" ? null : creatingFolderParentId;
       await folderRepo.create(newFolderName.trim(), parentId);
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-folders"] });
       setCreatingFolderParentId(null);
       setNewFolderName("");
     } finally {
@@ -195,8 +236,8 @@ export default function SideExpandBarNote({
       return;
 
     await folderRepo.deleteFolderById(folderId);
-    queryClient.invalidateQueries({ queryKey: ["folders"] });
-    queryClient.invalidateQueries({ queryKey: ["notes"] });
+    queryClient.invalidateQueries({ queryKey: ["sidebar-folders"] });
+    queryClient.invalidateQueries({ queryKey: ["sidebar-notes"] });
   };
 
   // 폴더 이름 수정 시작
@@ -212,7 +253,7 @@ export default function SideExpandBarNote({
       await folderRepo.updateFolderById(folderId, {
         name: editingFolderName.trim(),
       });
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-folders"] });
     }
     setEditingFolderId(null);
     setEditingFolderName("");
@@ -241,19 +282,15 @@ export default function SideExpandBarNote({
         try {
           dropHandledRef.current = true;
           await noteRepo.moveNoteToFolder(noteId, targetFolderId);
-          queryClient.setQueryData<Note[]>(["notes"], (old) =>
-            old
-              ? old.map((n) =>
-                  n.id === noteId ? { ...n, folderId: targetFolderId } : n,
-                )
-              : old,
+          queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
+            old ? old.map((n) => (n.id === noteId ? { ...n, folderId: targetFolderId } : n)) : old,
           );
           if (targetFolderId) {
             setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
           }
         } catch (err) {
           console.error("[dragend-fallback] move failed:", err);
-          queryClient.invalidateQueries({ queryKey: ["notes"] });
+          queryClient.invalidateQueries({ queryKey: ["sidebar-notes"] });
         }
       })();
     }
@@ -314,7 +351,7 @@ export default function SideExpandBarNote({
 
       try {
         await folderRepo.updateFolderById(draggingFolder, { parentId: targetFolderId });
-        queryClient.invalidateQueries({ queryKey: ["folders"] });
+        queryClient.invalidateQueries({ queryKey: ["sidebar-folders"] });
         if (targetFolderId) {
           setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
         }
@@ -345,7 +382,7 @@ export default function SideExpandBarNote({
 
     try {
       await noteRepo.moveNoteToFolder(noteId, targetFolderId);
-      queryClient.setQueryData<Note[]>(["notes"], (old) =>
+      queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
         old ? old.map((n) => (n.id === noteId ? { ...n, folderId: targetFolderId } : n)) : old,
       );
       if (targetFolderId) {
@@ -353,7 +390,7 @@ export default function SideExpandBarNote({
       }
     } catch (err) {
       console.error("[drop] note move failed:", err);
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-notes"] });
     }
   };
 
@@ -396,7 +433,9 @@ export default function SideExpandBarNote({
 
   const handleDeleteNote = async (noteId: string) => {
     await noteRepo.deleteNoteById(noteId);
-    queryClient.invalidateQueries({ queryKey: ["notes"] });
+    queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
+      old?.filter((n) => n.id !== noteId),
+    );
   };
 
   return (

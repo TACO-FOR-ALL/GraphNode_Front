@@ -1,11 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useMemo } from "react";
-import { Note } from "@/types/Note";
 import { ChatThread } from "@/types/Chat";
-import { Folder } from "@/types/Folder";
 import { threadRepo } from "@/managers/threadRepo";
-import { noteRepo } from "@/managers/noteRepo";
-import { folderRepo } from "@/managers/folderRepo";
 import { useQuery } from "@tanstack/react-query";
 import SideNavigationBar from "./SideNavigationBar";
 import ToggleSidebarExpand from "./ToggleSidebarExpand";
@@ -52,18 +48,6 @@ export default function SideTabBar({
     enabled: path.includes("/chat"),
   });
 
-  const { data: notes, isLoading: isLoadingNotes } = useQuery<Note[]>({
-    queryKey: ["notes"],
-    queryFn: () => noteRepo.getAllNotes(),
-    enabled: path.includes("/note"),
-  });
-
-  const { data: folders, isLoading: isLoadingFolders } = useQuery<Folder[]>({
-    queryKey: ["folders"],
-    queryFn: () => folderRepo.getFolderList(),
-    enabled: path.includes("/note"),
-  });
-
   return (
     <div className="flex h-full select-none">
       <SideNavigationBar
@@ -85,10 +69,7 @@ export default function SideTabBar({
               {path.includes("/note") && (
                 <SideExpandBarNote
                   path={path}
-                  notes={notes ?? []}
-                  folders={folders ?? []}
                   selectedId={selectedId ?? ""}
-                  isLoading={isLoadingNotes || isLoadingFolders}
                 />
               )}
               {path.includes("/chat") && (
