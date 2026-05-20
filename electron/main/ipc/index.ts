@@ -7,11 +7,11 @@ import mcpIPC from "./mcp";
 import graphNodeIPC from "./graphnode";
 import sentryIPC from "./sentry";
 
-export default function ipc() {
+export default async function ipc() {
   systemIPC();
   windowIPC();
   openaiIPC();
-  keytarIPC();
+  await keytarIPC();
   fileIPC();
   mcpIPC();
   graphNodeIPC();

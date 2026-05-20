@@ -229,6 +229,12 @@
     border-radius: 0.25rem;
   }
 
+  mark.pen-highlight {
+    background: rgba(134, 239, 172, 0.45);
+    padding: 0.125em 0.3em;
+    border-radius: 0;
+  }
+
   a {
     color: #3b82f6;
     text-decoration: underline;

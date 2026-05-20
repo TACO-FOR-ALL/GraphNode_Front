@@ -7,6 +7,14 @@ import { Me } from "@/types/Me";
 import { api } from "@/apiClient";
 import { useOAuthPopup } from "@/hooks/useOAuthPopup";
 
+async function setMeWithCursorReset(me: Me) {
+  const prevMe = await window.keytarAPI?.getMe();
+  if (prevMe && prevMe.userId !== me.userId) {
+    localStorage.removeItem("graphnode_syncronization");
+  }
+  await window.keytarAPI?.setMe(me);
+}
+
 export default function Login() {
   const { t } = useTranslation();
   const [hasSession, setHasSession] = useState<boolean | null>(null);
@@ -23,7 +31,7 @@ export default function Login() {
 
       if (result.isSuccess) {
         setHasSession(true);
-        await window.keytarAPI?.setMe(result.data as Me);
+        await setMeWithCursorReset(result.data as Me);
         window.electron?.send("auth-success");
         return;
       }
@@ -44,7 +52,7 @@ export default function Login() {
   // OAuth 팝업 로그인
   const { isLoggingIn, error: oauthError, login } = useOAuthPopup(async (me: Me) => {
     setHasSession(true);
-    await window.keytarAPI?.setMe(me);
+    await setMeWithCursorReset(me);
     window.electron?.send("auth-success");
   });
 

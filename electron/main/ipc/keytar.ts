@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import { Me } from "@/types/Me";
+import { setActiveUserId, clearActiveUserId } from "../sqlite/activeUser";
 
 // Keytar API 키 관리
 const SERVICE_NAME = "graphnode";
@@ -85,8 +86,19 @@ function loadCredentialStore(): CredentialStore {
   }
 }
 
-export default function keytarIPC() {
+export default async function keytarIPC() {
   const credentialStore = loadCredentialStore();
+
+  // 앱 시작 시 저장된 me에서 userId를 복원해 DB 경로에 사용
+  const meString = await credentialStore.getPassword(SERVICE_NAME, "me");
+  if (meString) {
+    try {
+      const me = JSON.parse(meString) as Me;
+      setActiveUserId(me.userId);
+    } catch {
+      // 파싱 실패 시 무시
+    }
+  }
 
   ipcMain.handle("keytar:getAPIKey", async (_event, modelName: string) => {
     return await credentialStore.getPassword(SERVICE_NAME, modelName);
@@ -117,10 +129,12 @@ export default function keytarIPC() {
   });
 
   ipcMain.handle("keytar:setMe", async (_event, me: Me) => {
+    setActiveUserId(me.userId);
     return await credentialStore.setPassword(SERVICE_NAME, "me", JSON.stringify(me));
   });
 
   ipcMain.handle("keytar:deleteMe", async (_event) => {
+    clearActiveUserId();
     return await credentialStore.deletePassword(SERVICE_NAME, "me");
   });
 }

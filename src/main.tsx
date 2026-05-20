@@ -5,7 +5,6 @@ import AppErrorBoundary from "./components/AppErrorBoundary";
 import "./index.css";
 import { initI18n } from "./i18n";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { startSyncLoop } from "./managers/startSyncLoop";
 import { queryClient } from "./queryClient";
 import { isElectron } from "./utils/platform";
 import {
@@ -18,10 +17,6 @@ import {
   await initRendererSentry().catch((error) => {
     console.error("Sentry init failed:", error);
   });
-
-  if (isElectron()) {
-    startSyncLoop();
-  }
 
   await initI18n();
   installSentryDebugHelpers();

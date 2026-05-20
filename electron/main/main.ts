@@ -158,12 +158,12 @@ function resolveRendererUrl(hash = "") {
 function getThemeColors() {
   const isDark = nativeTheme.shouldUseDarkColors;
   return {
-    background: isDark ? "#1a1a2e" : "#ffffff",
-    text: isDark ? "#ffffff" : "#1a1a2e",
-    textSecondary: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
-    spinnerTrack: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-    primary: "#667eea",
-    primaryHover: "#5a6fd6",
+    background: isDark ? "#0a0a0b" : "#ffffff",
+    text: isDark ? "#f4f4f5" : "#1f2937",
+    textSecondary: isDark ? "#a1a1aa" : "#6b7280",
+    spinnerTrack: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+    primary: "#2b89f8",
+    primaryHover: "#1a78e8",
     error: "#ff6b6b",
   };
 }
@@ -243,7 +243,7 @@ function getSplashHtml(): string {
           font-size: 32px;
           font-weight: bold;
           margin-bottom: 30px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #2b89f8 0%, #1a78e8 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -328,7 +328,7 @@ function getErrorHtml(errorMessage: string): string {
           font-size: 32px;
           font-weight: bold;
           margin-bottom: 30px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #2b89f8 0%, #1a78e8 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -776,8 +776,8 @@ function registerNotificationHandlers() {
   );
 }
 
-app.whenReady().then(() => {
-  ipc();
+app.whenReady().then(async () => {
+  await ipc();
   registerAuthHandlers();
   registerSetupHandlers();
   registerNotificationHandlers();

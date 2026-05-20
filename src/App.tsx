@@ -41,6 +41,7 @@ import { api } from "./apiClient";
 import i18n, { getSavedLanguage } from "./i18n";
 import { loadAndApplyGraphColors } from "./utils/graphColors";
 import { pullOnce } from "./managers/pullWorker";
+import { startSyncLoop } from "./managers/startSyncLoop";
 import { useChangelogStore } from "./store/useChangelogStore";
 import ChangelogModal from "./components/changelog/ChangelogModal";
 import { useOnboardingStore } from "./store/useOnboardingStore";
@@ -161,6 +162,12 @@ function MainLayout() {
   //     .finally(() => setIsDownloading(false));
   // }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 아웃박스 sync loop — 메인 창에서만 실행 (login/setup 창 제외)
+  useEffect(() => {
+    if (!isElectron()) return;
+    return startSyncLoop();
+  }, []);
+
   // 휴지통 만료 항목 정리
   useEffect(() => {
     if (!isElectron()) {
@@ -276,27 +283,96 @@ function MainLayout() {
         setMe(result.data as Me);
         setWebAuthenticated(true);
       } else {
-        navigate("/");
         setWebAuthenticated(false);
       }
     })();
-  }, []);
+  }, [navigate]);
 
-  // 앱 시작 시 서버 최신 데이터 pull (notes, folders, conversations)
+  // 앱에서 서버 → 로컬 pull 동기화 유지
+  // - 시작 시 1회
+  // - 앱 복귀(focus/visibility) 시 즉시
+  // - online 전환 시 즉시
+  // - 주기적으로(가시 상태에서만) 재동기화
   useEffect(() => {
     if (!isElectron()) {
       // console.log("[웹] 초기 동기화(pull) 스킵");
       return;
     }
-    // console.log("[앱] 초기 동기화(pull) 시작");
-    pullOnce().catch((err) => {
-      console.error("Initial sync pull failed:", err);
-      useToastStore.getState().addToast({
-        type: "error",
-        message: t("sync.pullFailed"),
-      });
-    });
-  }, []);
+
+    let disposed = false;
+    let pulling = false;
+    let lastPulledAt = 0;
+    let lastErrorToastAt = 0;
+    const MIN_PULL_INTERVAL_MS = 15_000;
+    const PERIODIC_PULL_INTERVAL_MS = 30_000;
+    const ERROR_TOAST_INTERVAL_MS = 60_000;
+
+    const runPull = async (force = false) => {
+      if (disposed || pulling || !navigator.onLine) return;
+
+      const now = Date.now();
+      if (!force && now - lastPulledAt < MIN_PULL_INTERVAL_MS) return;
+
+      pulling = true;
+      try {
+        await pullOnce();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["chatThreads"] }),
+          queryClient.invalidateQueries({ queryKey: ["notes"] }),
+          queryClient.invalidateQueries({ queryKey: ["recent-notes"] }),
+          queryClient.invalidateQueries({ queryKey: ["folders"] }),
+        ]);
+      } catch (err) {
+        console.error("Pull sync failed:", err);
+        const nowForToast = Date.now();
+        if (nowForToast - lastErrorToastAt >= ERROR_TOAST_INTERVAL_MS) {
+          lastErrorToastAt = nowForToast;
+          useToastStore.getState().addToast({
+            type: "error",
+            message: t("sync.pullFailed"),
+          });
+        }
+      } finally {
+        pulling = false;
+        lastPulledAt = Date.now();
+      }
+    };
+
+    // 앱 시작 시 1회 실행
+    runPull(true);
+
+    const handleFocus = () => {
+      runPull(true);
+    };
+
+    const handleOnline = () => {
+      runPull(true);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        runPull(true);
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        runPull(false);
+      }
+    }, PERIODIC_PULL_INTERVAL_MS);
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.clearInterval(timer);
+    };
+  }, [queryClient, t]);
 
   const { isOpen, setIsOpen } = useAgentToolBoxStore();
 
