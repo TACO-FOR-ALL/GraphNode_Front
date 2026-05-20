@@ -4,9 +4,9 @@ import path from "node:path";
 import { getGraphNodeHomeDirectory } from "@graphnode/paths";
 import {
   applySQLiteCompatibilityMigrations,
-  getDefaultDatabaseLocation,
   readSQLiteSchema,
 } from "@graphnode/storage";
+import { getActiveUserId } from "./activeUser";
 
 type TrashedNoteRow = {
   id: string;
@@ -33,7 +33,9 @@ type TrashedFolderRow = {
 let schemaPromise: Promise<string> | null = null;
 
 function getDatabasePath() {
-  return getDefaultDatabaseLocation(getGraphNodeHomeDirectory());
+  const userId = getActiveUserId();
+  if (!userId) throw new Error("No active user. SQLite cannot be opened before login.");
+  return path.join(getGraphNodeHomeDirectory(), "users", userId, "graphnode.db");
 }
 
 async function getSchema() {

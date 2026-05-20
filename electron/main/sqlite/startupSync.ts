@@ -7,9 +7,9 @@ import {
   SQLITE_BOOTSTRAP_STATE_KEY,
   SQLITE_SYNC_CURSOR_KEY,
   createBootstrapMeta,
-  getDefaultDatabaseLocation,
   readSQLiteSchema,
 } from "@graphnode/storage";
+import { getActiveUserId } from "./activeUser";
 
 type SyncedNote = {
   id: string;
@@ -101,10 +101,30 @@ export type SQLiteStartupSyncPayload = {
   serverTime: string;
 };
 
+function sortFoldersTopologically<T extends { id: string; parentId: string | null }>(folders: T[]): T[] {
+  const map = new Map(folders.map((f) => [f.id, f]));
+  const result: T[] = [];
+  const visited = new Set<string>();
+
+  function visit(folder: T) {
+    if (visited.has(folder.id)) return;
+    if (folder.parentId && map.has(folder.parentId)) {
+      visit(map.get(folder.parentId)!);
+    }
+    visited.add(folder.id);
+    result.push(folder);
+  }
+
+  for (const folder of folders) visit(folder);
+  return result;
+}
+
 let startupSchemaPromise: Promise<string> | null = null;
 
 function getDatabasePath() {
-  return getDefaultDatabaseLocation(getGraphNodeHomeDirectory());
+  const userId = getActiveUserId();
+  if (!userId) throw new Error("No active user. SQLite cannot be opened before login.");
+  return path.join(getGraphNodeHomeDirectory(), "users", userId, "graphnode.db");
 }
 
 async function getSchema() {
@@ -345,7 +365,7 @@ export async function applyStartupSyncToSQLite(
     `);
     const deleteFolder = db.prepare(`DELETE FROM folders WHERE id = ?`);
 
-    payload.folders.upserts.forEach((folder) => {
+    sortFoldersTopologically(payload.folders.upserts).forEach((folder) => {
       upsertFolder.run(
         folder.id,
         folder.name,

@@ -1,5 +1,5 @@
 import type { Folder } from "@/types/Folder";
-import sortItemByDate from "@/utils/sortItemByDate";
+import { sortFoldersTopologically } from "@/utils/sortFoldersTopologically";
 import type {
   CreateFolderRecordInput,
   FolderStorageAdapter,
@@ -26,7 +26,7 @@ export const sqliteRendererFolderStorage: FolderStorageAdapter = {
     await window.graphnodeAPI.upsertSQLiteFolder({ ...existing, ...input });
   },
   async bulkPutFolders(folders: Folder[]): Promise<void> {
-    await window.graphnodeAPI.bulkUpsertSQLiteFolders(sortItemByDate(folders));
+    await window.graphnodeAPI.bulkUpsertSQLiteFolders(sortFoldersTopologically(folders));
   },
   async bulkDeleteFolders(ids: string[]): Promise<void> {
     await window.graphnodeAPI.bulkDeleteSQLiteFolders(ids);

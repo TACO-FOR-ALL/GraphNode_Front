@@ -65,6 +65,7 @@ export default function MyAccountPanel({
       // TODO: 로그인 실패 로직
     }
     if (isElectron()) {
+      await window.keytarAPI.deleteMe();
       window.electron?.send("auth-logout");
     } else {
       onLogout?.();

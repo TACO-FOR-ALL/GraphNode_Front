@@ -395,6 +395,7 @@ declare global {
       deleteAPIKey: (modelName: string) => Promise<void>;
       getMe: () => Promise<Me | null>;
       setMe: (me: Me) => Promise<void>;
+      deleteMe: () => Promise<void>;
     };
     fileAPI: {
       readFileStream: (absPath: string, id: string) => void;

@@ -1,5 +1,6 @@
 import { api } from "@/apiClient";
 import { mapNote, mapFolder, mapConversation } from "@/utils/dtoMappers";
+import { sortFoldersTopologically } from "@/utils/sortFoldersTopologically";
 import { noteRepo } from "./noteRepo";
 import { folderRepo } from "./folderRepo";
 import { threadRepo } from "./threadRepo";
@@ -25,13 +26,14 @@ export async function pullOnce() {
   }
 
   const { notes, folders, conversations, serverTime } = result.data;
+
   const sqliteSyncPayload = {
     notes: {
       upserts: notes.filter((n) => !n.deletedAt).map(mapNote),
       deleteIds: notes.filter((n) => n.deletedAt).map((n) => n.id),
     },
     folders: {
-      upserts: folders.filter((f) => !f.deletedAt).map(mapFolder),
+      upserts: sortFoldersTopologically(folders.filter((f) => !f.deletedAt).map(mapFolder)),
       deleteIds: folders.filter((f) => f.deletedAt).map((f) => f.id),
     },
     threads: {
@@ -56,7 +58,7 @@ export async function pullOnce() {
         .map((op) => op.entityId),
     );
 
-    const toUpsert = active.filter((f) => !locked.has(f.id)).map(mapFolder);
+    const toUpsert = sortFoldersTopologically(active.filter((f) => !locked.has(f.id)).map(mapFolder));
     if (toUpsert.length > 0) await folderRepo.upsertMany(toUpsert);
 
     const toDelete = deletedIds.filter((id) => !locked.has(id));
