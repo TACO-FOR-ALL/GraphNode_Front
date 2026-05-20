@@ -38,6 +38,7 @@ import { NoteTable } from "./NoteTable";
 import { NoteLinkExtension } from "./NoteLinkExtension";
 import { NoteLinkSuggestionPortal } from "./NoteLinkSuggestionPortal";
 import { noteLinkStore } from "./noteLinkStore";
+import { PenHighlight } from "./PenHighlightExtension";
 
 const lowlight = createLowlight(common);
 
@@ -182,6 +183,7 @@ export default ({
       Mathematics,
       CustomReactNode,
       NoteLinkExtension,
+      PenHighlight,
       Markdown,
     ],
     content: "",
@@ -320,7 +322,10 @@ export default ({
       // 변환되지 않은 마크다운 테이블(단락으로 저장된 파이프 행) 감지
       let hasPotentialTable = false;
       editor.state.doc.forEach((node) => {
-        if (node.type.name === "paragraph" && /^\|.+\|/.test(node.textContent)) {
+        if (
+          node.type.name === "paragraph" &&
+          /^\|.+\|/.test(node.textContent)
+        ) {
           hasPotentialTable = true;
         }
       });
@@ -615,10 +620,7 @@ export default ({
         const queryStr = qIdx >= 0 ? withoutScheme.slice(qIdx + 1) : "";
         const headingText = new URLSearchParams(queryStr).get("heading");
         onNavigateToNoteRef.current?.(targetNoteId, headingText);
-      } else if (
-        href.startsWith("http://") ||
-        href.startsWith("https://")
-      ) {
+      } else if (href.startsWith("http://") || href.startsWith("https://")) {
         e.preventDefault();
         window.open(href, "_blank", "noopener noreferrer");
       }
