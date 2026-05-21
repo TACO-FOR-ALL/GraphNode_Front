@@ -72,7 +72,10 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
   if (!isUser && message.content === NETWORK_ERROR_CONTENT) {
     return (
       <div className="mb-10 flex justify-start">
-        <div className="flex flex-col items-start" style={{ maxWidth: assistantMaxWidth }}>
+        <div
+          className="flex flex-col items-start"
+          style={{ maxWidth: assistantMaxWidth }}
+        >
           <div className="rounded-2xl px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
             {t("chat.networkError", "네트워크 오류가 발생했습니다.")}
           </div>
@@ -96,7 +99,10 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
       title={new Date(message.ts).toLocaleString()}
     >
       {isUser ? (
-        <div className="flex items-start gap-3 ml-20" style={{ maxWidth: userMaxWidth }}>
+        <div
+          className="flex items-start gap-3 ml-20"
+          style={{ maxWidth: userMaxWidth }}
+        >
           <div
             className="flex-1 text-text-chat-bubble bg-bg-secondary rounded-2xl rounded-tr-sm px-4 py-3 break-words"
             style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
@@ -105,8 +111,11 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-start" style={{ maxWidth: assistantMaxWidth }}>
-          <div className="rounded-2xl p-6 bg-transparent text-text-chat-bubble flex items-start gap-3 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] w-full">
+        <div
+          className="flex flex-col items-start"
+          style={{ maxWidth: assistantMaxWidth }}
+        >
+          <div className="rounded-2xl py-6 pl-6 pr-10 bg-transparent text-text-chat-bubble flex items-start gap-5 border border-chat-bubble-border shadow-[0_2px_4px_0_rgba(25,33,61,0.08)] w-full">
             <img
               src={logo}
               alt="Profile"
@@ -116,7 +125,10 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
               style={{ marginTop: 0 }}
             />
             <div className="flex flex-col min-w-0 overflow-hidden w-full">
-              <StreamingMarkdownBubble text={message.content} isStreaming={isStreaming} />
+              <StreamingMarkdownBubble
+                text={message.content}
+                isStreaming={isStreaming}
+              />
             </div>
           </div>
           {!(isLastAssistant && isStreaming) && (
@@ -205,7 +217,11 @@ export default function ChatWindow({
   avatarUrl?: string | null;
   onScrollStateChange?: (showButton: boolean) => void;
   scrollToBottomRef?: React.RefObject<(() => void) | null>;
-  onRetry?: (userMessageId: string, userContent: string, errorMessageId: string) => void;
+  onRetry?: (
+    userMessageId: string,
+    userContent: string,
+    errorMessageId: string,
+  ) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -228,11 +244,17 @@ export default function ChatWindow({
   const userMaxWidth = isExpanded ? "708px" : "880px";
   const assistantMaxWidth = isExpanded ? "696px" : "868px";
 
-  const handleDeleteMessage = useCallback(async (messageId: string) => {
-    if (!threadId) return;
-    await threadRepo.deleteMessageFromThreadById(threadId, messageId);
-    addToast({ type: "success", message: t("chat.deleted", "Message deleted") });
-  }, [threadId, addToast, t]);
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!threadId) return;
+      await threadRepo.deleteMessageFromThreadById(threadId, messageId);
+      addToast({
+        type: "success",
+        message: t("chat.deleted", "Message deleted"),
+      });
+    },
+    [threadId, addToast, t],
+  );
 
   const shouldScrollToBottomRef = useRef(false);
   const isFollowingBottomRef = useRef(false);
@@ -364,7 +386,9 @@ export default function ChatWindow({
     };
     requestAnimationFrame(animate);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [shouldUseTopAnchoredTurn, lastUserMessageId]);
 
   // AI 응답이 커질수록 spacer를 줄이고, 응답이 viewport를 넘으면 하단 자동 스크롤
@@ -393,7 +417,9 @@ export default function ChatWindow({
       if (realScrollHeight <= wrap.clientHeight) {
         onScrollStateChange?.(false);
       } else {
-        const atBottom = wrap.scrollTop >= wrap.scrollHeight - newSpacerHeight - wrap.clientHeight - 80;
+        const atBottom =
+          wrap.scrollTop >=
+          wrap.scrollHeight - newSpacerHeight - wrap.clientHeight - 80;
         onScrollStateChange?.(!atBottom);
       }
     });
@@ -432,7 +458,8 @@ export default function ChatWindow({
           onScrollStateChange?.(false);
           return;
         }
-        const atBottom = el.scrollTop >= el.scrollHeight - spacerHeight - el.clientHeight - 80;
+        const atBottom =
+          el.scrollTop >= el.scrollHeight - spacerHeight - el.clientHeight - 80;
         if (!atBottom) isFollowingBottomRef.current = false;
         onScrollStateChange?.(!atBottom);
         return;
@@ -505,15 +532,25 @@ export default function ChatWindow({
 
   const renderMessage = (m: ChatMessage) => {
     const isLastAssistant =
-      m.role === "assistant" && m.id === lastMessageId && lastMessageRole === "assistant";
+      m.role === "assistant" &&
+      m.id === lastMessageId &&
+      lastMessageRole === "assistant";
 
     let retryHandler: (() => void) | undefined;
-    if (m.role === "assistant" && m.content === NETWORK_ERROR_CONTENT && onRetry) {
+    if (
+      m.role === "assistant" &&
+      m.content === NETWORK_ERROR_CONTENT &&
+      onRetry
+    ) {
       const msgIndex = allMessages.findIndex((msg) => msg.id === m.id);
       if (msgIndex > 0) {
-        const prevUserMsg = allMessages.slice(0, msgIndex).reverse().find((msg) => msg.role === "user");
+        const prevUserMsg = allMessages
+          .slice(0, msgIndex)
+          .reverse()
+          .find((msg) => msg.role === "user");
         if (prevUserMsg) {
-          retryHandler = () => onRetry(prevUserMsg.id, prevUserMsg.content, m.id);
+          retryHandler = () =>
+            onRetry(prevUserMsg.id, prevUserMsg.content, m.id);
         }
       }
     }
