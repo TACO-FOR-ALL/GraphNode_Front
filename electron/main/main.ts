@@ -18,9 +18,75 @@ const require = createRequire(import.meta.url);
 
 initMainSentry();
 
+function ensureDirectoryExists(dirPath: string) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function removeDirectoryIfExists(dirPath: string) {
+  try {
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    }
+  } catch (error) {
+    console.warn(`[startup] Failed to clean cache directory: ${dirPath}`, error);
+  }
+}
+
+function configureSessionDataPath() {
+  if (process.platform !== "win32") {
+    return;
+  }
+
+  const localAppData =
+    process.env.LOCALAPPDATA ||
+    path.join(path.dirname(app.getPath("appData")), "Local");
+  const sessionDataPath = path.join(localAppData, "GraphNode", "sessionData");
+
+  try {
+    ensureDirectoryExists(sessionDataPath);
+    // 깨진 Chromium 캐시로 인한 white screen 방지
+    removeDirectoryIfExists(path.join(sessionDataPath, "GPUCache"));
+    removeDirectoryIfExists(path.join(sessionDataPath, "ShaderCache"));
+    app.setPath("sessionData", sessionDataPath);
+  } catch (error) {
+    console.error(
+      "[startup] Failed to configure Windows sessionData path. Falling back to temp directory.",
+      error,
+    );
+
+    try {
+      const fallbackSessionDataPath = path.join(
+        app.getPath("temp"),
+        "GraphNode",
+        "sessionData",
+      );
+      ensureDirectoryExists(fallbackSessionDataPath);
+      removeDirectoryIfExists(path.join(fallbackSessionDataPath, "GPUCache"));
+      removeDirectoryIfExists(path.join(fallbackSessionDataPath, "ShaderCache"));
+      app.setPath("sessionData", fallbackSessionDataPath);
+    } catch (fallbackError) {
+      console.error(
+        "[startup] Failed to configure fallback sessionData path as well.",
+        fallbackError,
+      );
+    }
+  }
+}
+
+configureSessionDataPath();
+
 // 앱 시작 전에 하드웨어 가속 설정 적용 (app.whenReady() 전에 호출해야 함)
 function applyHardwareAccelerationSetting() {
   try {
+    if (process.platform === "win32") {
+      // 일부 Windows 환경에서 white screen이 발생해 소프트웨어 렌더링을 기본값으로 사용
+      app.disableHardwareAcceleration();
+      console.log("Hardware acceleration disabled on Windows for compatibility");
+      return;
+    }
+
     // app.getPath는 ready 전에도 일부 경로 사용 가능
     const userDataPath = app.getPath("userData");
     const settingsPath = path.join(userDataPath, "settings.json");
@@ -42,27 +108,19 @@ function applyHardwareAccelerationSetting() {
 // 앱 시작 전에 설정 적용
 applyHardwareAccelerationSetting();
 
-// WebGL 안정화 플래그 (app.whenReady() 전에 호출해야 함)
-//
-// in-process-gpu: GPU 코드를 브라우저 프로세스에 통합한다.
-//   Electron 기본 구성에서 GPU는 별도 프로세스로 분리되며, ReadPixels 등의
-//   동기 GPU 연산이 블로킹되면 GPU 워치독이 해당 프로세스를 종료 → Context Lost 발생.
-//   in-process-gpu는 별도 GPU 프로세스를 없애 워치독 타임아웃을 방지한다.
-//
-// ignore-gpu-blocklist: GPU 블랙리스트 우회 → Metal/D3D11 실제 사용 보장
-// enable-unsafe-swiftshader: Metal 폴백으로 SwiftShader를 샌드박스 내에서 허용
-// use-angle: macOS = Metal, Windows = D3D11 ANGLE 백엔드 지정
-app.commandLine.appendSwitch("in-process-gpu");
-app.commandLine.appendSwitch("ignore-gpu-blocklist");
-app.commandLine.appendSwitch("enable-unsafe-swiftshader");
-
-// WebGL은 브라우저가 OS의 그래픽 API를 직접 쓸 수 없어서 ANGLE이라는 변환 레이어를 거칩니다.
-// WebGL 코드 → ANGLE → OS 그래픽 API → GPU
-// ANGLE이 "어떤 OS 그래픽 API로 변환할지"를 use - angle로 지정하는 겁니다.
+// macOS에서는 기존 WebGL 안정화 플래그 유지
 if (process.platform === "darwin") {
+  app.commandLine.appendSwitch("in-process-gpu");
+  app.commandLine.appendSwitch("ignore-gpu-blocklist");
+  app.commandLine.appendSwitch("enable-unsafe-swiftshader");
   app.commandLine.appendSwitch("use-angle", "metal");
-} else if (process.platform === "win32") {
-  app.commandLine.appendSwitch("use-angle", "d3d11");
+}
+
+if (process.platform === "win32") {
+  // 디스크 캐시 이동/생성 실패로 인한 white screen 완화
+  app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+  app.commandLine.appendSwitch("disable-gpu-program-cache");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -93,6 +151,13 @@ function attachWindowDebugLogging(
   win: BrowserWindow,
   expectedUrl?: string,
 ) {
+  let domStatusTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearDomStatusTimer = () => {
+    if (!domStatusTimer) return;
+    clearTimeout(domStatusTimer);
+    domStatusTimer = null;
+  };
+
   if (expectedUrl) {
     logAppEvent(scope, `load requested: ${expectedUrl}`);
   }
@@ -103,6 +168,34 @@ function attachWindowDebugLogging(
 
   win.webContents.on("did-finish-load", () => {
     logAppEvent(scope, `did-finish-load: ${win.webContents.getURL()}`);
+
+    clearDomStatusTimer();
+    domStatusTimer = setTimeout(() => {
+      if (win.isDestroyed() || win.webContents.isDestroyed()) {
+        return;
+      }
+
+      win.webContents
+        .executeJavaScript(
+          `(() => {
+            const root = document.getElementById("root");
+            return {
+              href: location.href,
+              readyState: document.readyState,
+              rootExists: !!root,
+              rootChildCount: root?.childElementCount ?? 0,
+              bodyChildCount: document.body?.childElementCount ?? 0,
+            };
+          })();`,
+          true,
+        )
+        .then((status) => {
+          logAppEvent(scope, `renderer-dom-status: ${JSON.stringify(status)}`);
+        })
+        .catch((error) => {
+          logAppEvent(scope, `renderer-dom-status-error: ${String(error)}`);
+        });
+    }, 1500);
   });
 
   win.webContents.on(
@@ -126,6 +219,13 @@ function attachWindowDebugLogging(
     );
   });
 
+  win.webContents.on("preload-error", (_event, preloadPath, error) => {
+    logAppEvent(
+      scope,
+      `preload-error: path=${preloadPath}, error=${error?.message ?? String(error)}`,
+    );
+  });
+
   win.webContents.on(
     "console-message",
     (_event, level, message, line, sourceId) => {
@@ -139,6 +239,9 @@ function attachWindowDebugLogging(
   win.on("unresponsive", () => {
     logAppEvent(scope, "window became unresponsive");
   });
+
+  win.on("closed", clearDomStatusTimer);
+  win.webContents.on("destroyed", clearDomStatusTimer);
 }
 
 // 로그인/메인 창에 렌더링할 URL 반환
