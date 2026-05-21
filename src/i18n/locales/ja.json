@@ -266,7 +266,35 @@
       "inlineCode": "インラインコード",
       "math": "数式に変換",
       "link": "リンク",
-      "noteLink": "ノートリンク"
+      "noteLink": "ノートリンク",
+      "textColorLabel": "テキストの色",
+      "bgColorLabel": "背景色",
+      "linkPlaceholder": "URLを入力してEnter",
+      "linkApply": "適用",
+      "noteLinkPlaceholder": "ノートを検索...",
+      "noteLinkNoResults": "結果なし",
+      "noteLinkEmpty": "ノートなし",
+      "noteUntitled": "(無題)",
+      "blockTypes": {
+        "text": "テキスト",
+        "heading1": "見出し 1",
+        "heading2": "見出し 2",
+        "heading3": "見出し 3",
+        "heading4": "見出し 4"
+      },
+      "colors": {
+        "default": "デフォルト",
+        "gray": "グレー",
+        "brown": "ブラウン",
+        "orange": "オレンジ",
+        "yellow": "イエロー",
+        "green": "グリーン",
+        "greenHighlight": "グリーン（蛍光）",
+        "blue": "ブルー",
+        "purple": "パープル",
+        "pink": "ピンク",
+        "red": "レッド"
+      }
     }
   },
   "visualize": {

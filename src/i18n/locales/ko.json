@@ -266,7 +266,35 @@
       "inlineCode": "인라인 코드",
       "math": "수식으로 변환",
       "link": "링크",
-      "noteLink": "노트 연결"
+      "noteLink": "노트 연결",
+      "textColorLabel": "텍스트 색상",
+      "bgColorLabel": "배경 색상",
+      "linkPlaceholder": "URL 입력 후 Enter",
+      "linkApply": "적용",
+      "noteLinkPlaceholder": "노트 검색...",
+      "noteLinkNoResults": "검색 결과 없음",
+      "noteLinkEmpty": "노트가 없습니다",
+      "noteUntitled": "(제목 없음)",
+      "blockTypes": {
+        "text": "텍스트",
+        "heading1": "제목 1",
+        "heading2": "제목 2",
+        "heading3": "제목 3",
+        "heading4": "제목 4"
+      },
+      "colors": {
+        "default": "기본",
+        "gray": "회색",
+        "brown": "갈색",
+        "orange": "주황",
+        "yellow": "노랑",
+        "green": "초록",
+        "greenHighlight": "초록 (형광팬)",
+        "blue": "파랑",
+        "purple": "보라",
+        "pink": "분홍",
+        "red": "빨강"
+      }
     }
   },
   "visualize": {

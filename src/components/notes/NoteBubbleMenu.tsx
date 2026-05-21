@@ -12,59 +12,59 @@ import { useTranslation } from "react-i18next"
 
 // ─── 색상 팔레트 ─────────────────────────────────────────────
 
-const TEXT_COLORS: Array<{ label: string; value: string | null; swatch: string }> = [
-  { label: "기본", value: null, swatch: "transparent" },
-  { label: "회색", value: "#6b7280", swatch: "#6b7280" },
-  { label: "갈색", value: "#78350f", swatch: "#78350f" },
-  { label: "주황", value: "#ea580c", swatch: "#ea580c" },
-  { label: "노랑", value: "#d97706", swatch: "#d97706" },
-  { label: "초록", value: "#16a34a", swatch: "#16a34a" },
-  { label: "파랑", value: "#2563eb", swatch: "#2563eb" },
-  { label: "보라", value: "#7c3aed", swatch: "#7c3aed" },
-  { label: "분홍", value: "#db2777", swatch: "#db2777" },
-  { label: "빨강", value: "#dc2626", swatch: "#dc2626" },
+const TEXT_COLORS: Array<{ colorKey: string; value: string | null; swatch: string }> = [
+  { colorKey: "default", value: null, swatch: "transparent" },
+  { colorKey: "gray", value: "#6b7280", swatch: "#6b7280" },
+  { colorKey: "brown", value: "#78350f", swatch: "#78350f" },
+  { colorKey: "orange", value: "#ea580c", swatch: "#ea580c" },
+  { colorKey: "yellow", value: "#d97706", swatch: "#d97706" },
+  { colorKey: "green", value: "#16a34a", swatch: "#16a34a" },
+  { colorKey: "blue", value: "#2563eb", swatch: "#2563eb" },
+  { colorKey: "purple", value: "#7c3aed", swatch: "#7c3aed" },
+  { colorKey: "pink", value: "#db2777", swatch: "#db2777" },
+  { colorKey: "red", value: "#dc2626", swatch: "#dc2626" },
 ]
 
-const BG_COLORS: Array<{ label: string; highlightColor: string | null }> = [
-  { label: "기본", highlightColor: null },
-  { label: "회색", highlightColor: "#f3f4f6" },
-  { label: "갈색", highlightColor: "#fef3c7" },
-  { label: "주황", highlightColor: "#ffedd5" },
-  { label: "노랑", highlightColor: "#fef9c3" },
-  { label: "초록 (형광팬)", highlightColor: "rgba(134, 239, 172, 0.45)" },
-  { label: "파랑", highlightColor: "#dbeafe" },
-  { label: "보라", highlightColor: "#f3e8ff" },
-  { label: "분홍", highlightColor: "#fce7f3" },
-  { label: "빨강", highlightColor: "#fee2e2" },
+const BG_COLORS: Array<{ colorKey: string; highlightColor: string | null }> = [
+  { colorKey: "default", highlightColor: null },
+  { colorKey: "gray", highlightColor: "#f3f4f6" },
+  { colorKey: "brown", highlightColor: "#fef3c7" },
+  { colorKey: "orange", highlightColor: "#ffedd5" },
+  { colorKey: "yellow", highlightColor: "#fef9c3" },
+  { colorKey: "greenHighlight", highlightColor: "rgba(134, 239, 172, 0.45)" },
+  { colorKey: "blue", highlightColor: "#dbeafe" },
+  { colorKey: "purple", highlightColor: "#f3e8ff" },
+  { colorKey: "pink", highlightColor: "#fce7f3" },
+  { colorKey: "red", highlightColor: "#fee2e2" },
 ]
 
 const TURN_INTO_OPTIONS = [
   {
-    label: "텍스트",
+    labelKey: "blockTypes.text",
     icon: "P",
     action: (ed: Editor) => ed.chain().focus().setParagraph().run(),
     isActive: (ed: Editor) => ed.isActive("paragraph"),
   },
   {
-    label: "제목 1",
+    labelKey: "blockTypes.heading1",
     icon: "H1",
     action: (ed: Editor) => ed.chain().focus().setHeading({ level: 1 }).run(),
     isActive: (ed: Editor) => ed.isActive("heading", { level: 1 }),
   },
   {
-    label: "제목 2",
+    labelKey: "blockTypes.heading2",
     icon: "H2",
     action: (ed: Editor) => ed.chain().focus().setHeading({ level: 2 }).run(),
     isActive: (ed: Editor) => ed.isActive("heading", { level: 2 }),
   },
   {
-    label: "제목 3",
+    labelKey: "blockTypes.heading3",
     icon: "H3",
     action: (ed: Editor) => ed.chain().focus().setHeading({ level: 3 }).run(),
     isActive: (ed: Editor) => ed.isActive("heading", { level: 3 }),
   },
   {
-    label: "제목 4",
+    labelKey: "blockTypes.heading4",
     icon: "H4",
     action: (ed: Editor) => ed.chain().focus().setHeading({ level: 4 }).run(),
     isActive: (ed: Editor) => ed.isActive("heading", { level: 4 }),
@@ -277,7 +277,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             <div className="bubble-menu__dropdown">
               {TURN_INTO_OPTIONS.map(opt => (
                 <button
-                  key={opt.label}
+                  key={opt.labelKey}
                   className={`bubble-menu__dropdown-item${opt.isActive(editor) ? " bubble-menu__dropdown-item--active" : ""}`}
                   onMouseDown={e => {
                     e.preventDefault()
@@ -286,7 +286,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
                   }}
                 >
                   <span className="bubble-menu__dropdown-icon">{opt.icon}</span>
-                  <span>{opt.label}</span>
+                  <span>{t(`notes.bubbleMenu.${opt.labelKey}`)}</span>
                 </button>
               ))}
             </div>
@@ -311,13 +311,13 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
 
           {openMenu === "color" && (
             <div className="bubble-menu__dropdown bubble-menu__dropdown--color">
-              <p className="bubble-menu__color-group-label">텍스트 색상</p>
+              <p className="bubble-menu__color-group-label">{t("notes.bubbleMenu.textColorLabel")}</p>
               <div className="bubble-menu__swatches">
                 {TEXT_COLORS.map(c => (
                   <button
-                    key={c.label}
+                    key={c.colorKey}
                     className="bubble-menu__swatch"
-                    title={c.label}
+                    title={t(`notes.bubbleMenu.colors.${c.colorKey}`)}
                     style={
                       c.value
                         ? { background: c.value }
@@ -344,14 +344,14 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               </div>
 
               <p className="bubble-menu__color-group-label" style={{ marginTop: "10px" }}>
-                배경 색상
+                {t("notes.bubbleMenu.bgColorLabel")}
               </p>
               <div className="bubble-menu__swatches">
                 {BG_COLORS.map(c => (
                   <button
-                    key={c.label}
+                    key={c.colorKey}
                     className="bubble-menu__swatch"
-                    title={c.label}
+                    title={t(`notes.bubbleMenu.colors.${c.colorKey}`)}
                     style={
                       c.highlightColor
                         ? { background: c.highlightColor }
@@ -482,7 +482,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
                   ref={linkInputRef}
                   className="bubble-menu__text-input"
                   type="text"
-                  placeholder="URL 입력 후 Enter"
+                  placeholder={t("notes.bubbleMenu.linkPlaceholder")}
                   value={linkValue}
                   onChange={e => setLinkValue(e.target.value)}
                   onKeyDown={e => {
@@ -501,7 +501,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
                     applyLink()
                   }}
                 >
-                  적용
+                  {t("notes.bubbleMenu.linkApply")}
                 </button>
               </div>
             </div>
@@ -528,7 +528,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
                   ref={noteLinkInputRef}
                   className="bubble-menu__text-input"
                   type="text"
-                  placeholder="노트 검색..."
+                  placeholder={t("notes.bubbleMenu.noteLinkPlaceholder")}
                   value={noteLinkQuery}
                   onChange={e => setNoteLinkQuery(e.target.value)}
                   onKeyDown={e => {
@@ -540,7 +540,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               <div className="bubble-menu__note-list">
                 {noteLinkResults.length === 0 ? (
                   <div className="bubble-menu__note-empty">
-                    {noteLinkQuery ? "검색 결과 없음" : "노트가 없습니다"}
+                    {noteLinkQuery ? t("notes.bubbleMenu.noteLinkNoResults") : t("notes.bubbleMenu.noteLinkEmpty")}
                   </div>
                 ) : (
                   noteLinkResults.map(note => (
@@ -554,7 +554,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
                     >
                       <span className="bubble-menu__note-icon">N</span>
                       <span className="bubble-menu__note-title">
-                        {note.title || "(Untitled)"}
+                        {note.title || t("notes.bubbleMenu.noteUntitled")}
                       </span>
                     </button>
                   ))
