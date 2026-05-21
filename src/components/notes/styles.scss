@@ -224,14 +224,8 @@
   }
 
   mark {
-    background: #fef08a;
-    padding: 0.125em 0.25em;
-    border-radius: 0.25rem;
-  }
-
-  mark.pen-highlight {
     background: rgba(134, 239, 172, 0.45);
-    padding: 0.125em 0.3em;
+    padding: 0;
     border-radius: 0;
   }
 
@@ -849,4 +843,281 @@
 .note-link-dropdown-separator {
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+
+/* ─── Bubble Menu ─────────────────────────────────────────── */
+
+.bubble-menu {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 5px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-base-border);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.14),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+
+  &__section {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 5px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    transition:
+      background 0.1s,
+      color 0.1s;
+
+    &:hover {
+      background: var(--color-bg-secondary);
+    }
+
+    &--active {
+      background: var(--color-bg-secondary);
+      color: var(--color-primary);
+    }
+  }
+
+  &__block-label {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &__color-label {
+    font-size: 14px;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    line-height: 1;
+  }
+
+  &__sep {
+    width: 1px;
+    height: 16px;
+    background: var(--color-base-border);
+    margin: 0 3px;
+    flex-shrink: 0;
+  }
+
+  /* 드롭다운 공통 */
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 9999;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-base-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+    padding: 4px;
+    min-width: 140px;
+
+    &--color {
+      padding: 10px 10px 8px;
+      min-width: 220px;
+    }
+
+    &--input {
+      padding: 7px;
+      min-width: 240px;
+    }
+
+    &--note-link {
+      right: 0;
+      left: auto;
+      min-width: 260px;
+    }
+  }
+
+  /* Turn Into 아이템 */
+  &__dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 8px;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.08s;
+
+    &:hover {
+      background: var(--color-bg-secondary);
+    }
+
+    &--active {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__dropdown-icon {
+    min-width: 22px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  /* 색상 피커 */
+  &__color-group-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin: 0 0 6px 0;
+    letter-spacing: 0.2px;
+  }
+
+  &__swatches {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  &__swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    padding: 0;
+    transition:
+      transform 0.1s,
+      box-shadow 0.1s;
+    flex-shrink: 0;
+
+    &:hover {
+      transform: scale(1.25);
+      box-shadow: 0 0 0 2px var(--color-primary);
+    }
+  }
+
+  /* 인풋 행 */
+  &__input-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  &__text-input {
+    flex: 1;
+    padding: 5px 8px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-base-border);
+    border-radius: 5px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    outline: none;
+    min-width: 0;
+
+    &:focus {
+      border-color: var(--color-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  &__apply-btn {
+    padding: 5px 10px;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: opacity 0.1s;
+
+    &:hover {
+      opacity: 0.88;
+    }
+  }
+
+  /* 노트 결과 목록 */
+  &__note-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 6px;
+    border-top: 1px solid var(--color-base-border);
+    padding-top: 4px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__note-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 5px 8px;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.08s;
+
+    &:hover {
+      background: var(--color-bg-secondary);
+    }
+  }
+
+  &__note-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--color-bg-secondary);
+    border-radius: 3px;
+    color: var(--color-text-secondary);
+  }
+
+  &__note-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__note-empty {
+    padding: 8px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    text-align: center;
+  }
 }

@@ -4,13 +4,15 @@ This demo showcases markdown support in GraphNode's Note Editor with extended fe
 ## Features
 
 - **Bold text** and *italic text*
-- \`inline code\` and code blocks
+- ~~Strikethrough~~ and \`inline code\`
 - [Links](https://graphnode.ai/dev)
+- ==Highlight==
 - Lists and more!
 \`\`\`markdown
 - **Bold text** and *italic text*
-- \`inline code\` and code blocks
+- ~~Strikethrough~~ and \`inline code\`
 - [Links](https://graphnode.ai/dev)
+- ==Highlight==
 - Lists and more!
 \`\`\`
 
@@ -69,6 +71,22 @@ Simple markdown tables are rendered right away:
 
 Hover the **right edge of a table to add a column**, or the **bottom edge to add a row**.
 
+**Quick table creation**: Type \`/table{rows}:{cols}\` or \`/table{rows}x{cols}\` and press Enter.
+
+Example: \`/table3:4\` + Enter → creates a 3-row, 4-column table
+
+### Highlight
+
+Use \`==text==\` syntax to apply a default green highlight.
+
+==This is a highlight example==
+
+\`\`\`markdown
+==This is a highlight example==
+\`\`\`
+
+You can also select text and choose a background color from the **bubble menu → A color** to highlight in any color.
+
 ### Mentions
 
 Hey, [@ id="johnhan" label="John Han"], have you seen [@ id="ayatsunoyuki" label="Ayatsuno Yuki"]?
@@ -79,18 +97,23 @@ Hey, [@ id="johnhan" label="John Han"], have you seen [@ id="ayatsunoyuki" label
 ### Mathematics
 
 Inline math: $E = mc^2$ and $\\pi r^2$
-\`\`\`markdown
-Inline math: $E = mc^2$ and $\\pi r^2$
-\`\`\`
 
 Block math:
 
 $$
 40*5/38
 $$
-\`\`\`markdown
-Block math:
 
+**How to type math directly in the editor:**
+- Inline math: type \`$$formula$$\` → auto-converts
+- Block math: type \`$$$formula$$$\` → auto-converts
+- Or select text and click the math icon in the bubble menu to convert it to a formula
+
+**Markdown file format** (when loading from file):
+\`\`\`markdown
+Inline math: $E = mc^2$ and $\\pi r^2$
+
+Block math:
 $$
 40*5/38
 $$
@@ -111,6 +134,20 @@ Type \`/note\` anywhere in the editor to link to another note!
 - Hover over a note to preview its headings in the side panel
 - Select a heading to link directly to that section
 - Use ↑↓ to navigate the list, → to move to headings, Enter to insert
+
+### Text Selection Menu
+
+Drag to select text and a floating formatting menu will appear.
+
+| Button | Function |
+| --- | --- |
+| Aa / H1~H4 | Convert block to heading or paragraph |
+| A color | Text color (10 options) or background highlight (10 options) |
+| B / I / U / Strikethrough | Toggle bold · italic · underline · strikethrough |
+| Code icon | Convert to inline code |
+| Math icon | Convert selected text to a formula |
+| Link icon | Insert URL link |
+| Note icon | Link to another note |
 
 ### Custom React Component
 

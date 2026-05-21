@@ -21,6 +21,11 @@ import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Underline } from "@tiptap/extension-underline";
+import { ColorExtension } from "./ColorExtension";
+import { SlashTableExtension } from "./SlashTableExtension";
+import { NoteBubbleMenu } from "./NoteBubbleMenu";
 import { useState, useEffect, useRef } from "react";
 import { common, createLowlight } from "lowlight";
 import { noteRepo } from "@/managers/noteRepo";
@@ -38,7 +43,6 @@ import { NoteTable } from "./NoteTable";
 import { NoteLinkExtension } from "./NoteLinkExtension";
 import { NoteLinkSuggestionPortal } from "./NoteLinkSuggestionPortal";
 import { noteLinkStore } from "./noteLinkStore";
-import { PenHighlight } from "./PenHighlightExtension";
 
 const lowlight = createLowlight(common);
 
@@ -156,7 +160,11 @@ export default ({
       TableRow,
       TableHeader,
       TableCell,
-      Highlight,
+      Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Underline,
+      ColorExtension,
+      SlashTableExtension,
       Mention.configure({
         HTMLAttributes: {
           class: "mention",
@@ -183,7 +191,6 @@ export default ({
       Mathematics,
       CustomReactNode,
       NoteLinkExtension,
-      PenHighlight,
       Markdown,
     ],
     content: "",
@@ -231,17 +238,20 @@ export default ({
             editor.commands.setContent(normalizedContent, {
               contentType: "markdown",
             });
+            editor.commands.setTextSelection(1);
             latestMarkdownRef.current = normalizedContent;
             lastEditedNoteIdRef.current = note.id;
             setCurrentNoteId(note.id);
           } else {
             editor.commands.setContent("", { contentType: "markdown" });
+            editor.commands.setTextSelection(1);
             latestMarkdownRef.current = "";
             lastEditedNoteIdRef.current = null;
             setCurrentNoteId(null);
           }
         } else {
           editor.commands.setContent("", { contentType: "markdown" });
+          editor.commands.setTextSelection(1);
           latestMarkdownRef.current = "";
           lastEditedNoteIdRef.current = null;
           setCurrentNoteId(null);
@@ -658,6 +668,7 @@ export default ({
           </div>
         </div>
       )}
+      {editor && <NoteBubbleMenu editor={editor} />}
       <div className="editor-container pt-6">
         {editor ? (
           <EditorContent editor={editor} />
