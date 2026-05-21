@@ -289,8 +289,13 @@ export default ({
       const targetId = lastEditedNoteIdRef.current;
 
       if (targetId) {
-        await noteRepo.updateNoteById(targetId, markdown);
+        const updatedNote = await noteRepo.updateNoteById(targetId, markdown);
         queryClient.invalidateQueries({ queryKey: ["notes"] });
+        if (updatedNote) {
+          queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
+            old ? old.map((n) => (n.id === targetId ? { ...n, ...updatedNote } : n)) : old,
+          );
+        }
         success = true;
         return;
       }
@@ -391,8 +396,13 @@ export default ({
 
           // ID가 있을 경우 노트 업데이트
           if (currentNoteId) {
-            await noteRepo.updateNoteById(currentNoteId, markdown);
+            const updatedNote = await noteRepo.updateNoteById(currentNoteId, markdown);
             queryClient.invalidateQueries({ queryKey: ["notes"] });
+            if (updatedNote) {
+              queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
+                old ? old.map((n) => (n.id === currentNoteId ? { ...n, ...updatedNote } : n)) : old,
+              );
+            }
             saved = true;
           }
           // ID가 없을 경우 노트 생성
