@@ -255,7 +255,19 @@
       "pasteFailed": "画像の貼り付けに失敗しました。",
       "dropHere": "ここに画像をドロップ"
     },
-    "loading": "エディターを読み込み中..."
+    "loading": "エディターを読み込み中...",
+    "bubbleMenu": {
+      "turnInto": "ブロック変換",
+      "color": "色",
+      "bold": "太字 (Ctrl+B)",
+      "italic": "斜体 (Ctrl+I)",
+      "underline": "下線 (Ctrl+U)",
+      "strike": "取り消し線",
+      "inlineCode": "インラインコード",
+      "math": "数式に変換",
+      "link": "リンク",
+      "noteLink": "ノートリンク"
+    }
   },
   "visualize": {
     "loading": "グラフを構築中...",

@@ -8,6 +8,7 @@ import type { Note } from "@/types/Note"
 import { RiBold, RiItalic, RiUnderline, RiStrikethrough, RiCodeLine, RiLink, RiFileTextLine } from "react-icons/ri"
 import { TbMath } from "react-icons/tb"
 import { IoChevronDown } from "react-icons/io5"
+import { useTranslation } from "react-i18next"
 
 // ─── 색상 팔레트 ─────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ interface NoteBubbleMenuProps {
 }
 
 export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
+  const { t } = useTranslation()
   const [openMenu, setOpenMenu] = useState<MenuState>(null)
   const [linkValue, setLinkValue] = useState("")
   const [noteLinkQuery, setNoteLinkQuery] = useState("")
@@ -265,7 +267,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               e.preventDefault()
               setOpenMenu(prev => (prev === "turnInto" ? null : "turnInto"))
             }}
-            title="블록 전환"
+            data-tooltip={t("notes.bubbleMenu.turnInto")}
           >
             <span className="bubble-menu__block-label">{blockLabel}</span>
             <IoChevronDown size={9} />
@@ -301,7 +303,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               e.preventDefault()
               setOpenMenu(prev => (prev === "color" ? null : "color"))
             }}
-            title="색상"
+            data-tooltip={t("notes.bubbleMenu.color")}
           >
             <span className="bubble-menu__color-label">A</span>
             <IoChevronDown size={9} />
@@ -387,7 +389,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             editor.chain().focus().toggleBold().run()
           }}
-          title="굵게 (Ctrl+B)"
+          data-tooltip={t("notes.bubbleMenu.bold")}
         >
           <RiBold size={14} />
         </button>
@@ -399,7 +401,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             editor.chain().focus().toggleItalic().run()
           }}
-          title="기울임 (Ctrl+I)"
+          data-tooltip={t("notes.bubbleMenu.italic")}
         >
           <RiItalic size={14} />
         </button>
@@ -411,7 +413,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             editor.chain().focus().toggleUnderline().run()
           }}
-          title="밑줄 (Ctrl+U)"
+          data-tooltip={t("notes.bubbleMenu.underline")}
         >
           <RiUnderline size={14} />
         </button>
@@ -423,7 +425,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             editor.chain().focus().toggleStrike().run()
           }}
-          title="취소선"
+          data-tooltip={t("notes.bubbleMenu.strike")}
         >
           <RiStrikethrough size={14} />
         </button>
@@ -437,7 +439,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             editor.chain().focus().toggleCode().run()
           }}
-          title="인라인 코드"
+          data-tooltip={t("notes.bubbleMenu.inlineCode")}
         >
           <RiCodeLine size={14} />
         </button>
@@ -449,7 +451,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
             e.preventDefault()
             applyMath()
           }}
-          title="수식으로 변환"
+          data-tooltip={t("notes.bubbleMenu.math")}
         >
           <TbMath size={15} />
         </button>
@@ -468,7 +470,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               e.preventDefault()
               openLinkMenu()
             }}
-            title="링크"
+            data-tooltip={t("notes.bubbleMenu.link")}
           >
             <RiLink size={14} />
           </button>
@@ -514,7 +516,7 @@ export function NoteBubbleMenu({ editor }: NoteBubbleMenuProps) {
               e.preventDefault()
               openNoteLinkMenu()
             }}
-            title="노트 연결"
+            data-tooltip={t("notes.bubbleMenu.noteLink")}
           >
             <RiFileTextLine size={14} />
           </button>
