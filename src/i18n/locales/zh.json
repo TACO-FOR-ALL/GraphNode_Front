@@ -255,7 +255,19 @@
       "pasteFailed": "图片粘贴失败。",
       "dropHere": "将图片拖放到此处"
     },
-    "loading": "编辑器加载中..."
+    "loading": "编辑器加载中...",
+    "bubbleMenu": {
+      "turnInto": "转换块类型",
+      "color": "颜色",
+      "bold": "加粗 (Ctrl+B)",
+      "italic": "斜体 (Ctrl+I)",
+      "underline": "下划线 (Ctrl+U)",
+      "strike": "删除线",
+      "inlineCode": "行内代码",
+      "math": "转换为公式",
+      "link": "链接",
+      "noteLink": "链接笔记"
+    }
   },
   "visualize": {
     "loading": "正在构建图结构…",

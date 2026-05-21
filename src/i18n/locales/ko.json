@@ -255,7 +255,19 @@
       "pasteFailed": "이미지 붙여넣기에 실패했습니다.",
       "dropHere": "이미지를 여기에 드롭하세요"
     },
-    "loading": "에디터 로딩 중..."
+    "loading": "에디터 로딩 중...",
+    "bubbleMenu": {
+      "turnInto": "블록 전환",
+      "color": "색상",
+      "bold": "굵게 (Ctrl+B)",
+      "italic": "기울임 (Ctrl+I)",
+      "underline": "밑줄 (Ctrl+U)",
+      "strike": "취소선",
+      "inlineCode": "인라인 코드",
+      "math": "수식으로 변환",
+      "link": "링크",
+      "noteLink": "노트 연결"
+    }
   },
   "visualize": {
     "loading": "그래프를 구성하는 중...",

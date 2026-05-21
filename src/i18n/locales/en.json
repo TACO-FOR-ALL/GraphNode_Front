@@ -255,7 +255,19 @@
       "pasteFailed": "Failed to paste image.",
       "dropHere": "Drop image here"
     },
-    "loading": "Loading Editor..."
+    "loading": "Loading Editor...",
+    "bubbleMenu": {
+      "turnInto": "Turn into",
+      "color": "Color",
+      "bold": "Bold (Ctrl+B)",
+      "italic": "Italic (Ctrl+I)",
+      "underline": "Underline (Ctrl+U)",
+      "strike": "Strikethrough",
+      "inlineCode": "Inline Code",
+      "math": "Convert to Math",
+      "link": "Link",
+      "noteLink": "Note Link"
+    }
   },
   "visualize": {
     "loading": "Constructing graph...",
