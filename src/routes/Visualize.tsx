@@ -11,6 +11,9 @@ import { mapGraphSnapshot, mapGraphSummary } from "@/utils/dtoMappers";
 import ErrorScreen from "@/components/visualize/Error";
 import EmptyGraph from "@/components/visualize/EmptyGraph";
 import { isElectron } from "@/utils/platform";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/assets/lottie/loading.json";
+import { useTranslation } from "react-i18next";
 
 interface GraphData {
   nodeEdgeData: GraphSnapshot;
@@ -21,6 +24,7 @@ const VISUALIZE_MIN_WIDTH = 1280;
 const VISUALIZE_MIN_HEIGHT = 800;
 
 export default function Visualize() {
+  const { t } = useTranslation();
   const [me, setMe] = useState<Me | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [focusedNodeId, setFocusedNodeId] = useState<number | null>(null);
@@ -80,7 +84,22 @@ export default function Visualize() {
 
   if (error) return <ErrorScreen />;
 
-  if (isLoading || !graphData) return null;
+  if (isLoading || !graphData) {
+    return (
+      <div className="flex flex-col w-full h-full items-center justify-center gap-4 p-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Lottie
+            animationData={loadingAnimation}
+            loop={true}
+            className="w-40 h-40"
+          />
+          <p className="text-md text-text-secondary">
+            {t("visualize.loading")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (graphData.nodeEdgeData.nodes.length === 0) return <EmptyGraph />;
 
