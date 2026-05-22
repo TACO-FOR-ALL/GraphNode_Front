@@ -411,7 +411,11 @@
     "chats": "Chats",
     "notes": "Notes",
     "noResultFound": "No {{provider}} Found",
-    "shortcut": "shortcut"
+    "shortcut": "shortcut",
+    "aiRecommended": "AI Recommendations",
+    "noAiRecommendations": "No AI recommendations found",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "changelog": {
     "newFeatures": "New Features",

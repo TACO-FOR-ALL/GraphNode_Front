@@ -411,7 +411,11 @@
     "chats": "대화",
     "notes": "노트",
     "noResultFound": "{{provider}} 검색 결과 없음",
-    "shortcut": "단축키"
+    "shortcut": "단축키",
+    "aiRecommended": "AI 추천 결과",
+    "noAiRecommendations": "AI 추천 결과 없음",
+    "showMore": "더보기",
+    "showLess": "접기"
   },
   "changelog": {
     "newFeatures": "새로운 기능",

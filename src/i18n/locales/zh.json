@@ -411,7 +411,11 @@
     "chats": "对话",
     "notes": "笔记",
     "noResultFound": "未找到相关{{provider}}",
-    "shortcut": "快捷键"
+    "shortcut": "快捷键",
+    "aiRecommended": "AI 推荐结果",
+    "noAiRecommendations": "暂无 AI 推荐结果",
+    "showMore": "查看更多",
+    "showLess": "收起"
   },
   "changelog": {
     "newFeatures": "新功能",
