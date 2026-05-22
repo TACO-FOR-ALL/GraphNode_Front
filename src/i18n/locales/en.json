@@ -266,7 +266,35 @@
       "inlineCode": "Inline Code",
       "math": "Convert to Math",
       "link": "Link",
-      "noteLink": "Note Link"
+      "noteLink": "Note Link",
+      "textColorLabel": "Text Color",
+      "bgColorLabel": "Background Color",
+      "linkPlaceholder": "Enter URL and press Enter",
+      "linkApply": "Apply",
+      "noteLinkPlaceholder": "Search notes...",
+      "noteLinkNoResults": "No results",
+      "noteLinkEmpty": "No notes",
+      "noteUntitled": "(Untitled)",
+      "blockTypes": {
+        "text": "Text",
+        "heading1": "Heading 1",
+        "heading2": "Heading 2",
+        "heading3": "Heading 3",
+        "heading4": "Heading 4"
+      },
+      "colors": {
+        "default": "Default",
+        "gray": "Gray",
+        "brown": "Brown",
+        "orange": "Orange",
+        "yellow": "Yellow",
+        "green": "Green",
+        "greenHighlight": "Green (Highlight)",
+        "blue": "Blue",
+        "purple": "Purple",
+        "pink": "Pink",
+        "red": "Red"
+      }
     }
   },
   "visualize": {
@@ -383,7 +411,11 @@
     "chats": "Chats",
     "notes": "Notes",
     "noResultFound": "No {{provider}} Found",
-    "shortcut": "shortcut"
+    "shortcut": "shortcut",
+    "aiRecommended": "AI Recommendations",
+    "noAiRecommendations": "No AI recommendations found",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "changelog": {
     "newFeatures": "New Features",

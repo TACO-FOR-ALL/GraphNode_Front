@@ -266,7 +266,35 @@
       "inlineCode": "行内代码",
       "math": "转换为公式",
       "link": "链接",
-      "noteLink": "链接笔记"
+      "noteLink": "链接笔记",
+      "textColorLabel": "文字颜色",
+      "bgColorLabel": "背景颜色",
+      "linkPlaceholder": "输入URL后按Enter",
+      "linkApply": "应用",
+      "noteLinkPlaceholder": "搜索笔记...",
+      "noteLinkNoResults": "无搜索结果",
+      "noteLinkEmpty": "没有笔记",
+      "noteUntitled": "（无标题）",
+      "blockTypes": {
+        "text": "文本",
+        "heading1": "标题 1",
+        "heading2": "标题 2",
+        "heading3": "标题 3",
+        "heading4": "标题 4"
+      },
+      "colors": {
+        "default": "默认",
+        "gray": "灰色",
+        "brown": "棕色",
+        "orange": "橙色",
+        "yellow": "黄色",
+        "green": "绿色",
+        "greenHighlight": "绿色（荧光）",
+        "blue": "蓝色",
+        "purple": "紫色",
+        "pink": "粉红色",
+        "red": "红色"
+      }
     }
   },
   "visualize": {
@@ -383,7 +411,11 @@
     "chats": "对话",
     "notes": "笔记",
     "noResultFound": "未找到相关{{provider}}",
-    "shortcut": "快捷键"
+    "shortcut": "快捷键",
+    "aiRecommended": "AI 推荐结果",
+    "noAiRecommendations": "暂无 AI 推荐结果",
+    "showMore": "查看更多",
+    "showLess": "收起"
   },
   "changelog": {
     "newFeatures": "新功能",

@@ -8,12 +8,17 @@ import { threadRepo } from "@/managers/threadRepo";
 import { ChatThread } from "@/types/Chat";
 import DraggableModal from "../DraggableModal";
 import SearchResult from "./SearchResult";
+import RagSearchResult from "./RagSearchResult";
 import useDebounce from "@/hooks/useDebounce";
 import { useKeybindsStore } from "@/store/useKeybindsStore";
 import { useTranslation } from "react-i18next";
 import { api } from "@/apiClient";
 import { isElectron } from "@/utils/platform";
-import { mapNoteSearchResult, mapConversationSearchResult } from "@/utils/dtoMappers";
+import {
+  mapNoteSearchResult,
+  mapConversationSearchResult,
+} from "@/utils/dtoMappers";
+import { SearchNotesAndAIChatsResponse } from "@taco_tsinghua/graphnode-sdk";
 
 type SearchResults = { notes: Note[]; chatThreads: ChatThread[] };
 
@@ -37,7 +42,7 @@ export default function SearchModal({
     return mod;
   });
 
-  const { data } = useQuery<SearchResults>({
+  const { data: searchData, isFetched: isSearchFetched } = useQuery<SearchResults>({
     queryKey: ["search", debouncedSearchQuery],
     queryFn: async () => {
       const q = debouncedSearchQuery;
@@ -59,6 +64,19 @@ export default function SearchModal({
     },
     enabled: debouncedSearchQuery.length > 1,
   });
+
+  const { data: recommendedData, isLoading } =
+    useQuery<SearchNotesAndAIChatsResponse>({
+      queryKey: ["search-recommended", debouncedSearchQuery],
+      queryFn: async () => {
+        const result =
+          await api.search.integratedSearchByKeyword(debouncedSearchQuery);
+        console.log(result);
+        if (!result.isSuccess) return { notes: [], chatThreads: [] };
+        return result.data;
+      },
+      enabled: debouncedSearchQuery.length > 1,
+    });
 
   return (
     <DraggableModal setOpenModal={setOpenSearch}>
@@ -85,18 +103,33 @@ export default function SearchModal({
         </div>
       </div>
       {/* content */}
-      <section className="flex flex-col w-full flex-1 overflow-y-scroll custom-scrollbar px-4 py-3 gap-3">
+      <section
+        className="flex flex-col w-full overflow-y-auto custom-scrollbar px-4 gap-3"
+        style={{
+          maxHeight: isSearchFetched ? "374px" : "0px",
+          paddingTop: isSearchFetched ? "12px" : "0px",
+          paddingBottom: isSearchFetched ? "12px" : "0px",
+          transition: "max-height 0.35s ease, padding 0.35s ease",
+        }}
+      >
+        {debouncedSearchQuery.length > 1 && (isLoading || recommendedData) && (
+          <RagSearchResult
+            data={recommendedData}
+            isLoading={isLoading}
+            setOpenSearch={setOpenSearch}
+          />
+        )}
         <SearchResult
           type="chat"
           title={t("search.chats")}
-          data={data?.chatThreads}
+          data={searchData?.chatThreads}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
         />
         <SearchResult
           type="note"
           title={t("search.notes")}
-          data={data?.notes}
+          data={searchData?.notes}
           searchQuery={searchQuery}
           setOpenSearch={setOpenSearch}
         />
