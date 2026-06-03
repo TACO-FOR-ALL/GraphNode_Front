@@ -5,7 +5,13 @@ import {
   GraphSubcluster,
 } from "@/types/GraphData";
 import * as d3Force from "d3-force";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import NodePreview from "./NodePreview";
 
 type GraphProps = {
@@ -143,7 +149,12 @@ function buildVisibleSubclusterGraph(
       members.reduce((sum, node) => sum + node.x, 0) / members.length;
     const centerY =
       members.reduce((sum, node) => sum + node.y, 0) / members.length;
-    const clusterName = getClusterKey(members[0]);
+    const clusterKeyCounts = new Map<string, number>();
+    members.forEach((m) => {
+      const k = getClusterKey(m);
+      clusterKeyCounts.set(k, (clusterKeyCounts.get(k) ?? 0) + 1);
+    });
+    const clusterName = [...clusterKeyCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     const displayId = `__group_${subcluster.id}`;
 
     const groupNode: RenderNode = {
@@ -161,11 +172,14 @@ function buildVisibleSubclusterGraph(
     renderNodes.push(groupNode);
     renderNodeMap.set(displayId, groupNode);
     members.forEach((member) => {
-      memberToDisplayId.set(member.id, displayId);
+      if (!memberToDisplayId.has(member.id)) {
+        memberToDisplayId.set(member.id, displayId);
+      }
     });
   });
 
   scopedNodes.forEach((node) => {
+    if (renderNodeMap.has(node.id)) return;
     const subclusterId = nodeToSubcluster.get(node.id);
     if (subclusterId && collapsedSubclusters.has(subclusterId)) return;
 
@@ -251,7 +265,7 @@ function buildClusterCenters(
     const nodeCount = grouped.get(key)?.length ?? 1;
     const radius = Math.max(80, 42 + Math.sqrt(nodeCount) * 18);
     const angle = (2 * Math.PI * idx) / total;
-    const dist = Math.min(width, height) * 0.2;
+    const dist = Math.min(width, height) * 0.38;
     return {
       key,
       radius,
@@ -262,22 +276,22 @@ function buildClusterCenters(
 
   const sim = d3Force
     .forceSimulation<ClusterSeed>(seeds)
-    .force("center", d3Force.forceCenter(cx, cy).strength(0.06))
-    .force("charge", d3Force.forceManyBody().strength(-240))
+    .force("center", d3Force.forceCenter(cx, cy).strength(0.015))
+    .force("charge", d3Force.forceManyBody().strength(-1800))
     .force(
       "collide",
       d3Force
-        .forceCollide<ClusterSeed>((d) => d.radius + 24)
+        .forceCollide<ClusterSeed>((d) => d.radius + 100)
         .strength(1)
-        .iterations(3),
+        .iterations(6),
     )
     .stop();
 
-  for (let i = 0; i < 120; i += 1) {
+  for (let i = 0; i < 200; i += 1) {
     sim.tick();
     seeds.forEach((seed) => {
-      seed.x = clamp(seed.x ?? cx, seed.radius + 20, width - seed.radius - 20);
-      seed.y = clamp(seed.y ?? cy, seed.radius + 20, height - seed.radius - 20);
+      seed.x = clamp(seed.x ?? cx, -width, width * 2);
+      seed.y = clamp(seed.y ?? cy, -height, height * 2);
     });
   }
 
@@ -308,7 +322,9 @@ function buildLayout(
   const ids = new Set(rawNodes.map((n) => n.id));
   const filteredEdges = rawEdges.filter(
     (edge) =>
-      edge.weight >= minEdgeWeight && ids.has(edge.source) && ids.has(edge.target),
+      edge.weight >= minEdgeWeight &&
+      ids.has(edge.source) &&
+      ids.has(edge.target),
   );
 
   const edgeDegree = new Map<number, number>();
@@ -368,21 +384,23 @@ function buildLayout(
     .force(
       "collide",
       d3Force
-        .forceCollide<SimNode>(
-          (d) => getNodeRadiusByDegree(d.edgeCount) + 2.5,
-        )
+        .forceCollide<SimNode>((d) => getNodeRadiusByDegree(d.edgeCount) + 2.5)
         .iterations(2),
     )
     .force(
       "x",
       d3Force
-        .forceX<SimNode>((d) => clusterCenters.get(d.clusterKey)?.centerX ?? width / 2)
+        .forceX<SimNode>(
+          (d) => clusterCenters.get(d.clusterKey)?.centerX ?? width / 2,
+        )
         .strength(0.18),
     )
     .force(
       "y",
       d3Force
-        .forceY<SimNode>((d) => clusterCenters.get(d.clusterKey)?.centerY ?? height / 2)
+        .forceY<SimNode>(
+          (d) => clusterCenters.get(d.clusterKey)?.centerY ?? height / 2,
+        )
         .strength(0.18),
     )
     .alpha(1)
@@ -419,8 +437,7 @@ function buildLayout(
   const classifiedEdges: PositionedEdge[] = filteredEdges.map((edge) => {
     const s = nodeById.get(edge.source);
     const t = nodeById.get(edge.target);
-    const isIntra =
-      !!s && !!t && getClusterKey(s) === getClusterKey(t);
+    const isIntra = !!s && !!t && getClusterKey(s) === getClusterKey(t);
 
     return {
       ...edge,
@@ -506,11 +523,14 @@ export default function Graph2D({
   const dragNodeOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
   const dragStartPointerRef = useRef<{ x: number; y: number } | null>(null);
   const nodeDraggedRef = useRef(false);
-  const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
+  const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(
+    null,
+  );
   const simNodeMapRef = useRef<Map<number, SimNode>>(new Map());
-  const displaySimulationRef = useRef<
-    d3Force.Simulation<DisplaySimNode, DisplaySimLink> | null
-  >(null);
+  const displaySimulationRef = useRef<d3Force.Simulation<
+    DisplaySimNode,
+    DisplaySimLink
+  > | null>(null);
   const displaySimNodeMapRef = useRef<Map<number | string, DisplaySimNode>>(
     new Map(),
   );
@@ -548,7 +568,8 @@ export default function Graph2D({
       focusedClusterId
         ? edges.filter(
             (edge) =>
-              scopedNodeIdSet.has(edge.source) && scopedNodeIdSet.has(edge.target),
+              scopedNodeIdSet.has(edge.source) &&
+              scopedNodeIdSet.has(edge.target),
           )
         : edges,
     [edges, focusedClusterId, scopedNodeIdSet],
@@ -621,7 +642,9 @@ export default function Graph2D({
   }, [focusedClusterId]);
 
   useEffect(() => {
-    setCollapsedSubclusters(new Set(subclusters.map((subcluster) => subcluster.id)));
+    setCollapsedSubclusters(
+      new Set(subclusters.map((subcluster) => subcluster.id)),
+    );
   }, [subclusterIdsKey, subclusters]);
 
   const clearDragSettleTimer = useCallback(() => {
@@ -783,7 +806,10 @@ export default function Graph2D({
     stopInteractiveSimulation,
   ]);
 
-  useEffect(() => () => stopInteractiveSimulation(), [stopInteractiveSimulation]);
+  useEffect(
+    () => () => stopInteractiveSimulation(),
+    [stopInteractiveSimulation],
+  );
 
   useEffect(() => {
     stopDisplaySimulation();
@@ -955,6 +981,21 @@ export default function Graph2D({
               node.fx = null;
               node.fy = null;
             }
+
+            if (!node.anchored) {
+              const center = centerByCluster.get(node.clusterName);
+              if (center) {
+                const cdx = (node.x ?? center.x) - center.x;
+                const cdy = (node.y ?? center.y) - center.y;
+                const dist = Math.sqrt(cdx * cdx + cdy * cdy);
+                const limit = Math.max(14, center.radius - 12);
+                if (dist > limit) {
+                  const ratio = limit / dist;
+                  node.x = center.x + cdx * ratio;
+                  node.y = center.y + cdy * ratio;
+                }
+              }
+            }
             return;
           }
 
@@ -972,13 +1013,20 @@ export default function Graph2D({
         });
 
         setDisplayPositions(
-          new Map(nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }])),
+          new Map(
+            nodesForDisplaySim.map((node) => [
+              node.id,
+              { x: node.x, y: node.y },
+            ]),
+          ),
         );
       });
 
     displaySimulationRef.current = simulation;
     setDisplayPositions(
-      new Map(nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }])),
+      new Map(
+        nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }]),
+      ),
     );
 
     clearDisplaySimSettlingTimer();
@@ -1070,9 +1118,10 @@ export default function Graph2D({
 
       const animate = (now: number) => {
         const progress = clamp((now - startTime) / duration, 0, 1);
-        const eased = progress < 0.5
-          ? 4 * progress * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        const eased =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
         setScale(startScale + (targetScale - startScale) * eased);
         setOffset({
@@ -1184,18 +1233,50 @@ export default function Graph2D({
           const subcluster = subclusterMap.get(draggingTarget.subclusterId);
           if (subcluster && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
             const memberSet = new Set(subcluster.nodeIds);
+            const clusterById = new Map(circles.map((c) => [c.clusterId, c]));
+
+            const clampToCluster = (
+              nx: number,
+              ny: number,
+              clusterKey: string,
+            ) => {
+              const cluster = clusterById.get(clusterKey);
+              if (!cluster) return { x: nx, y: ny };
+              const cdx = nx - cluster.centerX;
+              const cdy = ny - cluster.centerY;
+              const dist = Math.sqrt(cdx * cdx + cdy * cdy);
+              const limit = Math.max(14, cluster.radius - 18);
+              if (dist > limit) {
+                const ratio = limit / dist;
+                return {
+                  x: cluster.centerX + cdx * ratio,
+                  y: cluster.centerY + cdy * ratio,
+                };
+              }
+              return { x: nx, y: ny };
+            };
+
             setNodes((prev) =>
-              prev.map((node) =>
-                memberSet.has(node.id)
-                  ? { ...node, x: node.x + dx, y: node.y + dy }
-                  : node,
-              ),
+              prev.map((node) => {
+                if (!memberSet.has(node.id)) return node;
+                const pos = clampToCluster(
+                  node.x + dx,
+                  node.y + dy,
+                  getClusterKey(node),
+                );
+                return { ...node, x: pos.x, y: pos.y };
+              }),
             );
             subcluster.nodeIds.forEach((memberId) => {
               const member = simNodeMapRef.current.get(memberId);
               if (!member) return;
-              member.x = (member.x ?? 0) + dx;
-              member.y = (member.y ?? 0) + dy;
+              const pos = clampToCluster(
+                (member.x ?? 0) + dx,
+                (member.y ?? 0) + dy,
+                member.clusterKey,
+              );
+              member.x = pos.x;
+              member.y = pos.y;
             });
           }
         }
@@ -1355,7 +1436,9 @@ export default function Graph2D({
               : null;
           const label = node.isGroupNode
             ? (node.label ?? "Group")
-            : (node.origNode?.nodeTitle ?? node.origNode?.origId ?? String(node.id));
+            : (node.origNode?.nodeTitle ??
+              node.origNode?.origId ??
+              String(node.id));
 
           return (
             <div
@@ -1398,7 +1481,11 @@ export default function Graph2D({
                 fontSize={13}
                 fontWeight={600}
                 fill="var(--color-text-secondary)"
-                style={{ pointerEvents: "all", userSelect: "none", cursor: "pointer" }}
+                style={{
+                  pointerEvents: "all",
+                  userSelect: "none",
+                  cursor: "pointer",
+                }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1439,8 +1526,12 @@ export default function Graph2D({
               Math.min(BASE_NODE_RADIUS * 2.2, 6 + Math.sqrt(node.size ?? 1)),
             );
             const radius = node.isGroupNode
-              ? (isHovered ? groupBaseRadius + 1.5 : groupBaseRadius)
-              : (isHovered ? baseRadius + 1.2 : baseRadius);
+              ? isHovered
+                ? groupBaseRadius + 1.5
+                : groupBaseRadius
+              : isHovered
+                ? baseRadius + 1.2
+                : baseRadius;
             const highlightThreshold = Math.max(
               MIN_HIGHLIGHT_EDGE_COUNT,
               Math.ceil(maxEdgeCount * HIGH_EDGE_RATIO),
