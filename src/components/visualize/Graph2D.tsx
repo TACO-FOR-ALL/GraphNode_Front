@@ -30,6 +30,8 @@ type GraphProps = {
   minEdgeWeight?: number;
   onZoomReady?: (fns: { zoomIn: () => void; zoomOut: () => void }) => void;
   onScaleChange?: (scale: number) => void;
+  activeNodeId?: number | string | null;
+  onActiveNodeChange?: (id: number | string | null) => void;
 };
 
 type SimNode = d3Force.SimulationNodeDatum &
@@ -146,7 +148,9 @@ function buildVisibleSubclusterGraph(
       const k = getClusterKey(m);
       clusterKeyCounts.set(k, (clusterKeyCounts.get(k) ?? 0) + 1);
     });
-    const clusterName = [...clusterKeyCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const clusterName = [...clusterKeyCounts.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0][0];
     const displayId = `__group_${subcluster.id}`;
 
     const groupNode: RenderNode = {
@@ -257,7 +261,7 @@ function buildClusterCenters(
     const nodeCount = grouped.get(key)?.length ?? 1;
     const radius = Math.max(100, 42 + Math.sqrt(nodeCount) * 26);
     const angle = (2 * Math.PI * idx) / total;
-    const dist = Math.min(width, height) * 0.44;
+    const dist = Math.min(width, height) * Math.min(0.44, 0.22 + total * 0.05);
     return {
       key,
       radius,
@@ -273,7 +277,9 @@ function buildClusterCenters(
     .force(
       "collide",
       d3Force
-        .forceCollide<ClusterSeed>((d) => d.radius + 100)
+        .forceCollide<ClusterSeed>(
+          (d) => d.radius + Math.min(100, 30 + total * 14),
+        )
         .strength(1)
         .iterations(6),
     )
@@ -372,12 +378,10 @@ function buildLayout(
         .distance(65)
         .strength(0.24),
     )
-    .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
+    .force("charge", d3Force.forceManyBody<SimNode>().strength(-110))
     .force(
       "collide",
-      d3Force
-        .forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4)
-        .iterations(2),
+      d3Force.forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4).iterations(2),
     )
     .force(
       "x",
@@ -484,6 +488,8 @@ export default function Graph2D({
   minEdgeWeight = 0.6,
   onZoomReady,
   onScaleChange,
+  activeNodeId = null,
+  onActiveNodeChange,
 }: GraphProps) {
   const subclusters = rawSubclusters ?? [];
   const subclusterIdsKey = useMemo(
@@ -610,6 +616,26 @@ export default function Graph2D({
       ),
     [renderNodes],
   );
+  const activeConnectedNodeIds = useMemo(() => {
+    if (activeNodeId === null) return null;
+    const connected = new Set<number | string>([activeNodeId]);
+    renderEdges.forEach((edge) => {
+      if (edge.source === activeNodeId) connected.add(edge.target);
+      if (edge.target === activeNodeId) connected.add(edge.source);
+    });
+    return connected;
+  }, [activeNodeId, renderEdges]);
+
+  const activeEdgeIds = useMemo(() => {
+    if (activeNodeId === null) return null;
+    const ids = new Set<string>();
+    renderEdges.forEach((edge) => {
+      if (edge.source === activeNodeId || edge.target === activeNodeId)
+        ids.add(edge.id);
+    });
+    return ids;
+  }, [activeNodeId, renderEdges]);
+
   const displayTopologyKey = useMemo(() => {
     const nodeIds = [...renderNodes.map((node) => String(node.id))].sort();
     const edgeIds = [...renderEdges.map((edge) => edge.id)].sort();
@@ -721,7 +747,7 @@ export default function Graph2D({
             .distance(65)
             .strength(0.24),
         )
-        .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
+        .force("charge", d3Force.forceManyBody<SimNode>().strength(-110))
         .force(
           "collide",
           d3Force
@@ -899,7 +925,7 @@ export default function Graph2D({
         "charge",
         d3Force
           .forceManyBody<DisplaySimNode>()
-          .strength((node) => (node.kind === "group" ? -60 : -12)),
+          .strength((node) => (node.kind === "group" ? -65 : -22)),
       )
       .force(
         "collide",
@@ -1326,6 +1352,9 @@ export default function Graph2D({
       if (displaySim) {
         displaySim.alphaTarget(0).alpha(0.12).restart();
       }
+      if (nodeDraggedRef.current) {
+        onActiveNodeChange?.(null);
+      }
       setDraggingTarget(null);
       dragNodeOffsetRef.current = null;
       dragStartPointerRef.current = null;
@@ -1339,6 +1368,7 @@ export default function Graph2D({
     node: RenderNode,
   ) => {
     event.stopPropagation();
+    onActiveNodeChange?.(node.id);
 
     const world = screenToWorld(event.clientX, event.clientY);
     dragNodeOffsetRef.current = {
@@ -1395,7 +1425,6 @@ export default function Graph2D({
       return;
     }
     if (!node.origNode) return;
-
     setSelectedNode({
       origId: node.origNode.origId,
       sourceType: node.origNode.sourceType,
@@ -1403,9 +1432,10 @@ export default function Graph2D({
   };
 
   const handleBackgroundClick = (event: React.MouseEvent<SVGSVGElement>) => {
-    if (!focusedClusterId) return;
     if (event.target !== event.currentTarget) return;
     if (draggingTarget !== null || isPanning) return;
+    onActiveNodeChange?.(null);
+    if (!focusedClusterId) return;
     setFocusedClusterId(null);
     setScale(1);
     setOffset({ x: 0, y: 0 });
@@ -1492,6 +1522,9 @@ export default function Graph2D({
             const target = renderedNodeMap.get(edge.target);
             if (!source || !target) return null;
 
+            const isActive = activeEdgeIds?.has(edge.id) ?? false;
+            const isDimmed = activeEdgeIds !== null && !isActive;
+
             return (
               <line
                 key={edge.id ?? `edge-${edge.source}-${edge.target}-${index}`}
@@ -1499,9 +1532,21 @@ export default function Graph2D({
                 y1={source.y}
                 x2={target.x}
                 y2={target.y}
-                stroke="var(--color-edge-default)"
-                strokeWidth={edge.isIntraCluster ? 0.9 : 0.7}
-                strokeOpacity={edge.isIntraCluster ? 0.65 : 0.32}
+                stroke={
+                  isActive
+                    ? "var(--color-edge-active)"
+                    : "var(--color-edge-default)"
+                }
+                strokeWidth={isActive ? 1.4 : edge.isIntraCluster ? 0.9 : 0.7}
+                strokeOpacity={
+                  isDimmed
+                    ? 0.18
+                    : isActive
+                      ? 0.9
+                      : edge.isIntraCluster
+                        ? 0.65
+                        : 0.32
+                }
               />
             );
           })}
@@ -1509,33 +1554,43 @@ export default function Graph2D({
           {renderedNodes.map((node) => {
             const degree = edgeCounts.get(node.id) ?? 0;
             const isHovered = hoveredNodeId === node.id;
+            const isActive = node.id === activeNodeId;
+            const isDimmed =
+              activeConnectedNodeIds !== null &&
+              !activeConnectedNodeIds.has(node.id);
             const groupBaseRadius = Math.max(
               BASE_NODE_RADIUS * 1.2,
               Math.min(BASE_NODE_RADIUS * 2.2, 6 + Math.sqrt(node.size ?? 1)),
             );
             const radius = node.isGroupNode
-              ? isHovered
+              ? isHovered || isActive
                 ? groupBaseRadius + 1.5
                 : groupBaseRadius
-              : isHovered
-                ? BASE_NODE_RADIUS + 1.2
+              : isHovered || isActive
+                ? BASE_NODE_RADIUS + 1.5
                 : BASE_NODE_RADIUS;
             const highlightThreshold = Math.max(
               MIN_HIGHLIGHT_EDGE_COUNT,
               Math.ceil(maxEdgeCount * HIGH_EDGE_RATIO),
             );
             const isHighlyConnected = degree >= highlightThreshold;
-            const fill = node.isGroupNode
-              ? "var(--color-node-focus)"
-              : isHighlyConnected
+            const fill = isActive
+              ? "var(--color-node-active)"
+              : node.isGroupNode
                 ? "var(--color-node-focus)"
-                : "var(--color-node-default)";
+                : isHighlyConnected
+                  ? "var(--color-node-focus)"
+                  : "var(--color-node-default)";
 
             return (
               <g
                 key={node.id}
                 transform={`translate(${node.x}, ${node.y})`}
                 className="cursor-pointer"
+                style={{
+                  opacity: isDimmed ? 0.35 : 1,
+                  transition: "opacity 0.15s",
+                }}
                 onMouseDown={(event) => handleNodeMouseDown(event, node)}
                 onMouseEnter={() => setHoveredNodeId(node.id)}
                 onMouseLeave={() => setHoveredNodeId(null)}
@@ -1551,13 +1606,18 @@ export default function Graph2D({
                 <circle
                   r={radius}
                   fill={fill}
-                  stroke="var(--color-cluster-default)"
-                  strokeWidth={0.8}
+                  stroke={
+                    isActive
+                      ? "var(--color-node-active)"
+                      : "var(--color-cluster-default)"
+                  }
+                  strokeWidth={isActive ? 2 : 0.8}
+                  strokeOpacity={isActive ? 0.5 : 1}
                 />
                 {node.isGroupNode && (
                   <text
                     textAnchor="middle"
-                    dominantBaseline="middle"
+                    dy="0.35em"
                     fontSize={9}
                     fontWeight={700}
                     fill="white"
@@ -1576,8 +1636,14 @@ export default function Graph2D({
         <NodePreview
           nodeId={selectedNode.origId}
           sourceType={selectedNode.sourceType}
-          onClose={() => setSelectedNode(null)}
-          onExpand={() => setSelectedNode(null)}
+          onClose={() => {
+            setSelectedNode(null);
+            onActiveNodeChange?.(null);
+          }}
+          onExpand={() => {
+            setSelectedNode(null);
+            onActiveNodeChange?.(null);
+          }}
         />
       )}
     </div>

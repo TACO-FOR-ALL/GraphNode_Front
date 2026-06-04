@@ -1,335 +1,249 @@
-// 그래프 색상 커스터마이징 에디터 (개발자 모드)
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { FiSave, FiAlertCircle, FiCheck, FiRefreshCw } from "react-icons/fi";
+import { FiRefreshCw } from "react-icons/fi";
+import {
+  GRAPH_COLOR_DEFAULTS,
+  ThemeColorConfig,
+  GraphColorConfigV2,
+  getStoredGraphColors,
+  saveGraphColors,
+  applyThemeColors,
+  getCurrentTheme,
+} from "@/utils/graphColors";
 
-interface GraphColorConfig {
-  graph: {
-    nodeDefault: string;
-    nodeFocus: string;
-    edgeDefault: string;
-    clusterDefault: string;
-    clusterPalette?: string[];
-  };
+type ThemeKey = "light" | "dark";
+type ColorField = keyof Required<ThemeColorConfig>;
+
+// ── 프리셋 정의 (테이블 그대로) ─────────────────────────────
+const PRESET_V1: Record<ThemeKey, Required<ThemeColorConfig>> = {
+  light: { nodeDefault: "#bcbcbc", nodeFocus: "#badaff", edgeDefault: "#d6d6d6", clusterDefault: "#f5f5f5" },
+  dark:  { nodeDefault: "#ebeae2", nodeFocus: "#ef7235", edgeDefault: "#4a4a4f", clusterDefault: "#1f1f23" },
+};
+
+const PRESET_V2: Record<ThemeKey, Required<ThemeColorConfig>> = {
+  light: { nodeDefault: "#9090b0", nodeFocus: "#4daaff", edgeDefault: "#b8b8c8", clusterDefault: "#f5f5f5" },
+  dark:  { nodeDefault: "#d0cfc8", nodeFocus: "#ff8c4a", edgeDefault: "#6a6a78", clusterDefault: "#1f1f23" },
+};
+
+const PRESETS = { v1: PRESET_V1, v2: PRESET_V2 } as const;
+type PresetKey = keyof typeof PRESETS;
+
+const COLOR_FIELDS: ColorField[] = ["nodeDefault", "nodeFocus", "edgeDefault", "clusterDefault"];
+
+function themeMatchesPreset(colors: ThemeColorConfig, preset: Required<ThemeColorConfig>): boolean {
+  return COLOR_FIELDS.every(
+    (k) => (colors[k] ?? preset[k]) === preset[k],
+  );
 }
 
-// 기본 색상 (테마별)
-const DEFAULT_COLORS: Record<string, GraphColorConfig["graph"]> = {
-  light: {
-    nodeDefault: "#bcbcbc",
-    nodeFocus: "#badaff",
-    edgeDefault: "#d6d6d6",
-    clusterDefault: "#f5f5f5",
-    clusterPalette: [
-      "#4aa8c0",
-      "#e74c3c",
-      "#2ecc71",
-      "#f39c12",
-      "#9b59b6",
-      "#16a085",
-      "#e84393",
-      "#2d98da",
-      "#ff9f43",
-    ],
-  },
-  dark: {
-    nodeDefault: "#ebeae2",
-    nodeFocus: "#ef7235",
-    edgeDefault: "#4a4a4f",
-    clusterDefault: "#1f1f23",
-    clusterPalette: [
-      "#4aa8c0",
-      "#e74c3c",
-      "#2ecc71",
-      "#f39c12",
-      "#9b59b6",
-      "#16a085",
-      "#e84393",
-      "#2d98da",
-      "#ff9f43",
-    ],
-  },
-};
+function detectActivePreset(stored: GraphColorConfigV2): PresetKey | null {
+  for (const [key, preset] of Object.entries(PRESETS) as [PresetKey, Record<ThemeKey, Required<ThemeColorConfig>>][]) {
+    if (
+      themeMatchesPreset(stored.light ?? {}, preset.light) &&
+      themeMatchesPreset(stored.dark ?? {}, preset.dark)
+    ) return key;
+  }
+  return null;
+}
 
-const STORAGE_KEY = "graphnode-custom-graph-colors";
-
-// JSON 템플릿
-const createTemplate = (theme: "light" | "dark") => {
-  const colors = DEFAULT_COLORS[theme];
-  return JSON.stringify({ graph: colors }, null, 2);
-};
-
+// ── 컴포넌트 ─────────────────────────────────────────────────
 export default function GraphColorEditor() {
   const { t } = useTranslation();
-  const [jsonValue, setJsonValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // 현재 테마 감지
-  const getCurrentTheme = (): "light" | "dark" => {
-    return document.documentElement.classList.contains("dark") ? "dark" : "light";
-  };
-
-  // 저장된 색상 또는 기본값 로드
-  const loadColors = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setJsonValue(stored);
-        applyColors(JSON.parse(stored));
-      } else {
-        const theme = getCurrentTheme();
-        setJsonValue(createTemplate(theme));
-      }
-    } catch {
-      const theme = getCurrentTheme();
-      setJsonValue(createTemplate(theme));
-    }
-  }, []);
+  const [activeTab, setActiveTab] = useState<ThemeKey>(getCurrentTheme());
+  const [stored, setStored] = useState<GraphColorConfigV2>({ light: {}, dark: {} });
 
   useEffect(() => {
-    loadColors();
-  }, [loadColors]);
+    const s = getStoredGraphColors();
+    setStored({ light: s.light ?? {}, dark: s.dark ?? {} });
+    setActiveTab(getCurrentTheme());
+  }, []);
 
-  // CSS 변수 적용
-  const applyColors = (config: GraphColorConfig) => {
-    const root = document.documentElement;
-    const { graph } = config;
+  const activePreset = detectActivePreset(stored);
 
-    if (graph.nodeDefault) {
-      root.style.setProperty("--color-node-default", graph.nodeDefault);
-    }
-    if (graph.nodeFocus) {
-      root.style.setProperty("--color-node-focus", graph.nodeFocus);
-    }
-    if (graph.edgeDefault) {
-      root.style.setProperty("--color-edge-default", graph.edgeDefault);
-    }
-    if (graph.clusterDefault) {
-      root.style.setProperty("--color-cluster-default", graph.clusterDefault);
-    }
+  // V1 / V2 통째로 적용
+  const handleApplyPreset = useCallback((presetKey: PresetKey) => {
+    const preset = PRESETS[presetKey];
+    const next: GraphColorConfigV2 = { light: { ...preset.light }, dark: { ...preset.dark } };
+    setStored(next);
+    saveGraphColors("light", next.light);
+    saveGraphColors("dark", next.dark);
+    applyThemeColors(getCurrentTheme(), next[getCurrentTheme()]);
+  }, []);
 
-    // 클러스터 팔레트는 커스텀 속성으로 저장 (Graph2D에서 읽어서 사용)
-    if (graph.clusterPalette) {
-      root.style.setProperty(
-        "--graph-cluster-palette",
-        JSON.stringify(graph.clusterPalette)
-      );
-    }
+  // 개별 필드 변경
+  const handleChange = useCallback((theme: ThemeKey, field: ColorField, value: string) => {
+    setStored((prev) => {
+      const next = { ...prev, [theme]: { ...prev[theme], [field]: value } };
+      saveGraphColors(theme, next[theme]);
+      if (theme === getCurrentTheme()) applyThemeColors(theme, next[theme]);
+      return next;
+    });
+  }, []);
+
+  // 필드 하나 초기화 (GRAPH_COLOR_DEFAULTS 기준)
+  const handleResetField = useCallback((theme: ThemeKey, field: ColorField) => {
+    setStored((prev) => {
+      const next = { ...prev, [theme]: { ...prev[theme] } };
+      delete next[theme][field];
+      saveGraphColors(theme, next[theme]);
+      if (theme === getCurrentTheme()) applyThemeColors(theme, next[theme]);
+      return next;
+    });
+  }, []);
+
+  // 현재 탭 전체 초기화
+  const handleResetTab = useCallback((theme: ThemeKey) => {
+    setStored((prev) => {
+      const next = { ...prev, [theme]: {} };
+      saveGraphColors(theme, {});
+      if (theme === getCurrentTheme()) applyThemeColors(theme, {});
+      return next;
+    });
+  }, []);
+
+  const getColor = (theme: ThemeKey, field: ColorField) =>
+    stored[theme][field] ?? GRAPH_COLOR_DEFAULTS[theme][field];
+
+  const isOverridden = (theme: ThemeKey, field: ColorField) => {
+    const v = stored[theme][field];
+    return !!v && v !== GRAPH_COLOR_DEFAULTS[theme][field];
   };
 
-  // JSON 유효성 검사
-  const validateJson = (value: string): { valid: boolean; config?: GraphColorConfig; error?: string } => {
-    try {
-      const parsed = JSON.parse(value) as GraphColorConfig;
-
-      if (!parsed.graph || typeof parsed.graph !== "object") {
-        return { valid: false, error: t("settings.graphColors.errorGraphObject") };
-      }
-
-      // 색상 형식 검증 (hex color)
-      const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
-      const colors = parsed.graph;
-
-      if (colors.nodeDefault && !hexColorRegex.test(colors.nodeDefault)) {
-        return { valid: false, error: t("settings.graphColors.errorInvalidColor", { field: "nodeDefault" }) };
-      }
-      if (colors.nodeFocus && !hexColorRegex.test(colors.nodeFocus)) {
-        return { valid: false, error: t("settings.graphColors.errorInvalidColor", { field: "nodeFocus" }) };
-      }
-      if (colors.edgeDefault && !hexColorRegex.test(colors.edgeDefault)) {
-        return { valid: false, error: t("settings.graphColors.errorInvalidColor", { field: "edgeDefault" }) };
-      }
-      if (colors.clusterDefault && !hexColorRegex.test(colors.clusterDefault)) {
-        return { valid: false, error: t("settings.graphColors.errorInvalidColor", { field: "clusterDefault" }) };
-      }
-
-      if (colors.clusterPalette) {
-        if (!Array.isArray(colors.clusterPalette)) {
-          return { valid: false, error: t("settings.graphColors.errorPaletteArray") };
-        }
-        for (const color of colors.clusterPalette) {
-          if (!hexColorRegex.test(color)) {
-            return { valid: false, error: t("settings.graphColors.errorInvalidPaletteColor") };
-          }
-        }
-      }
-
-      return { valid: true, config: parsed };
-    } catch {
-      return { valid: false, error: t("settings.mcp.json.errorParse") };
-    }
-  };
-
-  // 저장 핸들러
-  const handleSave = async () => {
-    const validation = validateJson(jsonValue);
-
-    if (!validation.valid) {
-      setError(validation.error || "Invalid JSON");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      localStorage.setItem(STORAGE_KEY, jsonValue);
-      applyColors(validation.config!);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-    } catch {
-      setError(t("settings.mcp.json.errorSave"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // 기본값으로 초기화
-  const handleReset = () => {
-    const theme = getCurrentTheme();
-    const defaultJson = createTemplate(theme);
-    setJsonValue(defaultJson);
-    localStorage.removeItem(STORAGE_KEY);
-
-    // CSS 변수 초기화 (원래 테마 색상으로 복원)
-    const root = document.documentElement;
-    root.style.removeProperty("--color-node-default");
-    root.style.removeProperty("--color-node-focus");
-    root.style.removeProperty("--color-edge-default");
-    root.style.removeProperty("--color-cluster-default");
-    root.style.removeProperty("--graph-cluster-palette");
-
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
-  };
-
-  // 텍스트 변경 핸들러
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setJsonValue(e.target.value);
-    setError(null);
-    setSaveSuccess(false);
-  };
-
-  // 키보드 단축키 (Cmd/Ctrl + S)
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-      e.preventDefault();
-      handleSave();
-    }
+  const fieldLabel: Record<ColorField, string> = {
+    nodeDefault: t("settings.graphColors.nodeDefault", "Node Default"),
+    nodeFocus:   t("settings.graphColors.nodeFocus",   "Node Focus"),
+    edgeDefault: t("settings.graphColors.edgeDefault",  "Edge"),
+    clusterDefault: t("settings.graphColors.clusterDefault", "Cluster BG"),
   };
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      {/* 에디터 헤더 */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-text-tertiary">
-          {t("settings.graphColors.hint")}
-        </p>
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <span className="flex items-center gap-1 text-xs text-green-500">
-              <FiCheck className="w-3 h-3" />
-              {t("settings.mcp.json.saved")}
-            </span>
-          )}
+
+      {/* ── V1 / V2 프리셋 ── */}
+      <div className="flex flex-col gap-2 p-3 rounded-xl bg-bg-secondary border border-base-border">
+        <span className="text-xs text-text-tertiary">
+          {t("settings.graphColors.preset", "Preset")}
+        </span>
+        <div className="flex gap-2">
+          {(["v1", "v2"] as PresetKey[]).map((pk) => (
+            <button
+              key={pk}
+              onClick={() => handleApplyPreset(pk)}
+              className={`flex-1 flex flex-col gap-2 p-3 rounded-lg border-2 transition-all text-left ${
+                activePreset === pk
+                  ? "border-primary bg-primary/8"
+                  : "border-base-border hover:border-text-tertiary/40"
+              }`}
+            >
+              <span className={`text-xs font-semibold ${activePreset === pk ? "text-primary" : "text-text-secondary"}`}>
+                {pk === "v1" ? "Version 1" : "Version 2"}
+              </span>
+              {/* 색상 미리보기 */}
+              <div className="flex gap-1.5 flex-wrap">
+                {(["light", "dark"] as ThemeKey[]).map((th) =>
+                  COLOR_FIELDS.filter((f) => f !== "clusterDefault").map((f) => (
+                    <div
+                      key={`${th}-${f}`}
+                      className="w-3.5 h-3.5 rounded-sm border border-black/10"
+                      style={{ backgroundColor: PRESETS[pk][th][f] }}
+                      title={`${th} ${f}: ${PRESETS[pk][th][f]}`}
+                    />
+                  ))
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 테마 탭 ── */}
+      <div className="flex rounded-lg border border-base-border overflow-hidden text-sm">
+        {(["light", "dark"] as ThemeKey[]).map((tab) => (
           <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-base-border text-text-secondary hover:bg-bg-tertiary transition-colors text-sm"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 transition-colors ${
+              activeTab === tab
+                ? "bg-primary text-white"
+                : "text-text-secondary hover:bg-bg-tertiary"
+            }`}
           >
-            <FiRefreshCw className="w-4 h-4" />
-            {t("settings.graphColors.reset")}
+            {t(`settings.appearance.theme.${tab}`)}
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white disabled:opacity-50 hover:bg-primary/90 transition-colors text-sm"
-          >
-            <FiSave className="w-4 h-4" />
-            {isSaving ? t("settings.my.api.saving") : t("settings.my.api.save")}
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* 색상 미리보기 */}
-      <div className="flex items-center gap-4 p-3 rounded-lg bg-bg-secondary border border-base-border">
-        <span className="text-xs text-text-secondary">{t("settings.graphColors.preview")}:</span>
-        <div className="flex items-center gap-2">
-          {(() => {
-            try {
-              const config = JSON.parse(jsonValue) as GraphColorConfig;
-              return (
-                <>
-                  <div
-                    className="w-6 h-6 rounded-full border border-base-border"
-                    style={{ backgroundColor: config.graph?.nodeDefault || "#bcbcbc" }}
-                    title="Node Default"
-                  />
-                  <div
-                    className="w-6 h-6 rounded-full border border-base-border"
-                    style={{ backgroundColor: config.graph?.nodeFocus || "#badaff" }}
-                    title="Node Focus"
-                  />
-                  <div
-                    className="w-6 h-1 rounded border border-base-border"
-                    style={{ backgroundColor: config.graph?.edgeDefault || "#d6d6d6" }}
-                    title="Edge"
-                  />
-                  <div
-                    className="w-8 h-6 rounded border border-base-border"
-                    style={{ backgroundColor: config.graph?.clusterDefault || "#f5f5f5" }}
-                    title="Cluster"
-                  />
-                </>
-              );
-            } catch {
-              return <span className="text-xs text-text-tertiary">-</span>;
-            }
-          })()}
-        </div>
+      {/* ── 개별 색상 커스텀 ── */}
+      <div className="flex flex-col gap-2">
+        {COLOR_FIELDS.map((field) => {
+          const v1Color   = PRESET_V1[activeTab][field];
+          const v2Color   = PRESET_V2[activeTab][field];
+          const current   = getColor(activeTab, field);
+          const overridden = isOverridden(activeTab, field);
+
+          return (
+            <div key={field} className="flex items-center gap-2.5 py-2 px-3 rounded-lg bg-bg-secondary">
+              <span className="text-sm text-text-secondary w-28 shrink-0">{fieldLabel[field]}</span>
+
+              {/* V1 */}
+              <div
+                className="w-5 h-5 rounded border border-base-border shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                style={{ backgroundColor: v1Color }}
+                title={`V1: ${v1Color}`}
+                onClick={() => handleChange(activeTab, field, v1Color)}
+              />
+
+              {/* V2 */}
+              <div
+                className="w-5 h-5 rounded border border-base-border shrink-0 cursor-pointer hover:scale-110 transition-transform"
+                style={{ backgroundColor: v2Color }}
+                title={`V2: ${v2Color}`}
+                onClick={() => handleChange(activeTab, field, v2Color)}
+              />
+
+              <span className="text-text-tertiary text-xs mx-0.5">|</span>
+
+              {/* 커스텀 컬러 피커 */}
+              <label className="relative cursor-pointer shrink-0">
+                <div
+                  className={`w-5 h-5 rounded border-2 transition-colors ${
+                    overridden ? "border-primary" : "border-dashed border-base-border"
+                  }`}
+                  style={{ backgroundColor: current }}
+                  title={`Custom: ${current}`}
+                />
+                <input
+                  type="color"
+                  value={current}
+                  onChange={(e) => handleChange(activeTab, field, e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </label>
+              <span className={`text-[10px] font-mono w-16 shrink-0 ${overridden ? "text-text-primary" : "text-text-tertiary"}`}>
+                {current}
+              </span>
+
+              {overridden && (
+                <button
+                  onClick={() => handleResetField(activeTab, field)}
+                  className="ml-auto text-text-tertiary hover:text-text-primary transition-colors"
+                  title="Reset"
+                >
+                  <FiRefreshCw className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* JSON 에디터 */}
-      <textarea
-        value={jsonValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        spellCheck={false}
-        className={`w-full h-[300px] px-4 py-3 rounded-lg border font-mono text-sm resize-none focus:outline-none focus:ring-2 transition-colors
-          ${error
-            ? "border-red-500 bg-red-500/5 focus:ring-red-500/50"
-            : "border-base-border bg-bg-secondary text-text-primary focus:ring-primary/50"
-          }`}
-      />
-
-      {/* 에러 메시지 */}
-      {error && (
-        <div className="flex items-start gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/30">
-          <FiAlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-red-500">{error}</p>
-        </div>
-      )}
-
-      {/* 도움말 */}
-      <div className="p-4 rounded-lg bg-bg-secondary border border-base-border">
-        <h4 className="text-sm font-medium text-text-primary mb-2">
-          {t("settings.graphColors.formatTitle")}
-        </h4>
-        <pre className="text-xs text-text-tertiary font-mono overflow-x-auto">
-{`{
-  "graph": {
-    "nodeDefault": "#bcbcbc",   // 기본 노드 색상
-    "nodeFocus": "#badaff",     // 포커스 노드 색상
-    "edgeDefault": "#d6d6d6",   // 엣지 색상
-    "clusterDefault": "#f5f5f5", // 클러스터 배경
-    "clusterPalette": [         // 클러스터별 노드 색상
-      "#4aa8c0", "#e74c3c", ...
-    ]
-  }
-}`}
-        </pre>
-      </div>
+      <button
+        onClick={() => handleResetTab(activeTab)}
+        className="self-start flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors"
+      >
+        <FiRefreshCw className="w-3 h-3" />
+        {t("settings.graphColors.reset")}
+      </button>
     </div>
   );
 }
