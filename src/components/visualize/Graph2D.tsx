@@ -5,7 +5,13 @@ import {
   GraphSubcluster,
 } from "@/types/GraphData";
 import * as d3Force from "d3-force";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import NodePreview from "./NodePreview";
 
 type GraphProps = {
@@ -91,19 +97,11 @@ type DisplaySimLink = {
 };
 
 const BASE_NODE_RADIUS = 5;
-const LARGE_NODE_SCALE = 1.5;
-const LARGE_NODE_EDGE_THRESHOLD = 5;
 const HIGH_EDGE_RATIO = 0.5;
 const MIN_HIGHLIGHT_EDGE_COUNT = 3;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function getNodeRadiusByDegree(degree: number): number {
-  return degree >= LARGE_NODE_EDGE_THRESHOLD
-    ? BASE_NODE_RADIUS * LARGE_NODE_SCALE
-    : BASE_NODE_RADIUS;
 }
 
 function getClusterKey(node: PositionedNode): string {
@@ -143,7 +141,12 @@ function buildVisibleSubclusterGraph(
       members.reduce((sum, node) => sum + node.x, 0) / members.length;
     const centerY =
       members.reduce((sum, node) => sum + node.y, 0) / members.length;
-    const clusterName = getClusterKey(members[0]);
+    const clusterKeyCounts = new Map<string, number>();
+    members.forEach((m) => {
+      const k = getClusterKey(m);
+      clusterKeyCounts.set(k, (clusterKeyCounts.get(k) ?? 0) + 1);
+    });
+    const clusterName = [...clusterKeyCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     const displayId = `__group_${subcluster.id}`;
 
     const groupNode: RenderNode = {
@@ -161,11 +164,14 @@ function buildVisibleSubclusterGraph(
     renderNodes.push(groupNode);
     renderNodeMap.set(displayId, groupNode);
     members.forEach((member) => {
-      memberToDisplayId.set(member.id, displayId);
+      if (!memberToDisplayId.has(member.id)) {
+        memberToDisplayId.set(member.id, displayId);
+      }
     });
   });
 
   scopedNodes.forEach((node) => {
+    if (renderNodeMap.has(node.id)) return;
     const subclusterId = nodeToSubcluster.get(node.id);
     if (subclusterId && collapsedSubclusters.has(subclusterId)) return;
 
@@ -249,9 +255,9 @@ function buildClusterCenters(
 
   const seeds: ClusterSeed[] = keys.map((key, idx) => {
     const nodeCount = grouped.get(key)?.length ?? 1;
-    const radius = Math.max(80, 42 + Math.sqrt(nodeCount) * 18);
+    const radius = Math.max(100, 42 + Math.sqrt(nodeCount) * 26);
     const angle = (2 * Math.PI * idx) / total;
-    const dist = Math.min(width, height) * 0.2;
+    const dist = Math.min(width, height) * 0.44;
     return {
       key,
       radius,
@@ -262,22 +268,22 @@ function buildClusterCenters(
 
   const sim = d3Force
     .forceSimulation<ClusterSeed>(seeds)
-    .force("center", d3Force.forceCenter(cx, cy).strength(0.06))
-    .force("charge", d3Force.forceManyBody().strength(-240))
+    .force("center", d3Force.forceCenter(cx, cy).strength(0.015))
+    .force("charge", d3Force.forceManyBody().strength(-1800))
     .force(
       "collide",
       d3Force
-        .forceCollide<ClusterSeed>((d) => d.radius + 24)
+        .forceCollide<ClusterSeed>((d) => d.radius + 100)
         .strength(1)
-        .iterations(3),
+        .iterations(6),
     )
     .stop();
 
-  for (let i = 0; i < 120; i += 1) {
+  for (let i = 0; i < 200; i += 1) {
     sim.tick();
     seeds.forEach((seed) => {
-      seed.x = clamp(seed.x ?? cx, seed.radius + 20, width - seed.radius - 20);
-      seed.y = clamp(seed.y ?? cy, seed.radius + 20, height - seed.radius - 20);
+      seed.x = clamp(seed.x ?? cx, -width, width * 2);
+      seed.y = clamp(seed.y ?? cy, -height, height * 2);
     });
   }
 
@@ -308,7 +314,9 @@ function buildLayout(
   const ids = new Set(rawNodes.map((n) => n.id));
   const filteredEdges = rawEdges.filter(
     (edge) =>
-      edge.weight >= minEdgeWeight && ids.has(edge.source) && ids.has(edge.target),
+      edge.weight >= minEdgeWeight &&
+      ids.has(edge.source) &&
+      ids.has(edge.target),
   );
 
   const edgeDegree = new Map<number, number>();
@@ -361,29 +369,31 @@ function buildLayout(
       d3Force
         .forceLink<SimNode, SimLink>(physicalLinks)
         .id((d) => d.id)
-        .distance(42)
+        .distance(65)
         .strength(0.24),
     )
-    .force("charge", d3Force.forceManyBody<SimNode>().strength(-58))
+    .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
     .force(
       "collide",
       d3Force
-        .forceCollide<SimNode>(
-          (d) => getNodeRadiusByDegree(d.edgeCount) + 2.5,
-        )
+        .forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4)
         .iterations(2),
     )
     .force(
       "x",
       d3Force
-        .forceX<SimNode>((d) => clusterCenters.get(d.clusterKey)?.centerX ?? width / 2)
-        .strength(0.18),
+        .forceX<SimNode>(
+          (d) => clusterCenters.get(d.clusterKey)?.centerX ?? width / 2,
+        )
+        .strength(0.45),
     )
     .force(
       "y",
       d3Force
-        .forceY<SimNode>((d) => clusterCenters.get(d.clusterKey)?.centerY ?? height / 2)
-        .strength(0.18),
+        .forceY<SimNode>(
+          (d) => clusterCenters.get(d.clusterKey)?.centerY ?? height / 2,
+        )
+        .strength(0.45),
     )
     .alpha(1)
     .alphaDecay(0.045)
@@ -419,8 +429,7 @@ function buildLayout(
   const classifiedEdges: PositionedEdge[] = filteredEdges.map((edge) => {
     const s = nodeById.get(edge.source);
     const t = nodeById.get(edge.target);
-    const isIntra =
-      !!s && !!t && getClusterKey(s) === getClusterKey(t);
+    const isIntra = !!s && !!t && getClusterKey(s) === getClusterKey(t);
 
     return {
       ...edge,
@@ -506,11 +515,14 @@ export default function Graph2D({
   const dragNodeOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
   const dragStartPointerRef = useRef<{ x: number; y: number } | null>(null);
   const nodeDraggedRef = useRef(false);
-  const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(null);
+  const simulationRef = useRef<d3Force.Simulation<SimNode, SimLink> | null>(
+    null,
+  );
   const simNodeMapRef = useRef<Map<number, SimNode>>(new Map());
-  const displaySimulationRef = useRef<
-    d3Force.Simulation<DisplaySimNode, DisplaySimLink> | null
-  >(null);
+  const displaySimulationRef = useRef<d3Force.Simulation<
+    DisplaySimNode,
+    DisplaySimLink
+  > | null>(null);
   const displaySimNodeMapRef = useRef<Map<number | string, DisplaySimNode>>(
     new Map(),
   );
@@ -548,7 +560,8 @@ export default function Graph2D({
       focusedClusterId
         ? edges.filter(
             (edge) =>
-              scopedNodeIdSet.has(edge.source) && scopedNodeIdSet.has(edge.target),
+              scopedNodeIdSet.has(edge.source) &&
+              scopedNodeIdSet.has(edge.target),
           )
         : edges,
     [edges, focusedClusterId, scopedNodeIdSet],
@@ -621,7 +634,9 @@ export default function Graph2D({
   }, [focusedClusterId]);
 
   useEffect(() => {
-    setCollapsedSubclusters(new Set(subclusters.map((subcluster) => subcluster.id)));
+    setCollapsedSubclusters(
+      new Set(subclusters.map((subcluster) => subcluster.id)),
+    );
   }, [subclusterIdsKey, subclusters]);
 
   const clearDragSettleTimer = useCallback(() => {
@@ -703,16 +718,14 @@ export default function Graph2D({
           d3Force
             .forceLink<SimNode, SimLink>(physicalLinks)
             .id((d) => d.id)
-            .distance(42)
+            .distance(65)
             .strength(0.24),
         )
-        .force("charge", d3Force.forceManyBody<SimNode>().strength(-58))
+        .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
         .force(
           "collide",
           d3Force
-            .forceCollide<SimNode>(
-              (d) => getNodeRadiusByDegree(d.edgeCount) + 2.5,
-            )
+            .forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4)
             .iterations(2),
         )
         .force(
@@ -721,7 +734,7 @@ export default function Graph2D({
             .forceX<SimNode>(
               (d) => centerByCluster.get(d.clusterKey)?.x ?? width / 2,
             )
-            .strength(0.18),
+            .strength(0.45),
         )
         .force(
           "y",
@@ -729,7 +742,7 @@ export default function Graph2D({
             .forceY<SimNode>(
               (d) => centerByCluster.get(d.clusterKey)?.y ?? height / 2,
             )
-            .strength(0.18),
+            .strength(0.45),
         )
         .alpha(0)
         .alphaMin(0.001)
@@ -783,7 +796,10 @@ export default function Graph2D({
     stopInteractiveSimulation,
   ]);
 
-  useEffect(() => () => stopInteractiveSimulation(), [stopInteractiveSimulation]);
+  useEffect(
+    () => () => stopInteractiveSimulation(),
+    [stopInteractiveSimulation],
+  );
 
   useEffect(() => {
     stopDisplaySimulation();
@@ -876,14 +892,14 @@ export default function Graph2D({
         d3Force
           .forceLink<DisplaySimNode, DisplaySimLink>(physicalLinksForDisplaySim)
           .id((d) => d.id)
-          .distance(44)
+          .distance(65)
           .strength(0.24),
       )
       .force(
         "charge",
         d3Force
           .forceManyBody<DisplaySimNode>()
-          .strength((node) => (node.kind === "group" ? -60 : -8)),
+          .strength((node) => (node.kind === "group" ? -60 : -12)),
       )
       .force(
         "collide",
@@ -895,8 +911,7 @@ export default function Graph2D({
                 Math.min(BASE_NODE_RADIUS * 2.3, 7 + Math.sqrt(node.size ?? 1)),
               );
             }
-            const degree = edgeCounts.get(node.id) ?? 0;
-            return getNodeRadiusByDegree(degree) + 2.5;
+            return BASE_NODE_RADIUS + 4;
           })
           .iterations(2),
       )
@@ -910,7 +925,7 @@ export default function Graph2D({
           .strength((node) => {
             if (node.kind === "group") return 0.08;
             if (draggingGroupActiveRef.current) return 0.12;
-            return node.anchored ? 1 : 0.22;
+            return node.anchored ? 1 : 0.45;
           }),
       )
       .force(
@@ -923,7 +938,7 @@ export default function Graph2D({
           .strength((node) => {
             if (node.kind === "group") return 0.08;
             if (draggingGroupActiveRef.current) return 0.12;
-            return node.anchored ? 1 : 0.22;
+            return node.anchored ? 1 : 0.45;
           }),
       )
       .alpha(0.55)
@@ -955,6 +970,21 @@ export default function Graph2D({
               node.fx = null;
               node.fy = null;
             }
+
+            if (!node.anchored) {
+              const center = centerByCluster.get(node.clusterName);
+              if (center) {
+                const cdx = (node.x ?? center.x) - center.x;
+                const cdy = (node.y ?? center.y) - center.y;
+                const dist = Math.sqrt(cdx * cdx + cdy * cdy);
+                const limit = Math.max(14, center.radius - 12);
+                if (dist > limit) {
+                  const ratio = limit / dist;
+                  node.x = center.x + cdx * ratio;
+                  node.y = center.y + cdy * ratio;
+                }
+              }
+            }
             return;
           }
 
@@ -972,13 +1002,20 @@ export default function Graph2D({
         });
 
         setDisplayPositions(
-          new Map(nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }])),
+          new Map(
+            nodesForDisplaySim.map((node) => [
+              node.id,
+              { x: node.x, y: node.y },
+            ]),
+          ),
         );
       });
 
     displaySimulationRef.current = simulation;
     setDisplayPositions(
-      new Map(nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }])),
+      new Map(
+        nodesForDisplaySim.map((node) => [node.id, { x: node.x, y: node.y }]),
+      ),
     );
 
     clearDisplaySimSettlingTimer();
@@ -1070,9 +1107,10 @@ export default function Graph2D({
 
       const animate = (now: number) => {
         const progress = clamp((now - startTime) / duration, 0, 1);
-        const eased = progress < 0.5
-          ? 4 * progress * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        const eased =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
         setScale(startScale + (targetScale - startScale) * eased);
         setOffset({
@@ -1184,18 +1222,50 @@ export default function Graph2D({
           const subcluster = subclusterMap.get(draggingTarget.subclusterId);
           if (subcluster && (Math.abs(dx) > 0 || Math.abs(dy) > 0)) {
             const memberSet = new Set(subcluster.nodeIds);
+            const clusterById = new Map(circles.map((c) => [c.clusterId, c]));
+
+            const clampToCluster = (
+              nx: number,
+              ny: number,
+              clusterKey: string,
+            ) => {
+              const cluster = clusterById.get(clusterKey);
+              if (!cluster) return { x: nx, y: ny };
+              const cdx = nx - cluster.centerX;
+              const cdy = ny - cluster.centerY;
+              const dist = Math.sqrt(cdx * cdx + cdy * cdy);
+              const limit = Math.max(14, cluster.radius - 18);
+              if (dist > limit) {
+                const ratio = limit / dist;
+                return {
+                  x: cluster.centerX + cdx * ratio,
+                  y: cluster.centerY + cdy * ratio,
+                };
+              }
+              return { x: nx, y: ny };
+            };
+
             setNodes((prev) =>
-              prev.map((node) =>
-                memberSet.has(node.id)
-                  ? { ...node, x: node.x + dx, y: node.y + dy }
-                  : node,
-              ),
+              prev.map((node) => {
+                if (!memberSet.has(node.id)) return node;
+                const pos = clampToCluster(
+                  node.x + dx,
+                  node.y + dy,
+                  getClusterKey(node),
+                );
+                return { ...node, x: pos.x, y: pos.y };
+              }),
             );
             subcluster.nodeIds.forEach((memberId) => {
               const member = simNodeMapRef.current.get(memberId);
               if (!member) return;
-              member.x = (member.x ?? 0) + dx;
-              member.y = (member.y ?? 0) + dy;
+              const pos = clampToCluster(
+                (member.x ?? 0) + dx,
+                (member.y ?? 0) + dy,
+                member.clusterKey,
+              );
+              member.x = pos.x;
+              member.y = pos.y;
             });
           }
         }
@@ -1355,7 +1425,9 @@ export default function Graph2D({
               : null;
           const label = node.isGroupNode
             ? (node.label ?? "Group")
-            : (node.origNode?.nodeTitle ?? node.origNode?.origId ?? String(node.id));
+            : (node.origNode?.nodeTitle ??
+              node.origNode?.origId ??
+              String(node.id));
 
           return (
             <div
@@ -1398,7 +1470,11 @@ export default function Graph2D({
                 fontSize={13}
                 fontWeight={600}
                 fill="var(--color-text-secondary)"
-                style={{ pointerEvents: "all", userSelect: "none", cursor: "pointer" }}
+                style={{
+                  pointerEvents: "all",
+                  userSelect: "none",
+                  cursor: "pointer",
+                }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1432,15 +1508,18 @@ export default function Graph2D({
 
           {renderedNodes.map((node) => {
             const degree = edgeCounts.get(node.id) ?? 0;
-            const baseRadius = getNodeRadiusByDegree(degree);
             const isHovered = hoveredNodeId === node.id;
             const groupBaseRadius = Math.max(
               BASE_NODE_RADIUS * 1.2,
               Math.min(BASE_NODE_RADIUS * 2.2, 6 + Math.sqrt(node.size ?? 1)),
             );
             const radius = node.isGroupNode
-              ? (isHovered ? groupBaseRadius + 1.5 : groupBaseRadius)
-              : (isHovered ? baseRadius + 1.2 : baseRadius);
+              ? isHovered
+                ? groupBaseRadius + 1.5
+                : groupBaseRadius
+              : isHovered
+                ? BASE_NODE_RADIUS + 1.2
+                : BASE_NODE_RADIUS;
             const highlightThreshold = Math.max(
               MIN_HIGHLIGHT_EDGE_COUNT,
               Math.ceil(maxEdgeCount * HIGH_EDGE_RATIO),

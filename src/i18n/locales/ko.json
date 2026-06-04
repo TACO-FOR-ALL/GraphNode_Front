@@ -242,6 +242,12 @@
   "notes": {
     "workspace": "워크스페이스",
     "newNote": "새 노트",
+    "importFile": "파일 가져오기",
+    "importFileToast": {
+      "success": "{{count}}개 파일을 성공적으로 업로드했습니다.",
+      "allFailed": "{{count}}개 파일 업로드에 실패했습니다.",
+      "partial": "{{succeeded}}개 성공, {{failed}}개 실패했습니다."
+    },
     "newFolder": "새 폴더",
     "codeBlock": {
       "copied": "{{language}} 코드가 복사되었습니다.",
@@ -648,13 +654,17 @@
         "subtitle": "선택한 디렉토리에 노트와 채팅 기록을 저장합니다",
         "notes": "노트 내보내기",
         "chats": "채팅 내보내기",
+        "graph": "그래프 데이터 내보내기",
+        "graphHint": "JSON 파일",
         "exporting": "내보내는 중...",
         "toast": {
           "notesSuccess": "노트 {{count}}개를 내보냈습니다",
           "chatsSuccess": "채팅 {{count}}개를 내보냈습니다",
+          "graphSuccess": "그래프 데이터를 내보냈습니다",
           "cancelled": "내보내기를 취소했습니다",
           "notesError": "노트 내보내기에 실패했습니다",
-          "chatsError": "채팅 내보내기에 실패했습니다"
+          "chatsError": "채팅 내보내기에 실패했습니다",
+          "graphError": "그래프 데이터 내보내기에 실패했습니다"
         }
       },
       "trash": {

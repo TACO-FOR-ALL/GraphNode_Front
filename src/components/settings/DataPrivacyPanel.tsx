@@ -17,6 +17,7 @@ import DeveloperToolsPanel, { isDeveloperToolsEnabled } from "./DeveloperToolsPa
 import { isElectron } from "@/utils/platform";
 import ExportNotesCard from "./ExportNotesCard";
 import ExportChatsCard from "./ExportChatsCard";
+import ExportGraphCard from "./ExportGraphCard";
 
 export default function DataPrivacyPanel() {
   const { t } = useTranslation();
@@ -112,6 +113,7 @@ export default function DataPrivacyPanel() {
         <div className="flex gap-3 w-full mt-4">
           <ExportNotesCard />
           <ExportChatsCard />
+          <ExportGraphCard />
         </div>
       </div>
       {/* Trash Section */}

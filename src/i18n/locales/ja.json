@@ -242,6 +242,12 @@
   "notes": {
     "workspace": "ワークスペース",
     "newNote": "新しいメモ",
+    "importFile": "ファイルをインポート",
+    "importFileToast": {
+      "success": "{{count}}件のファイルをアップロードしました。",
+      "allFailed": "{{count}}件のファイルのアップロードに失敗しました。",
+      "partial": "{{succeeded}}件成功、{{failed}}件失敗しました。"
+    },
     "newFolder": "新しいフォルダ",
     "codeBlock": {
       "copied": "{{language}} のコードをコピーしました。",
@@ -654,13 +660,17 @@
         "subtitle": "選択したディレクトリにメモと会話を保存します",
         "notes": "メモをエクスポート",
         "chats": "チャットをエクスポート",
+        "graph": "グラフデータをエクスポート",
+        "graphHint": "JSONファイル",
         "exporting": "エクスポート中...",
         "toast": {
           "notesSuccess": "{{count}}件のメモをエクスポートしました",
           "chatsSuccess": "{{count}}件の会話をエクスポートしました",
+          "graphSuccess": "グラフデータをエクスポートしました",
           "cancelled": "エクスポートをキャンセルしました",
           "notesError": "メモのエクスポートに失敗しました",
-          "chatsError": "会話のエクスポートに失敗しました"
+          "chatsError": "会話のエクスポートに失敗しました",
+          "graphError": "グラフデータのエクスポートに失敗しました"
         }
       },
       "trash": {

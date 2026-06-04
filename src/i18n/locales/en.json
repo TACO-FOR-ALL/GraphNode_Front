@@ -242,6 +242,12 @@
   "notes": {
     "workspace": "workspace",
     "newNote": "New Note",
+    "importFile": "Import File",
+    "importFileToast": {
+      "success": "{{count}} file(s) uploaded successfully.",
+      "allFailed": "Failed to upload {{count}} file(s).",
+      "partial": "{{succeeded}} succeeded, {{failed}} failed."
+    },
     "newFolder": "New Folder",
     "codeBlock": {
       "copied": "Copied {{language}} code.",
@@ -654,13 +660,17 @@
         "subtitle": "Save your notes and conversations to a directory you choose",
         "notes": "Export Notes",
         "chats": "Export Chats",
+        "graph": "Export Graph Data",
+        "graphHint": "JSON file",
         "exporting": "Exporting...",
         "toast": {
           "notesSuccess": "Exported {{count}} notes",
           "chatsSuccess": "Exported {{count}} conversations",
+          "graphSuccess": "Graph data exported",
           "cancelled": "Export cancelled",
           "notesError": "Failed to export notes",
-          "chatsError": "Failed to export conversations"
+          "chatsError": "Failed to export conversations",
+          "graphError": "Failed to export graph data"
         }
       },
       "trash": {

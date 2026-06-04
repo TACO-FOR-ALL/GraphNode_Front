@@ -242,6 +242,12 @@
   "notes": {
     "workspace": "工作区",
     "newNote": "新建笔记",
+    "importFile": "导入文件",
+    "importFileToast": {
+      "success": "成功上传 {{count}} 个文件。",
+      "allFailed": "{{count}} 个文件上传失败。",
+      "partial": "{{succeeded}} 个成功，{{failed}} 个失败。"
+    },
     "newFolder": "新建文件夹",
     "codeBlock": {
       "copied": "已复制 {{language}} 代码。",
@@ -654,13 +660,17 @@
         "subtitle": "将笔记和对话保存到您选择的目录",
         "notes": "导出笔记",
         "chats": "导出聊天",
+        "graph": "导出图谱数据",
+        "graphHint": "JSON文件",
         "exporting": "导出中...",
         "toast": {
           "notesSuccess": "已导出 {{count}} 条笔记",
           "chatsSuccess": "已导出 {{count}} 条对话",
+          "graphSuccess": "图谱数据已导出",
           "cancelled": "已取消导出",
           "notesError": "导出笔记失败",
-          "chatsError": "导出对话失败"
+          "chatsError": "导出对话失败",
+          "graphError": "导出图谱数据失败"
         }
       },
       "trash": {
