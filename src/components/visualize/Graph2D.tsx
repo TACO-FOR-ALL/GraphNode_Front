@@ -97,19 +97,11 @@ type DisplaySimLink = {
 };
 
 const BASE_NODE_RADIUS = 5;
-const LARGE_NODE_SCALE = 1.5;
-const LARGE_NODE_EDGE_THRESHOLD = 5;
 const HIGH_EDGE_RATIO = 0.5;
 const MIN_HIGHLIGHT_EDGE_COUNT = 3;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function getNodeRadiusByDegree(degree: number): number {
-  return degree >= LARGE_NODE_EDGE_THRESHOLD
-    ? BASE_NODE_RADIUS * LARGE_NODE_SCALE
-    : BASE_NODE_RADIUS;
 }
 
 function getClusterKey(node: PositionedNode): string {
@@ -263,9 +255,9 @@ function buildClusterCenters(
 
   const seeds: ClusterSeed[] = keys.map((key, idx) => {
     const nodeCount = grouped.get(key)?.length ?? 1;
-    const radius = Math.max(80, 42 + Math.sqrt(nodeCount) * 18);
+    const radius = Math.max(100, 42 + Math.sqrt(nodeCount) * 26);
     const angle = (2 * Math.PI * idx) / total;
-    const dist = Math.min(width, height) * 0.38;
+    const dist = Math.min(width, height) * 0.44;
     return {
       key,
       radius,
@@ -377,14 +369,14 @@ function buildLayout(
       d3Force
         .forceLink<SimNode, SimLink>(physicalLinks)
         .id((d) => d.id)
-        .distance(42)
+        .distance(65)
         .strength(0.24),
     )
-    .force("charge", d3Force.forceManyBody<SimNode>().strength(-58))
+    .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
     .force(
       "collide",
       d3Force
-        .forceCollide<SimNode>((d) => getNodeRadiusByDegree(d.edgeCount) + 2.5)
+        .forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4)
         .iterations(2),
     )
     .force(
@@ -393,7 +385,7 @@ function buildLayout(
         .forceX<SimNode>(
           (d) => clusterCenters.get(d.clusterKey)?.centerX ?? width / 2,
         )
-        .strength(0.18),
+        .strength(0.45),
     )
     .force(
       "y",
@@ -401,7 +393,7 @@ function buildLayout(
         .forceY<SimNode>(
           (d) => clusterCenters.get(d.clusterKey)?.centerY ?? height / 2,
         )
-        .strength(0.18),
+        .strength(0.45),
     )
     .alpha(1)
     .alphaDecay(0.045)
@@ -726,16 +718,14 @@ export default function Graph2D({
           d3Force
             .forceLink<SimNode, SimLink>(physicalLinks)
             .id((d) => d.id)
-            .distance(42)
+            .distance(65)
             .strength(0.24),
         )
-        .force("charge", d3Force.forceManyBody<SimNode>().strength(-58))
+        .force("charge", d3Force.forceManyBody<SimNode>().strength(-60))
         .force(
           "collide",
           d3Force
-            .forceCollide<SimNode>(
-              (d) => getNodeRadiusByDegree(d.edgeCount) + 2.5,
-            )
+            .forceCollide<SimNode>(() => BASE_NODE_RADIUS + 4)
             .iterations(2),
         )
         .force(
@@ -744,7 +734,7 @@ export default function Graph2D({
             .forceX<SimNode>(
               (d) => centerByCluster.get(d.clusterKey)?.x ?? width / 2,
             )
-            .strength(0.18),
+            .strength(0.45),
         )
         .force(
           "y",
@@ -752,7 +742,7 @@ export default function Graph2D({
             .forceY<SimNode>(
               (d) => centerByCluster.get(d.clusterKey)?.y ?? height / 2,
             )
-            .strength(0.18),
+            .strength(0.45),
         )
         .alpha(0)
         .alphaMin(0.001)
@@ -902,14 +892,14 @@ export default function Graph2D({
         d3Force
           .forceLink<DisplaySimNode, DisplaySimLink>(physicalLinksForDisplaySim)
           .id((d) => d.id)
-          .distance(44)
+          .distance(65)
           .strength(0.24),
       )
       .force(
         "charge",
         d3Force
           .forceManyBody<DisplaySimNode>()
-          .strength((node) => (node.kind === "group" ? -60 : -8)),
+          .strength((node) => (node.kind === "group" ? -60 : -12)),
       )
       .force(
         "collide",
@@ -921,8 +911,7 @@ export default function Graph2D({
                 Math.min(BASE_NODE_RADIUS * 2.3, 7 + Math.sqrt(node.size ?? 1)),
               );
             }
-            const degree = edgeCounts.get(node.id) ?? 0;
-            return getNodeRadiusByDegree(degree) + 2.5;
+            return BASE_NODE_RADIUS + 4;
           })
           .iterations(2),
       )
@@ -936,7 +925,7 @@ export default function Graph2D({
           .strength((node) => {
             if (node.kind === "group") return 0.08;
             if (draggingGroupActiveRef.current) return 0.12;
-            return node.anchored ? 1 : 0.22;
+            return node.anchored ? 1 : 0.45;
           }),
       )
       .force(
@@ -949,7 +938,7 @@ export default function Graph2D({
           .strength((node) => {
             if (node.kind === "group") return 0.08;
             if (draggingGroupActiveRef.current) return 0.12;
-            return node.anchored ? 1 : 0.22;
+            return node.anchored ? 1 : 0.45;
           }),
       )
       .alpha(0.55)
@@ -1519,7 +1508,6 @@ export default function Graph2D({
 
           {renderedNodes.map((node) => {
             const degree = edgeCounts.get(node.id) ?? 0;
-            const baseRadius = getNodeRadiusByDegree(degree);
             const isHovered = hoveredNodeId === node.id;
             const groupBaseRadius = Math.max(
               BASE_NODE_RADIUS * 1.2,
@@ -1530,8 +1518,8 @@ export default function Graph2D({
                 ? groupBaseRadius + 1.5
                 : groupBaseRadius
               : isHovered
-                ? baseRadius + 1.2
-                : baseRadius;
+                ? BASE_NODE_RADIUS + 1.2
+                : BASE_NODE_RADIUS;
             const highlightThreshold = Math.max(
               MIN_HIGHLIGHT_EDGE_COUNT,
               Math.ceil(maxEdgeCount * HIGH_EDGE_RATIO),
