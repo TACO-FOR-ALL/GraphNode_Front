@@ -27,7 +27,7 @@ export default function Visualize() {
   const { t } = useTranslation();
   const [me, setMe] = useState<Me | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [focusedNodeId, setFocusedNodeId] = useState<number | null>(null);
+  const [activeNodeId, setActiveNodeId] = useState<number | string | null>(null);
   const [expandedSubclusters, setExpandedSubclusters] = useState<Set<string>>(
     new Set(),
   );
@@ -77,10 +77,9 @@ export default function Visualize() {
   // 서버에서 가져온 서브클러스터 데이터
   const subclusters = graphData?.nodeEdgeData.subclusters ?? [];
 
-  // 사이드바에서 노드 클릭 시 포커싱만 (줌인 + 시각적 효과)
-  const handleNodeFocus = (nodeId: number) => {
-    setFocusedNodeId((prev) => (prev === nodeId ? null : nodeId));
-  };
+  const handleActiveNodeChange = useCallback((id: number | string | null) => {
+    setActiveNodeId(id);
+  }, []);
 
   if (error) return <ErrorScreen />;
 
@@ -118,8 +117,8 @@ export default function Visualize() {
         graphSummary={graphData.graphSummary}
         isExpanded={isSidebarExpanded}
         setIsExpanded={setIsSidebarExpanded}
-        onNodeFocus={handleNodeFocus}
-        focusedNodeId={focusedNodeId}
+        onNodeFocus={(id) => handleActiveNodeChange(id)}
+        focusedNodeId={typeof activeNodeId === "number" ? activeNodeId : null}
         subclusters={subclusters}
         expandedSubclusters={expandedSubclusters}
         onToggleSubcluster={handleToggleSubcluster}
@@ -131,6 +130,8 @@ export default function Visualize() {
           graphData={graphData.nodeEdgeData}
           avatarUrl={me?.profile?.avatarUrl ?? null}
           subclusters={subclusters}
+          activeNodeId={activeNodeId}
+          onActiveNodeChange={handleActiveNodeChange}
         />
       </div>
     </div>

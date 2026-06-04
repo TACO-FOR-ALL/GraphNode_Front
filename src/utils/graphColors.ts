@@ -1,90 +1,99 @@
-// 그래프 색상 유틸리티
-// 저장된 커스텀 그래프 색상을 로드하고 적용
-
-interface GraphColorConfig {
-  graph: {
-    nodeDefault?: string;
-    nodeFocus?: string;
-    edgeDefault?: string;
-    clusterDefault?: string;
-    clusterPalette?: string[];
-  };
+export interface ThemeColorConfig {
+  nodeDefault?: string;
+  nodeFocus?: string;
+  edgeDefault?: string;
+  clusterDefault?: string;
 }
 
-const STORAGE_KEY = "graphnode-custom-graph-colors";
+export interface GraphColorConfigV2 {
+  light: ThemeColorConfig;
+  dark: ThemeColorConfig;
+}
 
-/**
- * 저장된 커스텀 그래프 색상을 로드하고 CSS 변수에 적용
- * 앱 시작 시 호출되어야 함
- */
-export function loadAndApplyGraphColors(): void {
+export const GRAPH_COLOR_DEFAULTS: Record<"light" | "dark", Required<ThemeColorConfig>> = {
+  light: {
+    nodeDefault: "#9090b0",
+    nodeFocus: "#4daaff",
+    edgeDefault: "#b8b8c8",
+    clusterDefault: "#f5f5f5",
+  },
+  dark: {
+    nodeDefault: "#d0cfc8",
+    nodeFocus: "#ff8c4a",
+    edgeDefault: "#6a6a78",
+    clusterDefault: "#1f1f23",
+  },
+};
+
+const STORAGE_KEY_V2 = "graphnode-graph-colors-v2";
+
+export function getCurrentTheme(): "light" | "dark" {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+export function getStoredGraphColors(): GraphColorConfigV2 {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-
-    const config = JSON.parse(stored) as GraphColorConfig;
-    applyGraphColors(config);
-  } catch (error) {
-    console.error("[GraphColors] Failed to load custom colors:", error);
-  }
+    const stored = localStorage.getItem(STORAGE_KEY_V2);
+    if (stored) return JSON.parse(stored) as GraphColorConfigV2;
+  } catch { /* ignore */ }
+  return { light: {}, dark: {} };
 }
 
-/**
- * 그래프 색상 설정을 CSS 변수에 적용
- */
-export function applyGraphColors(config: GraphColorConfig): void {
+export function saveGraphColors(theme: "light" | "dark", colors: ThemeColorConfig): void {
+  const current = getStoredGraphColors();
+  current[theme] = colors;
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(current));
+}
+
+export function applyThemeColors(theme: "light" | "dark", colors: ThemeColorConfig): void {
   const root = document.documentElement;
-  const { graph } = config;
+  const defaults = GRAPH_COLOR_DEFAULTS[theme];
+  root.style.setProperty("--color-node-default", colors.nodeDefault ?? defaults.nodeDefault);
+  root.style.setProperty("--color-node-focus", colors.nodeFocus ?? defaults.nodeFocus);
+  root.style.setProperty("--color-edge-default", colors.edgeDefault ?? defaults.edgeDefault);
+  root.style.setProperty("--color-cluster-default", colors.clusterDefault ?? defaults.clusterDefault);
+}
 
-  if (!graph) return;
-
-  if (graph.nodeDefault) {
-    root.style.setProperty("--color-node-default", graph.nodeDefault);
-  }
-  if (graph.nodeFocus) {
-    root.style.setProperty("--color-node-focus", graph.nodeFocus);
-  }
-  if (graph.edgeDefault) {
-    root.style.setProperty("--color-edge-default", graph.edgeDefault);
-  }
-  if (graph.clusterDefault) {
-    root.style.setProperty("--color-cluster-default", graph.clusterDefault);
-  }
-  if (graph.clusterPalette) {
-    root.style.setProperty(
-      "--graph-cluster-palette",
-      JSON.stringify(graph.clusterPalette)
-    );
+export function resetGraphColors(theme?: "light" | "dark"): void {
+  const stored = getStoredGraphColors();
+  if (theme) {
+    stored[theme] = {};
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(stored));
+    if (theme === getCurrentTheme()) applyThemeColors(theme, {});
+  } else {
+    localStorage.removeItem(STORAGE_KEY_V2);
+    applyThemeColors(getCurrentTheme(), {});
   }
 }
 
-/**
- * 커스텀 색상을 초기화하고 테마 기본값으로 복원
- */
-export function resetGraphColors(): void {
-  const root = document.documentElement;
-  root.style.removeProperty("--color-node-default");
-  root.style.removeProperty("--color-node-focus");
-  root.style.removeProperty("--color-edge-default");
-  root.style.removeProperty("--color-cluster-default");
-  root.style.removeProperty("--graph-cluster-palette");
-  localStorage.removeItem(STORAGE_KEY);
+let themeObserver: MutationObserver | null = null;
+
+function watchThemeChanges(): void {
+  if (themeObserver) return;
+  let lastTheme = getCurrentTheme();
+  themeObserver = new MutationObserver(() => {
+    const newTheme = getCurrentTheme();
+    if (newTheme !== lastTheme) {
+      lastTheme = newTheme;
+      applyThemeColors(newTheme, getStoredGraphColors()[newTheme]);
+    }
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
 }
 
-/**
- * 커스텀 클러스터 팔레트 가져오기
- * Graph2D에서 사용
- */
+export function loadAndApplyGraphColors(): void {
+  const stored = getStoredGraphColors();
+  applyThemeColors(getCurrentTheme(), stored[getCurrentTheme()]);
+  watchThemeChanges();
+}
+
 export function getClusterPalette(): string[] | null {
   try {
-    const paletteStr = document.documentElement.style.getPropertyValue(
-      "--graph-cluster-palette"
-    );
-    if (paletteStr) {
-      return JSON.parse(paletteStr);
-    }
-  } catch {
-    // ignore
-  }
+    const paletteStr = document.documentElement.style.getPropertyValue("--graph-cluster-palette");
+    if (paletteStr) return JSON.parse(paletteStr);
+  } catch { /* ignore */ }
   return null;
 }

@@ -545,7 +545,6 @@ export default function AppearancePanel() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isGpuActive, setIsGpuActive] = useState(true);
   const [pendingRestart, setPendingRestart] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
 
   // 앱 시작 시 설정 로드 (Electron 전용)
   useEffect(() => {
@@ -553,12 +552,6 @@ export default function AppearancePanel() {
     window.systemAPI.getSettings().then((settings) => {
       setIsGpuActive(settings.hardwareAcceleration);
     });
-  }, []);
-
-  // 개발자 모드 로드
-  useEffect(() => {
-    const devMode = localStorage.getItem("graphnode-dev-mode") === "true";
-    setIsDevMode(devMode);
   }, []);
 
   // 하드웨어 가속 설정 변경
@@ -652,17 +645,9 @@ export default function AppearancePanel() {
       <div className="w-full flex flex-col gap-3">
         <SettingCategoryTitle
           title={t("settings.graphColors.title")}
-          subtitle={t("settings.graphColors.hint")}
+          subtitle={t("settings.graphColors.subtitle", "Customize graph node and edge colors per theme")}
         />
-        {isDevMode ? (
-          <GraphColorEditor />
-        ) : (
-          <div className="p-4 bg-bg-secondary rounded-lg border border-base-border">
-            <p className="text-sm text-text-secondary">
-              {t("settings.graphColors.enableDevMode")}
-            </p>
-          </div>
-        )}
+        <GraphColorEditor />
       </div>
 
       {/* Hardware Acceleration (Electron 전용) */}

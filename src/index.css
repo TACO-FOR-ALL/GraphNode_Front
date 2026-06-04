@@ -32,9 +32,11 @@
   --color-search-item-hover: #f5f5f5;
   --color-base-border: #e5e5e5;
   --color-bg-tertiary: #f5f5f5;
-  --color-node-default: #bcbcbc;
-  --color-node-focus: #badaff;
-  --color-edge-default: #d6d6d6;
+  --color-node-default: #9090b0;
+  --color-node-focus: #4daaff;
+  --color-node-active: #a78bfa;
+  --color-edge-default: #b8b8c8;
+  --color-edge-active: #a78bfa;
   --color-cluster-default: #f5f5f5;
   --color-sidebar-folder-plus-hover: 54, 191, 250;
   --color-chat-bubble-border: #f0f2f5;
@@ -116,9 +118,11 @@
   --color-chat-bubble-border: #27272a;
 
   /* 그래프 노드/엣지 */
-  --color-node-default: #ebeae2;
-  --color-node-focus: #ef7235;
-  --color-edge-default: #4a4a4f;
+  --color-node-default: #d0cfc8;
+  --color-node-focus: #ff8c4a;
+  --color-node-active: #a78bfa;
+  --color-edge-default: #6a6a78;
+  --color-edge-active: #a78bfa;
 
   /* 스크롤바 */
   --color-scrollbar-thumb: #71717a;

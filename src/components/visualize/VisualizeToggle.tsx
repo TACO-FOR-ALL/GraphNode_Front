@@ -26,10 +26,14 @@ export default function VisualizeToggle({
   graphData,
   avatarUrl,
   subclusters,
+  activeNodeId,
+  onActiveNodeChange,
 }: {
   graphData: GraphSnapshot;
   avatarUrl: string | null;
   subclusters: GraphSubcluster[];
+  activeNodeId?: number | string | null;
+  onActiveNodeChange?: (id: number | string | null) => void;
 }) {
   const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [toggleTopClutserPanel, setToggleTopClutserPanel] = useState(false);
@@ -40,6 +44,12 @@ export default function VisualizeToggle({
 
   const [displayScale, setDisplayScale] = useState(1);
   const [minEdgeWeight, setMinEdgeWeight] = useState(0.6);
+  const [debouncedMinEdgeWeight, setDebouncedMinEdgeWeight] = useState(0.6);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedMinEdgeWeight(minEdgeWeight), 150);
+    return () => clearTimeout(timer);
+  }, [minEdgeWeight]);
   const zoomControlsRef = useRef<{ zoomIn: () => void; zoomOut: () => void }>({
     zoomIn: () => {},
     zoomOut: () => {},
@@ -294,9 +304,11 @@ export default function VisualizeToggle({
             avatarUrl={avatarUrl}
             onClustersReady={handleClustersReady}
             zoomToClusterId={zoomToClusterId}
-            minEdgeWeight={minEdgeWeight}
+            minEdgeWeight={debouncedMinEdgeWeight}
             onZoomReady={handleZoomReady}
             onScaleChange={setDisplayScale}
+            activeNodeId={activeNodeId}
+            onActiveNodeChange={onActiveNodeChange}
           />
         ) : (
           <Graph3D
@@ -305,7 +317,7 @@ export default function VisualizeToggle({
             width={dimensions.width}
             height={dimensions.height}
             onWebGLUnavailable={() => setMode("2d")}
-            minEdgeWeight={minEdgeWeight}
+            minEdgeWeight={debouncedMinEdgeWeight}
             onZoomReady={handleZoomReady}
             onScaleChange={setDisplayScale}
           />

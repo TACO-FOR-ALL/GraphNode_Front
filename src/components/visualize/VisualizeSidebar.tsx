@@ -448,7 +448,7 @@ export default function VisualizeSidebar({
               <div
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                   isGraphStructureExpanded
-                    ? "max-h-[2000px] opacity-100"
+                    ? "max-h-[9999px] opacity-100"
                     : "max-h-0 opacity-0"
                 }`}
               >
@@ -493,7 +493,7 @@ export default function VisualizeSidebar({
                         <div
                           className={`overflow-hidden transition-all duration-300 ease-in-out ${
                             isClusterExpanded
-                              ? "max-h-[2000px] opacity-100"
+                              ? "max-h-[9999px] opacity-100"
                               : "max-h-0 opacity-0"
                           }`}
                         >
@@ -556,7 +556,7 @@ export default function VisualizeSidebar({
                                   <div
                                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                       isSidebarExpanded
-                                        ? "max-h-[1000px] opacity-100"
+                                        ? "max-h-[9999px] opacity-100"
                                         : "max-h-0 opacity-0"
                                     }`}
                                   >
