@@ -21,6 +21,7 @@ import SearchModal from "./components/search/SearchModal";
 import AgentToolTipButton from "./components/layout/AgentToolTipButton";
 import { Me } from "./types/Me";
 import Note from "./routes/Note";
+import FileViewer from "./routes/FileViewer";
 import MicroscopePage from "./routes/MicroscopePage";
 import GraphTestPage from "./routes/GraphTestPage";
 import { useAgentToolBoxStore } from "./store/useAgentToolBoxStore";
@@ -436,6 +437,7 @@ function MainLayout() {
               }
             />
             <Route path="/note/:noteId?" element={<Note />} />
+            <Route path="/file/:fileId" element={<FileViewer />} />
             <Route path="/graph-lab" element={<GraphTestPage />} />
           </Routes>
         </div>

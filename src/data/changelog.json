@@ -1,4 +1,49 @@
 {
+  "1.0.2": {
+    "date": "2026-06-01",
+    "title": {
+      "ko": "GraphNode 1.0.2 업데이트",
+      "en": "GraphNode 1.0.2 Update",
+      "ja": "GraphNode 1.0.2 アップデート",
+      "zh": "GraphNode 1.0.2 更新"
+    },
+    "features": {
+      "ko": [
+        "파일(PDF, Word, PPT) 추가 및 뷰어 기능 제공",
+        "노트 텍스트 드래그 스타일링 기능 추가 (마크다운 외 자유로운 서식 적용)"
+      ],
+      "en": [
+        "Added file (PDF, Word, PPT) upload and viewer support",
+        "Added drag-to-style text formatting in notes (beyond Markdown syntax)"
+      ],
+      "ja": [
+        "ファイル（PDF、Word、PPT）の追加およびビューア機能を提供",
+        "ノートでテキストをドラッグしてスタイリングできる機能を追加（Markdown以外の書式にも対応）"
+      ],
+      "zh": [
+        "支持添加文件（PDF、Word、PPT）并提供查看器功能",
+        "笔记中新增拖拽文字样式功能（支持 Markdown 以外的自由格式）"
+      ]
+    },
+    "improvements": {
+      "ko": [
+        "그래프 노드 이동 자연스러움 개선",
+        "그래프 노드 충돌 방지 로직 개선"
+      ],
+      "en": [
+        "Improved graph node movement smoothness",
+        "Improved graph node collision prevention logic"
+      ],
+      "ja": [
+        "グラフノードの移動の滑らかさを改善",
+        "グラフノードの衝突防止ロジックを改善"
+      ],
+      "zh": [
+        "改进图节点移动流畅度",
+        "改进图节点碰撞防止逻辑"
+      ]
+    }
+  },
   "1.0.1": {
     "date": "2026-04-22",
     "title": {

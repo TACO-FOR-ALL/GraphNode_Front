@@ -5,6 +5,7 @@ import { FaPlus } from "react-icons/fa6";
 import { FolderItemContextValue } from "@/hooks/useFolderItemContext";
 import NewFolderField from "../NewFolderField";
 import { FaTrash, FaFolder, FaFolderOpen } from "react-icons/fa";
+import FileIcon from "./FileIcon";
 
 type FolderItemProps = {
   folder: Folder; // 현재 폴더
@@ -27,6 +28,7 @@ export default function FolderItem({
     creatingFolderParentId,
     draggedNoteId,
     draggedFolderId,
+    draggedFileId,
     dragOverFolderId,
     selectedId,
     buildTree,
@@ -39,10 +41,13 @@ export default function FolderItem({
     onCancelCreate,
     onNoteDragStart,
     onNoteDragEnd,
+    onFileDragStart,
+    onFileDragEnd,
     onFolderDragOver,
     onFolderDrop,
     onDragLeave,
     onNoteClick,
+    onFileClick,
     setEditingFolderName,
     setEditingFolderId,
     setNewFolderName,
@@ -55,6 +60,7 @@ export default function FolderItem({
   const isDraggingThis = draggedFolderId === folder.id;
   const children = buildTree?.folderChildren.get(folder.id) || [];
   const notes = buildTree?.folderNotes.get(folder.id) || [];
+  const files = buildTree?.folderFiles.get(folder.id) || [];
 
   return (
     <div>
@@ -205,6 +211,24 @@ export default function FolderItem({
                     handleDeleteNote(note.id);
                   }}
                 />
+              </div>
+            );
+          })}
+          {files.map((file) => {
+            const isDragging = draggedFileId === file.id;
+            return (
+              <div
+                key={file.id}
+                data-file-id={file.id}
+                draggable={true}
+                style={{ WebkitUserDrag: "element" } as React.CSSProperties}
+                onDragStart={(e) => onFileDragStart(file.id, e)}
+                onDragEnd={onFileDragEnd}
+                className={`text-[14px] mr-2 font-normal flex items-center gap-2 font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active ${isDragging ? "opacity-50" : ""}`}
+                onClick={() => onFileClick(file.id)}
+              >
+                <FileIcon category={file.category} />
+                <span className="truncate flex-1 min-w-0">{file.displayName}</span>
               </div>
             );
           })}

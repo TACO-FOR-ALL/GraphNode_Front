@@ -12,9 +12,15 @@ import FolderItem from "../notes/FolderItem";
 import { useFolderItemContext } from "@/hooks/useFolderItemContext";
 import { FaTrash } from "react-icons/fa";
 import { FiEdit3, FiFolderPlus } from "react-icons/fi";
+import { UserFile } from "@/types/UserFile";
+import { mapUserFile } from "@/utils/dtoMappers";
+import FileIcon from "@/components/notes/FileIcon";
 import { IoChevronDown, IoChevronForward } from "react-icons/io5";
 import { useTranslation } from "react-i18next";
 import SidebarSkeletonList from "./SidebarSkeletonList";
+import { api } from "@/apiClient";
+import { useToastStore } from "@/store/useToastStore";
+import { FaFileImport } from "react-icons/fa6";
 
 export default function SideExpandBarNote({
   path,
@@ -25,6 +31,7 @@ export default function SideExpandBarNote({
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { addToast } = useToastStore();
 
   // set을 사용하면 여러 폴더 확장 여부를 동시에 독립적으로 관리할 수 있으며, has()메서드로 O(1)의 시간복잡도로 확인 가능
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -38,11 +45,13 @@ export default function SideExpandBarNote({
   const [newFolderName, setNewFolderName] = useState("");
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [draggedFileId, setDraggedFileId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isRootExpanded, setIsRootExpanded] = useState<boolean>(true);
   const isCreatingFolderRef = useRef(false);
   const draggingNoteRef = useRef<string | null>(null);
   const draggingFolderIdRef = useRef<string | null>(null);
+  const draggingFileIdRef = useRef<string | null>(null);
   const lastDraggedNoteIdRef = useRef<string | null>(null);
   const lastDragStartedAtRef = useRef(0);
   const dragHoverFolderRef = useRef<string | "ROOT" | null>(null);
@@ -55,9 +64,19 @@ export default function SideExpandBarNote({
     queryFn: () => noteRepo.getNotesByFolder(null),
   });
 
-  const { data: rootFolders, isLoading: isLoadingFolders } = useQuery<Folder[]>({
-    queryKey: ["sidebar-folders", null],
-    queryFn: () => folderRepo.getFoldersByParentId(null),
+  const { data: rootFolders, isLoading: isLoadingFolders } = useQuery<Folder[]>(
+    {
+      queryKey: ["sidebar-folders", null],
+      queryFn: () => folderRepo.getFoldersByParentId(null),
+    },
+  );
+
+  const { data: rootFiles } = useQuery<UserFile[]>({
+    queryKey: ["sidebar-files", null],
+    queryFn: async () => {
+      const result = await api.userFiles.listUserFiles({ limit: 100 });
+      return result.isSuccess ? result.data.items.map(mapUserFile) : [];
+    },
   });
 
   const isLoading = isLoadingNotes || isLoadingFolders;
@@ -84,18 +103,44 @@ export default function SideExpandBarNote({
     })),
   });
 
+  const subFileQueries = useQueries({
+    queries: expandedFolderIdsArray.map((folderId) => ({
+      queryKey: ["sidebar-files", folderId],
+      queryFn: async (): Promise<UserFile[]> => {
+        const result = await api.userFiles.listUserFiles({
+          folderId,
+          limit: 100,
+        });
+        return result.isSuccess ? result.data.items.map(mapUserFile) : [];
+      },
+      staleTime: 30_000,
+    })),
+  });
+
   // 루트 + 로드된 하위 폴더 데이터 집계
   const notes = useMemo(() => {
     const result: Note[] = [...(rootNotes ?? [])];
-    subNoteQueries.forEach((q) => { if (q.data) result.push(...q.data); });
+    subNoteQueries.forEach((q) => {
+      if (q.data) result.push(...q.data);
+    });
     return result;
   }, [rootNotes, subNoteQueries]);
 
   const folders = useMemo(() => {
     const result: Folder[] = [...(rootFolders ?? [])];
-    subFolderQueries.forEach((q) => { if (q.data) result.push(...q.data); });
+    subFolderQueries.forEach((q) => {
+      if (q.data) result.push(...q.data);
+    });
     return result;
   }, [rootFolders, subFolderQueries]);
+
+  const files = useMemo(() => {
+    const result = [...(rootFiles ?? [])];
+    subFileQueries.forEach((q) => {
+      if (q.data) result.push(...q.data);
+    });
+    return result;
+  }, [rootFiles, subFileQueries]);
 
   const resolveNoteIdFromEventTarget = (target: EventTarget | null) => {
     const targetElement =
@@ -105,9 +150,10 @@ export default function SideExpandBarNote({
           ? target.parentElement
           : null;
 
-    return targetElement
-      ?.closest("[data-note-id]")
-      ?.getAttribute("data-note-id") ?? null;
+    return (
+      targetElement?.closest("[data-note-id]")?.getAttribute("data-note-id") ??
+      null
+    );
   };
 
   const beginDragTracking = (noteId: string) => {
@@ -126,7 +172,8 @@ export default function SideExpandBarNote({
       const target = e.target as Element;
 
       // 노트 드래그 우선
-      const noteId = target.closest("[data-note-id]")?.getAttribute("data-note-id") ?? null;
+      const noteId =
+        target.closest("[data-note-id]")?.getAttribute("data-note-id") ?? null;
       if (noteId) {
         draggingNoteRef.current = noteId;
         lastDraggedNoteIdRef.current = noteId;
@@ -142,8 +189,25 @@ export default function SideExpandBarNote({
         return;
       }
 
+      // 파일 드래그
+      const fileId =
+        target.closest("[data-file-id]")?.getAttribute("data-file-id") ?? null;
+      if (fileId) {
+        draggingFileIdRef.current = fileId;
+        dragHoverFolderRef.current = null;
+        dropHandledRef.current = false;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", `file:${fileId}`);
+        }
+        setDraggedFileId(fileId);
+        return;
+      }
+
       // 폴더 드래그
-      const folderId = target.closest("[data-folder-id]")?.getAttribute("data-folder-id") ?? null;
+      const folderId =
+        target.closest("[data-folder-id]")?.getAttribute("data-folder-id") ??
+        null;
       if (folderId) {
         draggingFolderIdRef.current = folderId;
         dragHoverFolderRef.current = null;
@@ -155,14 +219,15 @@ export default function SideExpandBarNote({
       }
     };
     document.addEventListener("dragstart", onNativeDragStart, true);
-    return () => document.removeEventListener("dragstart", onNativeDragStart, true);
+    return () =>
+      document.removeEventListener("dragstart", onNativeDragStart, true);
   }, []);
 
   // 트리 구조로 폴더와 노트 구성
   const buildTree = useMemo(() => {
-    if (!path.includes("/note") || !folders || !notes) return null;
-    return buildFolderTree(folders, notes);
-  }, [folders, notes, path]);
+    if ((!path.includes("/note") && !path.includes("/file")) || !folders || !notes) return null;
+    return buildFolderTree(folders, notes, files);
+  }, [folders, notes, files, path]);
 
   // 선택된 노트가 폴더 안에 있으면 해당 폴더 자동 펼치기
   useEffect(() => {
@@ -268,6 +333,24 @@ export default function SideExpandBarNote({
     e.dataTransfer.setData("text", noteId);
   };
 
+  // 파일 드래그 시작
+  const handleFileDragStart = (fileId: string, e: React.DragEvent) => {
+    draggingFileIdRef.current = fileId;
+    dragHoverFolderRef.current = null;
+    dropHandledRef.current = false;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", `file:${fileId}`);
+    setDraggedFileId(fileId);
+  };
+
+  // 파일 드래그 종료
+  const handleFileDragEnd = () => {
+    draggingFileIdRef.current = null;
+    dragHoverFolderRef.current = null;
+    setDraggedFileId(null);
+    setDragOverFolderId(null);
+  };
+
   // 노트 드래그 종료
   const handleNoteDragEnd = () => {
     if (
@@ -277,13 +360,21 @@ export default function SideExpandBarNote({
     ) {
       const noteId = lastDraggedNoteIdRef.current;
       const targetFolderId =
-        dragHoverFolderRef.current === "ROOT" ? null : dragHoverFolderRef.current;
+        dragHoverFolderRef.current === "ROOT"
+          ? null
+          : dragHoverFolderRef.current;
       void (async () => {
         try {
           dropHandledRef.current = true;
           await noteRepo.moveNoteToFolder(noteId, targetFolderId);
-          queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
-            old ? old.map((n) => (n.id === noteId ? { ...n, folderId: targetFolderId } : n)) : old,
+          queryClient.setQueriesData<Note[]>(
+            { queryKey: ["sidebar-notes"] },
+            (old) =>
+              old
+                ? old.map((n) =>
+                    n.id === noteId ? { ...n, folderId: targetFolderId } : n,
+                  )
+                : old,
           );
           if (targetFolderId) {
             setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
@@ -306,6 +397,7 @@ export default function SideExpandBarNote({
     }, 0);
     setDraggedNoteId(null);
     setDraggedFolderId(null);
+    setDraggedFileId(null);
     setDragOverFolderId(null);
   };
 
@@ -325,7 +417,8 @@ export default function SideExpandBarNote({
     if (!buildTree) return false;
     const children = buildTree.folderChildren.get(ancestorId) || [];
     return children.some(
-      (child) => child.id === candidateId || isDescendant(candidateId, child.id),
+      (child) =>
+        child.id === candidateId || isDescendant(candidateId, child.id),
     );
   };
 
@@ -347,16 +440,40 @@ export default function SideExpandBarNote({
       if (
         draggingFolder === targetFolderId ||
         (targetFolderId && isDescendant(targetFolderId, draggingFolder))
-      ) return;
+      )
+        return;
 
       try {
-        await folderRepo.updateFolderById(draggingFolder, { parentId: targetFolderId });
+        await folderRepo.updateFolderById(draggingFolder, {
+          parentId: targetFolderId,
+        });
         queryClient.invalidateQueries({ queryKey: ["sidebar-folders"] });
         if (targetFolderId) {
           setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
         }
       } catch (err) {
         console.error("[drop] folder move failed:", err);
+      }
+      return;
+    }
+
+    // 파일 드래그인 경우
+    const draggingFile = draggingFileIdRef.current;
+    if (draggingFile) {
+      draggingFileIdRef.current = null;
+      setDraggedFileId(null);
+      setDragOverFolderId(null);
+      dropHandledRef.current = true;
+      try {
+        await api.userFiles.updateUserFile(draggingFile, {
+          folderId: targetFolderId,
+        });
+        queryClient.invalidateQueries({ queryKey: ["sidebar-files"] });
+        if (targetFolderId) {
+          setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
+        }
+      } catch (err) {
+        console.error("[drop] file move failed:", err);
       }
       return;
     }
@@ -382,8 +499,14 @@ export default function SideExpandBarNote({
 
     try {
       await noteRepo.moveNoteToFolder(noteId, targetFolderId);
-      queryClient.setQueriesData<Note[]>({ queryKey: ["sidebar-notes"] }, (old) =>
-        old ? old.map((n) => (n.id === noteId ? { ...n, folderId: targetFolderId } : n)) : old,
+      queryClient.setQueriesData<Note[]>(
+        { queryKey: ["sidebar-notes"] },
+        (old) =>
+          old
+            ? old.map((n) =>
+                n.id === noteId ? { ...n, folderId: targetFolderId } : n,
+              )
+            : old,
       );
       if (targetFolderId) {
         setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
@@ -409,6 +532,7 @@ export default function SideExpandBarNote({
     creatingFolderParentId,
     draggedNoteId,
     draggedFolderId,
+    draggedFileId,
     dragOverFolderId,
     selectedId,
     buildTree,
@@ -421,10 +545,13 @@ export default function SideExpandBarNote({
     onCancelCreate: handleCancelCreateFolder,
     onNoteDragStart: handleNoteDragStart,
     onNoteDragEnd: handleNoteDragEnd,
+    onFileDragStart: handleFileDragStart,
+    onFileDragEnd: handleFileDragEnd,
     onFolderDragOver: handleFolderDragOver,
     onFolderDrop: handleFolderDrop,
     onDragLeave: handleDragLeave,
     onNoteClick: (noteId) => navigate(`/note/${noteId}`),
+    onFileClick: (fileId) => navigate(`/file/${fileId}`),
     setEditingFolderName,
     setEditingFolderId,
     setNewFolderName,
@@ -438,16 +565,85 @@ export default function SideExpandBarNote({
     );
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = async (rawFiles: File[]) => {
+    // NFC 정규화
+    const normalizedFiles = rawFiles.map(
+      (f) => new File([f], f.name.normalize("NFC"), { type: f.type }),
+    );
+
+    const results = await Promise.allSettled(
+      normalizedFiles.map((file) => api.userFiles.uploadUserFile(file)),
+    );
+
+    const succeeded = results.filter(
+      (r) => r.status === "fulfilled" && r.value.isSuccess,
+    ).length;
+    const failed = rawFiles.length - succeeded;
+
+    if (succeeded > 0) {
+      queryClient.invalidateQueries({ queryKey: ["sidebar-files"] });
+    }
+
+    if (failed === 0) {
+      addToast({
+        type: "success",
+        message: t("notes.importFileToast.success", { count: succeeded }),
+      });
+    } else if (succeeded === 0) {
+      addToast({
+        type: "error",
+        message: t("notes.importFileToast.allFailed", { count: failed }),
+      });
+    } else {
+      addToast({
+        type: "info",
+        message: t("notes.importFileToast.partial", { succeeded, failed }),
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0 pl-3 pr-0.5 pb-13">
       {/* 새 노트 혹 폴더 생성*/}
       <div
-        className="cursor-pointer mb-2 flex items-center gap-x-1.5 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
+        className="cursor-pointer flex items-center gap-x-1.5 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
         onClick={() => navigate("/note")}
       >
         <FiEdit3 className="w-4 h-4 shrink-0" />
         <p className="text-[14px] font-normal font-noto-sans-kr">
           {t("notes.newNote")}
+        </p>
+      </div>
+      <div
+        className="cursor-pointer mb-2 flex items-center gap-x-1.5 px-[6px] py-2 text-text-secondary hover:text-primary rounded-[6px] group hover:bg-sidebar-button-hover transition-colors duration-300"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="
+          .doc, application/msword, 
+          .docx, application/vnd.openxmlformats-officedocument.wordprocessingml.document, 
+          .pdf, application/pdf, 
+          .ppt, application/vnd.ms-powerpoint, 
+          .pptx, application/vnd.openxmlformats-officedocument.presentationml.presentation, 
+          "
+          // .xls, application/vnd.ms-excel,
+          // .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length > 0) handleFiles(files);
+            e.target.value = "";
+          }}
+        />
+
+        <FaFileImport className="w-4 h-4 shrink-0" />
+        <p className="text-[14px] font-normal font-noto-sans-kr">
+          {t("notes.importFile")}
         </p>
       </div>
 
@@ -567,7 +763,9 @@ export default function SideExpandBarNote({
                         key={note.id}
                         data-note-id={note.id}
                         draggable={true}
-                        style={{ WebkitUserDrag: "element" } as React.CSSProperties}
+                        style={
+                          { WebkitUserDrag: "element" } as React.CSSProperties
+                        }
                         onDragStart={(e) => handleNoteDragStart(note.id, e)}
                         onDragEnd={handleNoteDragEnd}
                         className={`text-[14px] mr-2 font-normal flex items-center justify-between font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group ${
@@ -582,6 +780,28 @@ export default function SideExpandBarNote({
                           className="text-[10px] cursor-pointer hidden group-hover:block"
                           onClick={() => handleDeleteNote(note.id)}
                         />
+                      </div>
+                    );
+                  })}
+                  {buildTree.rootFiles.map((file) => {
+                    const isDragging = draggedFileId === file.id;
+                    return (
+                      <div
+                        key={file.id}
+                        data-file-id={file.id}
+                        draggable={true}
+                        style={
+                          { WebkitUserDrag: "element" } as React.CSSProperties
+                        }
+                        onDragStart={(e) => handleFileDragStart(file.id, e)}
+                        onDragEnd={handleFileDragEnd}
+                        className={`text-[14px] mr-2 font-normal flex items-center gap-2 font-noto-sans-kr py-[6px] h-[32px] px-2 rounded-[6px] transition-colors duration-300 cursor-move group text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active ${isDragging ? "opacity-50" : ""}`}
+                        onClick={() => navigate(`/file/${file.id}`)}
+                      >
+                        <FileIcon category={file.category} />
+                        <span className="truncate flex-1 min-w-0">
+                          {file.displayName}
+                        </span>
                       </div>
                     );
                   })}
