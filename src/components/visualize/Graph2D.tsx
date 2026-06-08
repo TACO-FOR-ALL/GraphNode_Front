@@ -661,7 +661,26 @@ export default function Graph2D({
           simNode.clusterKey = clusterKey;
           simNode.clusterName = clusterKey;
           simNode.clusterId = realClusterId;
+
+          const dispNode = displaySimNodeMapRef.current.get(nid);
+          if (dispNode) dispNode.clusterName = clusterKey;
+
+          // Dynamic strength: zero out links that cross cluster boundaries after move
+          (simulationRef.current?.force("link") as d3Force.ForceLink<SimNode, SimLink> | undefined)
+            ?.strength((link) => {
+              const s = (link.source as unknown) as SimNode;
+              const t = (link.target as unknown) as SimNode;
+              return s.clusterKey === t.clusterKey ? 0.24 : 0;
+            });
+          (displaySimulationRef.current?.force("link") as d3Force.ForceLink<DisplaySimNode, DisplaySimLink> | undefined)
+            ?.strength((link) => {
+              const s = (link.source as unknown) as DisplaySimNode;
+              const t = (link.target as unknown) as DisplaySimNode;
+              return s.clusterName === t.clusterName ? 0.24 : 0;
+            });
+
           simulationRef.current?.alpha(0.3).restart();
+          displaySimulationRef.current?.alpha(0.3).restart();
         }
         scheduleMutation(
           () => {
@@ -671,7 +690,12 @@ export default function Graph2D({
               sn.clusterKey = oldClusterKey;
               sn.clusterName = oldClusterName!;
               sn.clusterId = oldClusterId!;
+
+              const dispNode = displaySimNodeMapRef.current.get(nid);
+              if (dispNode) dispNode.clusterName = oldClusterName!;
+
               simulationRef.current?.alpha(0.3).restart();
+              displaySimulationRef.current?.alpha(0.3).restart();
             }
           },
           async () => {
