@@ -410,6 +410,22 @@
     "zoomControls": {
       "reset": "重置",
       "edgeWeight": "相似度"
+    },
+    "nodeEditMenu": {
+      "rename": "重命名",
+      "move": "移动数据",
+      "connect": "连接关系",
+      "disconnect": "断开关系",
+      "delete": "删除节点",
+      "save": "保存",
+      "cancel": "取消",
+      "confirmDelete": "删除",
+      "renamePlaceholder": "输入新名称",
+      "searchPlaceholder": "搜索节点...",
+      "deleteMessage": "确定删除此节点吗？此操作无法撤销。",
+      "noNodes": "没有可连接的节点",
+      "noClusters": "没有可移动的集群",
+      "noConnections": "没有已连接的节点"
     }
   },
   "search": {

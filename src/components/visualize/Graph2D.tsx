@@ -13,6 +13,7 @@ import React, {
   useState,
 } from "react";
 import NodePreview from "./NodePreview";
+import NodeEditMenu from "./NodeEditMenu";
 
 type GraphProps = {
   rawNodes: PositionedNode[];
@@ -510,6 +511,11 @@ export default function Graph2D({
   const [selectedNode, setSelectedNode] = useState<{
     origId: string;
     sourceType?: "chat" | "markdown" | "notion";
+  } | null>(null);
+  const [rightClickedNode, setRightClickedNode] = useState<{
+    id: number;
+    origid: string;
+    position: { x: number; y: number };
   } | null>(null);
   const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
 
@@ -1602,6 +1608,16 @@ export default function Graph2D({
                   }
                   handleNodeClick(node);
                 }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (node.isGroupNode || !node.origNode) return;
+                  setRightClickedNode({
+                    id: node.id as number,
+                    origid: node.origNode.origId,
+                    position: { x: event.clientX, y: event.clientY },
+                  });
+                }}
               >
                 <circle
                   r={radius}
@@ -1631,6 +1647,21 @@ export default function Graph2D({
           })}
         </g>
       </svg>
+
+      {rightClickedNode && (
+        <NodeEditMenu
+          nodeId={rightClickedNode.id}
+          origId={rightClickedNode.origid}
+          position={rightClickedNode.position}
+          onClose={() => {
+            setRightClickedNode(null);
+            onActiveNodeChange?.(null);
+          }}
+          allNodes={rawNodes}
+          allEdges={rawEdges}
+          clusters={circles}
+        />
+      )}
 
       {selectedNode && (
         <NodePreview
