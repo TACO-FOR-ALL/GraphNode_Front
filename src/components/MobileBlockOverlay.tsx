@@ -26,9 +26,7 @@ const messages = [
 
 function isMobileOrTablet(): boolean {
   const ua = navigator.userAgent;
-  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
-  const isNarrow = window.innerWidth < 1024;
-  return isMobileUA || isNarrow;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
 }
 
 export default function MobileBlockOverlay() {
@@ -38,12 +36,7 @@ export default function MobileBlockOverlay() {
 
   useEffect(() => {
     if (isElectron()) return;
-    function check() {
-      setVisible(isMobileOrTablet());
-    }
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    setVisible(isMobileOrTablet());
   }, []);
 
   // 언어 순환
