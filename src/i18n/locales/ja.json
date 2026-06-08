@@ -410,6 +410,25 @@
     "zoomControls": {
       "reset": "リセット",
       "edgeWeight": "類似度"
+    },
+    "nodeEditMenu": {
+      "rename": "名前を変更",
+      "move": "データを移動",
+      "connect": "関係を接続",
+      "disconnect": "関係を削除",
+      "delete": "ノードを削除",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "confirmDelete": "削除",
+      "renamePlaceholder": "新しい名前を入力",
+      "searchPlaceholder": "ノードを検索...",
+      "deleteMessage": "このノードを削除しますか？この操作は取り消せません。",
+      "noNodes": "接続可能なノードがありません",
+      "noClusters": "移動可能なクラスターがありません",
+      "noConnections": "接続されたノードがありません"
+    },
+    "undoToast": {
+      "undo": "元に戻す"
     }
   },
   "search": {

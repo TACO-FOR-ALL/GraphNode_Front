@@ -410,6 +410,25 @@
     "zoomControls": {
       "reset": "Reset",
       "edgeWeight": "Similarity"
+    },
+    "nodeEditMenu": {
+      "rename": "Rename",
+      "move": "Move Data",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "delete": "Delete Node",
+      "save": "Save",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "renamePlaceholder": "Enter new name",
+      "searchPlaceholder": "Search nodes...",
+      "deleteMessage": "Delete this node? This action cannot be undone.",
+      "noNodes": "No connectable nodes",
+      "noClusters": "No available clusters",
+      "noConnections": "No connected nodes"
+    },
+    "undoToast": {
+      "undo": "Undo"
     }
   },
   "search": {

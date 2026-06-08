@@ -1,9 +1,12 @@
+import { api } from "@/apiClient";
 import {
   ClusterCircle,
   PositionedEdge,
   PositionedNode,
+  GraphSnapshot,
   GraphSubcluster,
 } from "@/types/GraphData";
+import { useQueryClient } from "@tanstack/react-query";
 import * as d3Force from "d3-force";
 import React, {
   useCallback,
@@ -12,7 +15,9 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import NodePreview from "./NodePreview";
+import NodeEditMenu from "./NodeEditMenu";
 
 type GraphProps = {
   rawNodes: PositionedNode[];
@@ -96,6 +101,13 @@ type DisplaySimLink = {
   source: number | string | DisplaySimNode;
   target: number | string | DisplaySimNode;
   isIntraCluster: boolean;
+};
+
+type PendingMutation = {
+  label: string;
+  revert: () => void;
+  commit: () => Promise<void>;
+  timerId: ReturnType<typeof setTimeout>;
 };
 
 const BASE_NODE_RADIUS = 5;
@@ -511,12 +523,329 @@ export default function Graph2D({
     origId: string;
     sourceType?: "chat" | "markdown" | "notion";
   } | null>(null);
+  const [rightClickedNode, setRightClickedNode] = useState<{
+    id: number;
+    origid: string;
+    position: { x: number; y: number };
+  } | null>(null);
   const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [draggingTarget, setDraggingTarget] = useState<DragTarget | null>(null);
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const isMutatingRef = useRef(false);
+
+  const [pendingMutation, setPendingMutation] =
+    useState<PendingMutation | null>(null);
+  const pendingMutationRef = useRef<PendingMutation | null>(null);
+
+  const scheduleMutation = useCallback(
+    (revert: () => void, commit: () => Promise<void>, label: string) => {
+      if (pendingMutationRef.current) {
+        clearTimeout(pendingMutationRef.current.timerId);
+        const prev = pendingMutationRef.current;
+        prev.commit().catch(prev.revert);
+      }
+      const timerId = setTimeout(async () => {
+        pendingMutationRef.current = null;
+        setPendingMutation(null);
+        try {
+          await commit();
+        } catch {
+          revert();
+        }
+      }, 3500);
+      const mutation: PendingMutation = { label, revert, commit, timerId };
+      pendingMutationRef.current = mutation;
+      setPendingMutation(mutation);
+    },
+    [],
+  );
+
+  const handleUndo = useCallback(() => {
+    const m = pendingMutationRef.current;
+    if (!m) return;
+    clearTimeout(m.timerId);
+    m.revert();
+    pendingMutationRef.current = null;
+    setPendingMutation(null);
+  }, []);
+
+  useEffect(
+    () => () => {
+      const m = pendingMutationRef.current;
+      if (m) {
+        clearTimeout(m.timerId);
+        m.commit().catch(m.revert);
+      }
+    },
+    [],
+  );
+
+  const nodesRef = useRef<PositionedNode[]>([]);
+  const edgesRef = useRef<PositionedEdge[]>([]);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  const nodeEditActions = useMemo(() => {
+    if (!rightClickedNode) return null;
+    const nid = rightClickedNode.id;
+
+    return {
+      rename: async (label: string) => {
+        let snap: PositionedNode[] | null = null;
+        setNodes((prev) => {
+          snap = prev;
+          return prev.map((n) =>
+            n.id === nid ? { ...n, nodeTitle: label } : n,
+          );
+        });
+        scheduleMutation(
+          () => setNodes(snap!),
+          async () => {
+            const res = await api.graphEditor.updateNode(nid, { label });
+            if (!res.isSuccess) throw res.error;
+            isMutatingRef.current = true;
+            queryClient.setQueryData(
+              ["graphData"],
+              (
+                old:
+                  | { nodeEdgeData: GraphSnapshot; graphSummary: unknown }
+                  | undefined,
+              ) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  nodeEdgeData: {
+                    ...old.nodeEdgeData,
+                    nodes: old.nodeEdgeData.nodes.map((n) =>
+                      n.id === nid ? { ...n, nodeTitle: label } : n,
+                    ),
+                  },
+                };
+              },
+            );
+          },
+          t("visualize.nodeEditMenu.rename"),
+        );
+      },
+
+      move: async (clusterKey: string) => {
+        const realClusterId =
+          nodesRef.current.find((n) => getClusterKey(n) === clusterKey)
+            ?.clusterId ?? clusterKey;
+        let snap: PositionedNode[] | null = null;
+        let oldClusterKey: string | null = null;
+        let oldClusterName: string | null = null;
+        let oldClusterId: string | null = null;
+        setNodes((prev) => {
+          snap = prev;
+          return prev.map((n) =>
+            n.id === nid
+              ? { ...n, clusterId: realClusterId, clusterName: clusterKey }
+              : n,
+          );
+        });
+        const simNode = simNodeMapRef.current.get(nid);
+        if (simNode) {
+          oldClusterKey = simNode.clusterKey;
+          oldClusterName = simNode.clusterName;
+          oldClusterId = simNode.clusterId;
+          simNode.clusterKey = clusterKey;
+          simNode.clusterName = clusterKey;
+          simNode.clusterId = realClusterId;
+          simulationRef.current?.alpha(0.3).restart();
+        }
+        scheduleMutation(
+          () => {
+            setNodes(snap!);
+            const sn = simNodeMapRef.current.get(nid);
+            if (sn && oldClusterKey) {
+              sn.clusterKey = oldClusterKey;
+              sn.clusterName = oldClusterName!;
+              sn.clusterId = oldClusterId!;
+              simulationRef.current?.alpha(0.3).restart();
+            }
+          },
+          async () => {
+            const res = await api.graphEditor.moveNodeToCluster(nid, {
+              newClusterId: realClusterId,
+            });
+            if (!res.isSuccess) throw res.error;
+            isMutatingRef.current = true;
+            queryClient.setQueryData(
+              ["graphData"],
+              (
+                old:
+                  | { nodeEdgeData: GraphSnapshot; graphSummary: unknown }
+                  | undefined,
+              ) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  nodeEdgeData: {
+                    ...old.nodeEdgeData,
+                    nodes: old.nodeEdgeData.nodes.map((n) =>
+                      n.id === nid
+                        ? {
+                            ...n,
+                            clusterId: realClusterId,
+                            clusterName: clusterKey,
+                          }
+                        : n,
+                    ),
+                  },
+                };
+              },
+            );
+          },
+          t("visualize.nodeEditMenu.move"),
+        );
+      },
+
+      connect: async (targetId: number) => {
+        const tempId = `temp-${Date.now()}`;
+        const tempEdge: PositionedEdge = {
+          id: tempId,
+          source: nid,
+          target: targetId,
+          weight: 1.0,
+          userId: "",
+          type: "insight",
+          intraCluster: false,
+          isIntraCluster: false,
+        };
+        setEdges((prev) => [...prev, tempEdge]);
+        scheduleMutation(
+          () => setEdges((prev) => prev.filter((e) => e.id !== tempId)),
+          async () => {
+            const res = await api.graphEditor.createEdge({
+              source: nid,
+              target: targetId,
+              weight: 1.0,
+            });
+            if (!res.isSuccess) throw res.error;
+            const realId = res.data.edgeId;
+            setEdges((prev) =>
+              prev.map((e) => (e.id === tempId ? { ...e, id: realId } : e)),
+            );
+            isMutatingRef.current = true;
+            queryClient.setQueryData(
+              ["graphData"],
+              (
+                old:
+                  | { nodeEdgeData: GraphSnapshot; graphSummary: unknown }
+                  | undefined,
+              ) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  nodeEdgeData: {
+                    ...old.nodeEdgeData,
+                    edges: [
+                      ...old.nodeEdgeData.edges,
+                      { ...tempEdge, id: realId },
+                    ],
+                  },
+                };
+              },
+            );
+          },
+          t("visualize.nodeEditMenu.connect"),
+        );
+      },
+
+      disconnect: async (edgeId: string) => {
+        let snap: PositionedEdge[] | null = null;
+        setEdges((prev) => {
+          snap = prev;
+          return prev.filter((e) => e.id !== edgeId);
+        });
+        scheduleMutation(
+          () => setEdges(snap!),
+          async () => {
+            const res = await api.graphEditor.deleteEdge(edgeId);
+            if (!res.isSuccess) throw res.error;
+            isMutatingRef.current = true;
+            queryClient.setQueryData(
+              ["graphData"],
+              (
+                old:
+                  | { nodeEdgeData: GraphSnapshot; graphSummary: unknown }
+                  | undefined,
+              ) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  nodeEdgeData: {
+                    ...old.nodeEdgeData,
+                    edges: old.nodeEdgeData.edges.filter(
+                      (e) => e.id !== edgeId,
+                    ),
+                  },
+                };
+              },
+            );
+          },
+          t("visualize.nodeEditMenu.disconnect"),
+        );
+      },
+
+      delete: async () => {
+        let snapNodes: PositionedNode[] | null = null;
+        let snapEdges: PositionedEdge[] | null = null;
+        setNodes((prev) => {
+          snapNodes = prev;
+          return prev.filter((n) => n.id !== nid);
+        });
+        setEdges((prev) => {
+          snapEdges = prev;
+          return prev.filter((e) => e.source !== nid && e.target !== nid);
+        });
+        scheduleMutation(
+          () => {
+            setNodes(snapNodes!);
+            setEdges(snapEdges!);
+          },
+          async () => {
+            const res = await api.graphEditor.deleteNode(nid, true);
+            if (!res.isSuccess) throw res.error;
+            isMutatingRef.current = true;
+            queryClient.setQueryData(
+              ["graphData"],
+              (
+                old:
+                  | { nodeEdgeData: GraphSnapshot; graphSummary: unknown }
+                  | undefined,
+              ) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  nodeEdgeData: {
+                    ...old.nodeEdgeData,
+                    nodes: old.nodeEdgeData.nodes.filter((n) => n.id !== nid),
+                    edges: old.nodeEdgeData.edges.filter(
+                      (e) => e.source !== nid && e.target !== nid,
+                    ),
+                  },
+                };
+              },
+            );
+          },
+          t("visualize.nodeEditMenu.delete"),
+        );
+      },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rightClickedNode, scheduleMutation, t]);
+
   const panStartRef = useRef<{ x: number; y: number } | null>(null);
   const dragNodeOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
   const dragStartPointerRef = useRef<{ x: number; y: number } | null>(null);
@@ -784,6 +1113,10 @@ export default function Graph2D({
               const ratio = limit / dist;
               node.x = center.x + dx * ratio;
               node.y = center.y + dy * ratio;
+              if (node.fx != null) {
+                node.fx = node.x;
+                node.fy = node.y;
+              }
             }
           });
           setNodes(simNodes.map((node) => ({ ...node })));
@@ -796,6 +1129,12 @@ export default function Graph2D({
   );
 
   useEffect(() => {
+    // 그래프 수정 엑션 발생 시 그래프 시뮬레이션 재실행 방지
+    if (isMutatingRef.current) {
+      isMutatingRef.current = false;
+      return;
+    }
+
     if (rawNodes.length === 0) {
       stopInteractiveSimulation();
       setNodes([]);
@@ -1325,11 +1664,18 @@ export default function Graph2D({
 
   const handleMouseUp = () => {
     if (draggingTarget !== null) {
+      const capturedTargetId =
+        !draggingTarget.isGroup && typeof draggingTarget.id === "number"
+          ? draggingTarget.id
+          : null;
+
       if (!draggingTarget.isGroup && typeof draggingTarget.id === "number") {
         const simNode = simNodeMapRef.current.get(draggingTarget.id);
         if (simNode) {
-          simNode.fx = null;
-          simNode.fy = null;
+          // Pin at current (clamped) position so forceX/Y can't pull the node
+          // back toward the cluster center during the settle period.
+          simNode.fx = simNode.x;
+          simNode.fy = simNode.y;
         }
       }
       if (draggingTarget.isGroup) {
@@ -1345,6 +1691,13 @@ export default function Graph2D({
         clearDragSettleTimer();
         dragSettleTimerRef.current = window.setTimeout(() => {
           sim.stop();
+          if (capturedTargetId !== null) {
+            const sn = simNodeMapRef.current.get(capturedTargetId);
+            if (sn) {
+              sn.fx = null;
+              sn.fy = null;
+            }
+          }
           dragSettleTimerRef.current = null;
         }, 500);
       }
@@ -1602,6 +1955,16 @@ export default function Graph2D({
                   }
                   handleNodeClick(node);
                 }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (node.isGroupNode || !node.origNode) return;
+                  setRightClickedNode({
+                    id: node.id as number,
+                    origid: node.origNode.origId,
+                    position: { x: event.clientX, y: event.clientY },
+                  });
+                }}
               >
                 <circle
                   r={radius}
@@ -1631,6 +1994,34 @@ export default function Graph2D({
           })}
         </g>
       </svg>
+
+      {pendingMutation && (
+        <div className="fixed bottom-20 left-1/2 z-50 flex min-w-56 -translate-x-1/2 items-center justify-between gap-4 rounded-lg border border-sidebar-button-border bg-sidebar-expanded-background px-4 py-1.5 text-sm shadow-lg">
+          <span className="text-text-secondary">{pendingMutation.label}</span>
+          <button
+            className="shrink-0 font-semibold text-primary hover:underline"
+            onClick={handleUndo}
+          >
+            {t("visualize.undoToast.undo")}
+          </button>
+        </div>
+      )}
+
+      {rightClickedNode && nodeEditActions && (
+        <NodeEditMenu
+          nodeId={rightClickedNode.id}
+          origId={rightClickedNode.origid}
+          position={rightClickedNode.position}
+          onClose={() => {
+            setRightClickedNode(null);
+            onActiveNodeChange?.(null);
+          }}
+          allNodes={nodes}
+          allEdges={edges}
+          clusters={circles}
+          actions={nodeEditActions}
+        />
+      )}
 
       {selectedNode && (
         <NodePreview

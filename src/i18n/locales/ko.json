@@ -410,6 +410,25 @@
     "zoomControls": {
       "reset": "초기화",
       "edgeWeight": "유사도"
+    },
+    "nodeEditMenu": {
+      "rename": "이름 변경",
+      "move": "데이터 이동",
+      "connect": "관계 연결",
+      "disconnect": "관계 제거",
+      "delete": "노드 삭제",
+      "save": "저장",
+      "cancel": "취소",
+      "confirmDelete": "삭제",
+      "renamePlaceholder": "새 이름 입력",
+      "searchPlaceholder": "노드 검색...",
+      "deleteMessage": "이 노드를 삭제하시겠습니까? 되돌릴 수 없습니다.",
+      "noNodes": "연결 가능한 노드가 없습니다",
+      "noClusters": "이동 가능한 클러스터가 없습니다",
+      "noConnections": "연결된 노드가 없습니다"
+    },
+    "undoToast": {
+      "undo": "실행 취소"
     }
   },
   "search": {
