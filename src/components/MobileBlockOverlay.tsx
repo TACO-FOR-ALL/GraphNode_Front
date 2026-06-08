@@ -26,9 +26,7 @@ const messages = [
 
 function isMobileOrTablet(): boolean {
   const ua = navigator.userAgent;
-  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
-  const isNarrow = window.innerWidth < 1024;
-  return isMobileUA || isNarrow;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
 }
 
 export default function MobileBlockOverlay() {
@@ -38,25 +36,23 @@ export default function MobileBlockOverlay() {
 
   useEffect(() => {
     if (isElectron()) return;
-    function check() {
-      setVisible(isMobileOrTablet());
-    }
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    setVisible(isMobileOrTablet());
   }, []);
 
-  // 언어 순환
   useEffect(() => {
     if (!visible) return;
+    let timeout: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       setFade(false);
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         setIndex((i) => (i + 1) % messages.length);
         setFade(true);
-      }, 400);
+      }, 350);
     }, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [visible]);
 
   if (!visible) return null;
@@ -105,7 +101,7 @@ export default function MobileBlockOverlay() {
       <div
         style={{
           textAlign: "center",
-          transition: "opacity 0.4s ease",
+          transition: fade ? "opacity 0.35s ease-out" : "opacity 0.3s linear",
           opacity: fade ? 1 : 0,
         }}
       >
