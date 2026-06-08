@@ -426,6 +426,9 @@
       "noNodes": "연결 가능한 노드가 없습니다",
       "noClusters": "이동 가능한 클러스터가 없습니다",
       "noConnections": "연결된 노드가 없습니다"
+    },
+    "undoToast": {
+      "undo": "실행 취소"
     }
   },
   "search": {

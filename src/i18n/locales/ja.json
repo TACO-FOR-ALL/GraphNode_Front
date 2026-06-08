@@ -426,6 +426,9 @@
       "noNodes": "接続可能なノードがありません",
       "noClusters": "移動可能なクラスターがありません",
       "noConnections": "接続されたノードがありません"
+    },
+    "undoToast": {
+      "undo": "元に戻す"
     }
   },
   "search": {

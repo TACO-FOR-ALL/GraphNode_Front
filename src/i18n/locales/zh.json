@@ -426,6 +426,9 @@
       "noNodes": "没有可连接的节点",
       "noClusters": "没有可移动的集群",
       "noConnections": "没有已连接的节点"
+    },
+    "undoToast": {
+      "undo": "撤销"
     }
   },
   "search": {

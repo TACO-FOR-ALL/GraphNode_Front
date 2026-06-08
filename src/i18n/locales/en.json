@@ -426,6 +426,9 @@
       "noNodes": "No connectable nodes",
       "noClusters": "No available clusters",
       "noConnections": "No connected nodes"
+    },
+    "undoToast": {
+      "undo": "Undo"
     }
   },
   "search": {

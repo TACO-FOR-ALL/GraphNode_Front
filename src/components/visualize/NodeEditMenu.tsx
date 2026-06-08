@@ -1,4 +1,3 @@
-import { api } from "@/apiClient";
 import type {
   ClusterCircle,
   PositionedEdge,
@@ -16,6 +15,14 @@ import {
   MdSearch,
 } from "react-icons/md";
 
+type NodeActions = {
+  rename: (label: string) => Promise<void>;
+  move: (clusterKey: string) => Promise<void>;
+  connect: (targetId: number) => Promise<void>;
+  disconnect: (edgeId: string) => Promise<void>;
+  delete: () => Promise<void>;
+};
+
 type NodeEditMenuProps = {
   nodeId: number;
   origId: string;
@@ -24,6 +31,7 @@ type NodeEditMenuProps = {
   allNodes: PositionedNode[];
   allEdges: PositionedEdge[];
   clusters: ClusterCircle[];
+  actions: NodeActions;
 };
 
 type ViewState =
@@ -50,6 +58,7 @@ export default function NodeEditMenu({
   allNodes,
   allEdges,
   clusters,
+  actions,
 }: NodeEditMenuProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -162,11 +171,7 @@ export default function NodeEditMenu({
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter" && view.label.trim())
-                  run("rename", () =>
-                    api.graphEditor.updateNode(nodeId, {
-                      label: view.label.trim(),
-                    }),
-                  );
+                  run("rename", () => actions.rename(view.label.trim()));
                 if (e.key === "Escape") onClose();
               }}
             />
@@ -177,11 +182,7 @@ export default function NodeEditMenu({
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={() =>
                   view.label.trim() &&
-                  run("rename", () =>
-                    api.graphEditor.updateNode(nodeId, {
-                      label: view.label.trim(),
-                    }),
-                  )
+                  run("rename", () => actions.rename(view.label.trim()))
                 }
               >
                 {t("visualize.nodeEditMenu.save")}
@@ -210,16 +211,9 @@ export default function NodeEditMenu({
               </p>
             ) : (
               availableClusters.map((c) =>
-                listItem(c.clusterId, c.clusterName, () => {
-                  const realClusterId =
-                    allNodes.find((n) => getClusterKey(n) === c.clusterId)
-                      ?.clusterId ?? c.clusterId;
-                  run("move", () =>
-                    api.graphEditor.moveNodeToCluster(nodeId, {
-                      newClusterId: realClusterId,
-                    }),
-                  );
-                }),
+                listItem(c.clusterId, c.clusterName, () =>
+                  run("move", () => actions.move(c.clusterId)),
+                )
               )
             )}
           </div>
@@ -311,14 +305,8 @@ export default function NodeEditMenu({
             ) : (
               filtered.map((n) =>
                 listItem(n.id, getNodeLabel(n), () =>
-                  run("connect", () =>
-                    api.graphEditor.createEdge({
-                      source: nodeId,
-                      target: n.id,
-                      weight: 1.0,
-                    }),
-                  ),
-                ),
+                  run("connect", () => actions.connect(n.id)),
+                )
               )
             )}
           </div>
@@ -342,7 +330,7 @@ export default function NodeEditMenu({
                 const other = nodeMap.get(otherId);
                 const label = other ? getNodeLabel(other) : String(otherId);
                 return listItem(edge.id!, label, () =>
-                  run("disconnect", () => api.graphEditor.deleteEdge(edge.id!)),
+                  run("disconnect", () => actions.disconnect(edge.id!)),
                 );
               })
             )}
@@ -364,9 +352,7 @@ export default function NodeEditMenu({
                 disabled={submitting}
                 className="flex-1 rounded-md bg-red-500 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-40"
                 onMouseDown={(e) => e.stopPropagation()}
-                onClick={() =>
-                  run("delete", () => api.graphEditor.deleteNode(nodeId, true))
-                }
+                onClick={() => run("delete", () => actions.delete())}
               >
                 {t("visualize.nodeEditMenu.confirmDelete")}
               </button>
