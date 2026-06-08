@@ -39,17 +39,20 @@ export default function MobileBlockOverlay() {
     setVisible(isMobileOrTablet());
   }, []);
 
-  // 언어 순환
   useEffect(() => {
     if (!visible) return;
+    let timeout: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       setFade(false);
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         setIndex((i) => (i + 1) % messages.length);
         setFade(true);
-      }, 400);
+      }, 350);
     }, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, [visible]);
 
   if (!visible) return null;
@@ -98,7 +101,7 @@ export default function MobileBlockOverlay() {
       <div
         style={{
           textAlign: "center",
-          transition: "opacity 0.4s ease",
+          transition: fade ? "opacity 0.35s ease-out" : "opacity 0.3s linear",
           opacity: fade ? 1 : 0,
         }}
       >
