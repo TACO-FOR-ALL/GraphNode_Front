@@ -32,7 +32,6 @@ function isMobileOrTablet(): boolean {
 export default function MobileBlockOverlay() {
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
-  const [fade, setFade] = useState(true);
 
   useEffect(() => {
     if (isElectron()) return;
@@ -41,18 +40,10 @@ export default function MobileBlockOverlay() {
 
   useEffect(() => {
     if (!visible) return;
-    let timeout: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
-      setFade(false);
-      timeout = setTimeout(() => {
-        setIndex((i) => (i + 1) % messages.length);
-        setFade(true);
-      }, 350);
+      setIndex((i) => (i + 1) % messages.length);
     }, 3000);
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
+    return () => clearInterval(interval);
   }, [visible]);
 
   if (!visible) return null;
@@ -97,12 +88,12 @@ export default function MobileBlockOverlay() {
         </svg>
       </div>
 
-      {/* 텍스트 */}
+      {/* 텍스트 - key로 언어 전환 시 새 엘리먼트로 교체 */}
       <div
+        key={index}
         style={{
           textAlign: "center",
-          transition: fade ? "opacity 0.35s ease-out" : "opacity 0.3s linear",
-          opacity: fade ? 1 : 0,
+          animation: "mbo-fadein 0.5s ease-out",
         }}
       >
         <p
@@ -169,6 +160,10 @@ export default function MobileBlockOverlay() {
         @keyframes mbo-float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-8px); }
+        }
+        @keyframes mbo-fadein {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0px); }
         }
       `}</style>
     </div>
