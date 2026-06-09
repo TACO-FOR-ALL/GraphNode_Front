@@ -1688,16 +1688,11 @@ export default function Graph2D({
 
   const handleMouseUp = () => {
     if (draggingTarget !== null) {
-      const capturedTargetId =
-        !draggingTarget.isGroup && typeof draggingTarget.id === "number"
-          ? draggingTarget.id
-          : null;
-
       if (!draggingTarget.isGroup && typeof draggingTarget.id === "number") {
         const simNode = simNodeMapRef.current.get(draggingTarget.id);
         if (simNode) {
-          // Pin at current (clamped) position so forceX/Y can't pull the node
-          // back toward the cluster center during the settle period.
+          // Pin at drop position permanently so forceX/Y never pulls the node
+          // back when the simulation is restarted for subsequent interactions.
           simNode.fx = simNode.x;
           simNode.fy = simNode.y;
         }
@@ -1715,13 +1710,6 @@ export default function Graph2D({
         clearDragSettleTimer();
         dragSettleTimerRef.current = window.setTimeout(() => {
           sim.stop();
-          if (capturedTargetId !== null) {
-            const sn = simNodeMapRef.current.get(capturedTargetId);
-            if (sn) {
-              sn.fx = null;
-              sn.fy = null;
-            }
-          }
           dragSettleTimerRef.current = null;
         }, 500);
       }
