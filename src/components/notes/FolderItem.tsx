@@ -5,11 +5,13 @@ import { FaPlus } from "react-icons/fa6";
 import { FolderItemContextValue } from "@/hooks/useFolderItemContext";
 import NewFolderField from "../NewFolderField";
 import { FaTrash, FaFolder, FaFolderOpen } from "react-icons/fa";
+import FileIcon from "./FileIcon";
 
 type FolderItemProps = {
   folder: Folder; // 현재 폴더
   depth: number; // 깊이 (들여쓰기)
   handleDeleteNote: (noteId: string) => void;
+  handleDeleteFile: (fileId: string) => void;
   context: FolderItemContextValue; // 모든 상태와 핸들러를 포함한 컨텍스트
 };
 
@@ -18,6 +20,7 @@ export default function FolderItem({
   depth,
   context,
   handleDeleteNote,
+  handleDeleteFile,
 }: FolderItemProps) {
   const {
     expandedFolders,
@@ -27,6 +30,7 @@ export default function FolderItem({
     creatingFolderParentId,
     draggedNoteId,
     draggedFolderId,
+    draggedFileId,
     dragOverFolderId,
     selectedId,
     buildTree,
@@ -39,10 +43,13 @@ export default function FolderItem({
     onCancelCreate,
     onNoteDragStart,
     onNoteDragEnd,
+    onFileDragStart,
+    onFileDragEnd,
     onFolderDragOver,
     onFolderDrop,
     onDragLeave,
     onNoteClick,
+    onFileClick,
     setEditingFolderName,
     setEditingFolderId,
     setNewFolderName,
@@ -55,6 +62,7 @@ export default function FolderItem({
   const isDraggingThis = draggedFolderId === folder.id;
   const children = buildTree?.folderChildren.get(folder.id) || [];
   const notes = buildTree?.folderNotes.get(folder.id) || [];
+  const files = buildTree?.folderFiles.get(folder.id) || [];
 
   return (
     <div>
@@ -167,6 +175,7 @@ export default function FolderItem({
               depth={depth + 1}
               context={context}
               handleDeleteNote={handleDeleteNote}
+              handleDeleteFile={handleDeleteFile}
             />
           ))}
           {/* 하위 폴더 생성 UI */}
@@ -203,6 +212,38 @@ export default function FolderItem({
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteNote(note.id);
+                  }}
+                />
+              </div>
+            );
+          })}
+          {files.map((file) => {
+            const isDragging = draggedFileId === file.id;
+            const isSelected = selectedId === file.id;
+            return (
+              <div
+                key={file.id}
+                data-file-id={file.id}
+                draggable={true}
+                style={{ WebkitUserDrag: "element" } as React.CSSProperties}
+                onDragStart={(e) => onFileDragStart(file.id, e)}
+                onDragEnd={onFileDragEnd}
+                className={`text-[14px] mr-2 font-normal flex items-center gap-2 font-noto-sans-kr py-[6px] h-[32px] px-[6px] ml-4 rounded-[8px] transition-colors duration-300 cursor-move group ${
+                  isSelected
+                    ? "bg-sidebar-button-hover text-chatbox-active"
+                    : "text-text-secondary hover:bg-sidebar-button-hover hover:text-chatbox-active"
+                } ${isDragging ? "opacity-50" : ""}`}
+                onClick={() => onFileClick(file.id)}
+              >
+                <FileIcon category={file.category} />
+                <span className="truncate flex-1 min-w-0">
+                  {file.displayName}
+                </span>
+                <FaTrash
+                  className="text-[10px] cursor-pointer hidden group-hover:block"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteFile(file.id);
                   }}
                 />
               </div>

@@ -248,6 +248,7 @@
       "allFailed": "{{count}}개 파일 업로드에 실패했습니다.",
       "partial": "{{succeeded}}개 성공, {{failed}}개 실패했습니다."
     },
+    "deleteFileError": "파일 삭제에 실패했습니다.",
     "newFolder": "새 폴더",
     "codeBlock": {
       "copied": "{{language}} 코드가 복사되었습니다.",
@@ -954,5 +955,11 @@
       "contextNodesLabel": "컨텍스트 노드",
       "defaultResponse": "선택하신 {{count}}개의 노드({{types}})에 대해 분석해드리겠습니다.\n\n더 구체적인 질문이 있으시면 말씀해주세요!"
     }
+  },
+  "fileViewer": {
+    "loading": "불러오는 중...",
+    "error": "파일을 불러올 수 없습니다.",
+    "unsupported": "브라우저에서 바로 볼 수 없는 파일 형식입니다.",
+    "download": "다운로드"
   }
 }

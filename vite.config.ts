@@ -48,8 +48,7 @@ function createSentryBuildPlugins(
       project: projects,
       authToken,
       debug:
-        process.env.SENTRY_DEBUG === "1" ||
-        process.env.SENTRY_DEBUG === "true",
+        process.env.SENTRY_DEBUG === "1" || process.env.SENTRY_DEBUG === "true",
       release: {
         name: releaseName,
         setCommits: false,
@@ -103,6 +102,11 @@ export default defineConfig({
   define: sharedDefines,
   // Vercel 배포 시 /app 경로에서 서빙
   base: "/app/",
+  // ngrok 테스트 설정
+  server: {
+    host: "0.0.0.0",
+    allowedHosts: [".ngrok-free.app"],
+  },
   plugins: [
     react(),
     electron({

@@ -10,6 +10,7 @@ export type FolderItemContextValue = {
   creatingFolderParentId: string | null | "ROOT";
   draggedNoteId: string | null;
   draggedFolderId: string | null;
+  draggedFileId: string | null;
   dragOverFolderId: string | null;
   selectedId: string;
   buildTree: FolderTree | null;
@@ -24,10 +25,13 @@ export type FolderItemContextValue = {
   onCancelCreate: () => void;
   onNoteDragStart: (noteId: string, e: React.DragEvent) => void;
   onNoteDragEnd: () => void;
+  onFileDragStart: (fileId: string, e: React.DragEvent) => void;
+  onFileDragEnd: () => void;
   onFolderDragOver: (folderId: string, e: React.DragEvent) => void;
   onFolderDrop: (folderId: string, e: React.DragEvent) => void;
   onDragLeave: () => void;
   onNoteClick: (noteId: string) => void;
+  onFileClick: (fileId: string) => void;
 
   // Setter
   setEditingFolderName: (name: string) => void;

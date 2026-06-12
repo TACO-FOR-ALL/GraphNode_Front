@@ -248,6 +248,7 @@
       "allFailed": "{{count}} 个文件上传失败。",
       "partial": "{{succeeded}} 个成功，{{failed}} 个失败。"
     },
+    "deleteFileError": "文件删除失败。",
     "newFolder": "新建文件夹",
     "codeBlock": {
       "copied": "已复制 {{language}} 代码。",
@@ -954,5 +955,11 @@
       "contextNodesLabel": "上下文节点",
       "defaultResponse": "正在分析您选择的{{count}}个节点({{types}})。\n\n如有更具体的问题，请随时提问！"
     }
+  },
+  "fileViewer": {
+    "loading": "加载中...",
+    "error": "无法加载文件。",
+    "unsupported": "此文件格式无法在浏览器中直接预览。",
+    "download": "下载"
   }
 }

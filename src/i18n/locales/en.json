@@ -248,6 +248,7 @@
       "allFailed": "Failed to upload {{count}} file(s).",
       "partial": "{{succeeded}} succeeded, {{failed}} failed."
     },
+    "deleteFileError": "Failed to delete file.",
     "newFolder": "New Folder",
     "codeBlock": {
       "copied": "Copied {{language}} code.",
@@ -954,5 +955,11 @@
       "contextNodesLabel": "Context nodes",
       "defaultResponse": "Analyzing {{count}} nodes ({{types}}) you selected.\n\nFeel free to ask more specific questions!"
     }
+  },
+  "fileViewer": {
+    "loading": "Loading...",
+    "error": "Unable to load file.",
+    "unsupported": "This file format cannot be previewed in the browser.",
+    "download": "Download"
   }
 }

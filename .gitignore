@@ -16,3 +16,4 @@ electron/*.js.map
 .env
 /release
 .graphnode-cli/
+.venv-embedding/
