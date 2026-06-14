@@ -2,22 +2,24 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastStore } from "@/store/useToastStore";
-import threadRepo from "../../managers/threadRepo";
-import { parseConversations } from "../../utils/parseConversations";
-import { toMarkdownFromUnknown } from "../../utils/toMarkdown";
-import { ChatMessage } from "../../types/Chat";
-import type { Status } from "../../types/FileUploadStatus";
-import readJsonWithProgress from "@/utils/readJsonWithProgress";
-import { readZipConversations } from "@/utils/readZipConversations";
+// import threadRepo from "../../managers/threadRepo";
+// import { parseConversations } from "../../utils/parseConversations";
+// import { toMarkdownFromUnknown } from "../../utils/toMarkdown";
+// import { ChatMessage } from "../../types/Chat";
+// import readJsonWithProgress from "@/utils/readJsonWithProgress";
+// import { readZipConversations } from "@/utils/readZipConversations";
 import { api } from "@/apiClient";
 import { unwrapResponse } from "@/utils/httpResponse";
 import useDragDrop from "@/hooks/useDragDrop";
+import type { Status } from "../../types/FileUploadStatus";
 import {
   IoChatbubbles,
   IoCloudUpload,
   IoCheckmarkCircle,
   IoAlertCircle,
 } from "react-icons/io5";
+
+type Phase = "uploading" | "processing" | "finalizing" | null;
 
 export default function DropJsonZone() {
   const { t } = useTranslation();
@@ -26,10 +28,7 @@ export default function DropJsonZone() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [progress, setProgress] = useState(0);
-  const [isParsing, setIsParsing] = useState(false);
-  const [zipFileCount, setZipFileCount] = useState<number | null>(null);
-  const latestProgress = useRef(0);
-  latestProgress.current = progress;
+  const [phase, setPhase] = useState<Phase>(null);
 
   const {
     mutate: importFile,
@@ -42,125 +41,126 @@ export default function DropJsonZone() {
     mutationKey: ["import-conversations"],
     mutationFn: async (file) => {
       setProgress(0);
-      setZipFileCount(null);
+      setPhase(null);
 
-      const isZip = file.name.toLowerCase().endsWith(".zip");
-      const isJson = file.name.toLowerCase().endsWith(".json");
-
-      if (!isZip && !isJson) {
-        throw new Error(t("settings.dropJsonZone.errorMessage.notJson"));
+      if (!file.name.toLowerCase().endsWith(".zip")) {
+        throw new Error(t("settings.dropJsonZone.errorMessage.notZip"));
       }
 
-      // ── ZIP 처리 ─────────────────────────────────────────────────
-      if (isZip) {
-        const entries = await readZipConversations(file, (p) => setProgress(p));
-
-        if (entries.length === 0) {
-          throw new Error(
-            t("settings.dropJsonZone.errorMessage.noConversationJson"),
-          );
-        }
-
-        setZipFileCount(entries.length);
-        setIsParsing(true);
-        await new Promise((r) => setTimeout(r, 50));
-
-        // 모든 매칭 파일 파싱 → 스레드 합산
-        const allThreads = entries.flatMap(({ text }) => {
-          try {
-            return parseConversations(JSON.parse(text)) ?? [];
-          } catch {
-            return [];
-          }
-        });
-
-        const normalized = allThreads.map((th) => ({
-          ...th,
-          messages: th.messages.map((m: ChatMessage) => ({
-            ...m,
-            content:
-              typeof m.content === "string"
-                ? m.content
-                : toMarkdownFromUnknown(m.content),
-          })),
-        }));
-
-        if (normalized.length) {
-          const ids = normalized.map((n) => n.id);
-          await threadRepo.upsertMany(normalized);
-          try {
-            unwrapResponse(
-              await api.conversations.bulkCreate({
-                conversations: normalized.map((n) => ({
-                  id: n.id,
-                  title: n.title,
-                  messages: n.messages.map((m) => ({
-                    id: m.id,
-                    role: m.role,
-                    content: m.content,
-                    createdAt: new Date(m.ts).toISOString(),
-                  })),
-                })),
-              }),
-            );
-          } catch (e) {
-            await threadRepo.deleteMany(ids);
-            throw e;
-          }
-        }
-        return;
-      }
-
-      // ── JSON 처리 (기존 로직) ────────────────────────────────────
-      const text = await readJsonWithProgress(
-        file as any,
-        (p: number) => setProgress(p),
-        t,
+      // ── S3 업로드 ────────────────────────────────────────────────
+      setPhase("uploading");
+      const { jobId } = unwrapResponse(
+        await api.imports.uploadImport("chatgpt", file, file.name),
       );
 
-      setIsParsing(true);
-      await new Promise((r) => setTimeout(r, 50));
-      const data = JSON.parse(text);
-
-      const threads = parseConversations(data);
-      if (!threads?.length) {
-        console.warn("parsed threads = 0, JSON shape might differ");
-      }
-
-      const normalized = (threads || []).map((th) => ({
-        ...th,
-        messages: th.messages.map((m: ChatMessage) => ({
-          ...m,
-          content:
-            typeof m.content === "string"
-              ? m.content
-              : toMarkdownFromUnknown(m.content),
-        })),
-      }));
-
-      if (normalized.length) {
-        const ids = normalized.map((n) => n.id);
-        await threadRepo.upsertMany(normalized);
-        try {
-          unwrapResponse(
-            await api.conversations.bulkCreate({
-              conversations: normalized.map((n) => ({
-                id: n.id,
-                title: n.title,
-                messages: n.messages.map((m) => ({
-                  id: m.id,
-                  role: m.role,
-                  content: m.content,
-                  createdAt: new Date(m.ts).toISOString(),
-                })),
-              })),
-            }),
+      // ── 백엔드 처리 폴링 ─────────────────────────────────────────
+      setPhase("processing");
+      while (true) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const job = unwrapResponse(await api.imports.getJob(jobId));
+        setProgress(job.progress);
+        const s = job.status.toLowerCase();
+        if (s === "failed" || s === "error" || s === "cancelled") {
+          throw new Error(
+            job.error?.detail ?? t("settings.dropJsonZone.toast.error"),
           );
-        } catch (e) {
-          await threadRepo.deleteMany(ids);
-          throw e;
         }
+        if (s === "completed" || s === "done" || s === "success") break;
       }
+
+      // ── Finalize (DB 저장) ───────────────────────────────────────
+      setPhase("finalizing");
+      unwrapResponse(await api.imports.finalize(jobId));
+
+      while (true) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const job = unwrapResponse(await api.imports.getJob(jobId));
+        if (job.finalizeStatus === "failed") {
+          throw new Error(
+            job.finalizeError ?? t("settings.dropJsonZone.toast.error"),
+          );
+        }
+        if (job.finalizeStatus === "finalized") break;
+      }
+
+      // ── 기존 로직 (parseConversations/threadRepo → 백엔드로 이전됨) ──
+      // ── ZIP 처리 ─────────────────────────────────────────────────
+      // const isZip = file.name.toLowerCase().endsWith(".zip");
+      // const isJson = file.name.toLowerCase().endsWith(".json");
+      // if (!isZip && !isJson) {
+      //   throw new Error(t("settings.dropJsonZone.errorMessage.notJson"));
+      // }
+      // if (isZip) {
+      //   const entries = await readZipConversations(file, (p) => setProgress(p));
+      //   if (entries.length === 0) {
+      //     throw new Error(t("settings.dropJsonZone.errorMessage.noConversationJson"));
+      //   }
+      //   setZipFileCount(entries.length);
+      //   setIsParsing(true);
+      //   await new Promise((r) => setTimeout(r, 50));
+      //   const allThreads = entries.flatMap(({ text }) => {
+      //     try { return parseConversations(JSON.parse(text)) ?? []; }
+      //     catch { return []; }
+      //   });
+      //   const normalized = allThreads.map((th) => ({
+      //     ...th,
+      //     messages: th.messages.map((m: ChatMessage) => ({
+      //       ...m,
+      //       content: typeof m.content === "string" ? m.content : toMarkdownFromUnknown(m.content),
+      //     })),
+      //   }));
+      //   if (normalized.length) {
+      //     const ids = normalized.map((n) => n.id);
+      //     await threadRepo.upsertMany(normalized);
+      //     try {
+      //       unwrapResponse(await api.conversations.bulkCreate({
+      //         conversations: normalized.map((n) => ({
+      //           id: n.id, title: n.title,
+      //           messages: n.messages.map((m) => ({
+      //             id: m.id, role: m.role, content: m.content,
+      //             createdAt: new Date(m.ts).toISOString(),
+      //           })),
+      //         })),
+      //       }));
+      //     } catch (e) {
+      //       await threadRepo.deleteMany(ids);
+      //       throw e;
+      //     }
+      //   }
+      //   return;
+      // }
+      // ── JSON 처리 ────────────────────────────────────────────────
+      // const text = await readJsonWithProgress(file as any, (p: number) => setProgress(p), t);
+      // setIsParsing(true);
+      // await new Promise((r) => setTimeout(r, 50));
+      // const data = JSON.parse(text);
+      // const threads = parseConversations(data);
+      // if (!threads?.length) console.warn("parsed threads = 0, JSON shape might differ");
+      // const normalized = (threads || []).map((th) => ({
+      //   ...th,
+      //   messages: th.messages.map((m: ChatMessage) => ({
+      //     ...m,
+      //     content: typeof m.content === "string" ? m.content : toMarkdownFromUnknown(m.content),
+      //   })),
+      // }));
+      // if (normalized.length) {
+      //   const ids = normalized.map((n) => n.id);
+      //   await threadRepo.upsertMany(normalized);
+      //   try {
+      //     unwrapResponse(await api.conversations.bulkCreate({
+      //       conversations: normalized.map((n) => ({
+      //         id: n.id, title: n.title,
+      //         messages: n.messages.map((m) => ({
+      //           id: m.id, role: m.role, content: m.content,
+      //           createdAt: new Date(m.ts).toISOString(),
+      //         })),
+      //       })),
+      //     }));
+      //   } catch (e) {
+      //     await threadRepo.deleteMany(ids);
+      //     throw e;
+      //   }
+      // }
     },
 
     onSuccess: () => {
@@ -173,7 +173,6 @@ export default function DropJsonZone() {
 
     onError: (err) => {
       console.warn("Import error:", err);
-      setIsParsing(false);
       addToast({
         message: err.message || t("settings.dropJsonZone.toast.error"),
         type: "error",
@@ -181,7 +180,7 @@ export default function DropJsonZone() {
     },
 
     onSettled: () => {
-      setIsParsing(false);
+      setPhase(null);
     },
   });
 
@@ -220,7 +219,7 @@ export default function DropJsonZone() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json,.zip"
+        accept=".zip"
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
@@ -267,41 +266,33 @@ export default function DropJsonZone() {
           </p>
           <p className="text-xs text-text-secondary">
             {status === "idle" && t("settings.dropJsonZone.maxSize")}
-            {status === "reading" && !isParsing && (
-              <>
-                {zipFileCount !== null
-                  ? t("settings.dropJsonZone.uploadingZip", { progress })
-                  : t("settings.dropJsonZone.uploading", { progress })}
-              </>
-            )}
-            {isParsing && (
-              <>
-                {zipFileCount !== null
-                  ? t("settings.dropJsonZone.parsingZip", { count: zipFileCount })
-                  : t("settings.dropJsonZone.parsing")}
-              </>
-            )}
+            {status === "reading" &&
+              phase === "uploading" &&
+              t("settings.dropJsonZone.uploading")}
+            {status === "reading" &&
+              phase === "processing" &&
+              t("settings.dropJsonZone.processing", { progress })}
+            {status === "reading" &&
+              phase === "finalizing" &&
+              t("settings.dropJsonZone.finalizing")}
             {status === "error" && error?.message}
           </p>
         </div>
 
         {/* Progress Bar */}
-        {(status === "reading" || isParsing) && (
+        {status === "reading" && (
           <div className="w-full max-w-[200px] h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
             <div
               className="h-full bg-primary rounded-full transition-all duration-150 ease-out"
               style={{
-                width: isParsing ? "100%" : `${progress}%`,
+                width: phase === "finalizing" ? "100%" : `${progress}%`,
               }}
             />
           </div>
         )}
 
-        {/* File Type Badges */}
+        {/* File Type Badge */}
         <div className="flex items-center gap-1.5">
-          <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-[10px] font-medium text-text-secondary uppercase tracking-wide">
-            JSON
-          </span>
           <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-[10px] font-medium text-text-secondary uppercase tracking-wide">
             ZIP
           </span>

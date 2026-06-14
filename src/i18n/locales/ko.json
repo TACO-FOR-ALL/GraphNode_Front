@@ -582,21 +582,18 @@
     "terms": "이용약관",
     "logout": "로그아웃",
     "dropJsonZone": {
-      "title": "JSON 또는 ZIP 파일을 드래그 & 드롭하세요",
-      "description": "conversations.json 파일 또는 그것이 포함된 ZIP 파일을 끌어다 놓으세요",
-      "maxSize": "JSON 또는 ZIP 파일 하나만 드랍 (최대 512MB 권장)",
-      "uploading": "업로드(읽는 중)… {progress}%",
-      "uploadingZip": "ZIP 처리 중… {progress}%",
-      "parsing": "분석(파싱) 중…",
-      "parsingZip": "{count}개 파일 파싱 중…",
+      "title": "ZIP 파일을 드래그 & 드롭하세요",
+      "description": "ChatGPT 또는 Claude 내보내기 ZIP 파일을 끌어다 놓으세요",
+      "maxSize": "ZIP 파일 하나만 드랍 (최대 512MB 권장)",
+      "uploading": "업로드 중…",
+      "processing": "처리 중… {progress}%",
+      "finalizing": "저장 중…",
       "done": "완료",
       "error": "오류 발생",
       "fileName": "파일명",
       "errorMessage": {
-        "notJson": "JSON 또는 ZIP 파일만 업로드 해주세요 (.json, .zip)",
-        "noConversationJson": "ZIP 파일 안에 conversation*.json 파일이 없습니다",
+        "notZip": "ZIP 파일만 업로드 해주세요 (.zip)",
         "readFailed": "파일 읽기 실패",
-        "parseFailed": "JSON 파싱 실패",
         "processingFailed": "처리 중 오류"
       },
       "toast": {
