@@ -10,6 +10,7 @@ import type {
   FolderDto,
   ConversationDto,
   MessageDto,
+  UserFileDto,
 } from "@taco_tsinghua/graphnode-sdk";
 import type {
   PositionedNode,
@@ -22,6 +23,7 @@ import type {
 import type { GraphSummary } from "@/types/GraphSummary";
 import type { Note } from "@/types/Note";
 import type { Folder } from "@/types/Folder";
+import type { UserFile } from "@/types/UserFile";
 import type { ChatThread, ChatMessage } from "@/types/Chat";
 
 // 날짜 변환 헬퍼
@@ -209,6 +211,21 @@ export function mapFolder(dto: FolderDto): Folder {
     id: dto.id,
     name: dto.name,
     parentId: dto.parentId,
+    createdAt: toTimestampRequired(dto.createdAt),
+    updatedAt: toTimestampRequired(dto.updatedAt),
+  };
+}
+
+// UserFile 변환
+export function mapUserFile(dto: UserFileDto): UserFile {
+  return {
+    id: dto.id,
+    folderId: dto.folderId,
+    displayName: dto.displayName,
+    mimeType: dto.mimeType,
+    sizeBytes: dto.sizeBytes,
+    category: dto.category,
+    summaryStatus: dto.summaryStatus,
     createdAt: toTimestampRequired(dto.createdAt),
     updatedAt: toTimestampRequired(dto.updatedAt),
   };

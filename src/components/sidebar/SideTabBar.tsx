@@ -25,6 +25,7 @@ export default function SideTabBar({
     () =>
       path.includes("/chat") ||
       path.includes("/note") ||
+      path.includes("/file") ||
       path.includes("/settings"),
     [path],
   );
@@ -52,7 +53,11 @@ export default function SideTabBar({
     <div className="flex h-full select-none">
       <SideNavigationBar
         firstLetter={firstLetter}
-        path={path.split("/")[1] === "note" ? "notes" : path.split("/")[1]}
+        path={
+          path.split("/")[1] === "note" || path.split("/")[1] === "file"
+            ? "notes"
+            : path.split("/")[1]
+        }
         setOpenSearch={setOpenSearch}
         avatarUrl={avatarUrl}
       />
@@ -66,7 +71,7 @@ export default function SideTabBar({
           />
           {isExpanded && (
             <div className="flex flex-col h-full">
-              {path.includes("/note") && (
+              {(path.includes("/note") || path.includes("/file")) && (
                 <SideExpandBarNote
                   path={path}
                   selectedId={selectedId ?? ""}
